@@ -41,23 +41,23 @@ function depsWith(
   };
 }
 
-Deno.test('revokeProviderToken — skipped when no stored token', async () => {
+Deno.test('revokeProviderToken — fails when no stored token', async () => {
   const result = await revokeProviderToken(
     { provider: 'plaid', encryptedAccessToken: null },
     depsWith(FULL_ENV),
   );
-  assertEquals(result.outcome, 'skipped');
-  assertEquals(result.detail, 'no stored token');
+  assertEquals(result.outcome, 'failed');
+  assertEquals(result.detail, 'REVOCATION_CREDENTIAL_MISSING');
 });
 
-Deno.test('revokeProviderToken — skipped for providers with no adapter', async () => {
+Deno.test('revokeProviderToken — fails for providers with no adapter', async () => {
   for (const provider of ['truelayer', 'finicity']) {
     const result = await revokeProviderToken(
       { provider, encryptedAccessToken: 'aes256gcm:iv:ct' },
       depsWith(FULL_ENV),
     );
-    assertEquals(result.outcome, 'skipped');
-    assertEquals(result.detail, 'provider revocation not implemented');
+    assertEquals(result.outcome, 'failed');
+    assertEquals(result.detail, 'PROVIDER_REVOCATION_UNSUPPORTED');
   }
 });
 
@@ -85,8 +85,7 @@ Deno.test('revokeProviderToken — MX 404 counts as revoked (nothing left to rev
       revokeMx: () => Promise.reject(new MxApiError(404, 'HTTP_404')),
     }),
   );
-  assertEquals(result.outcome, 'revoked');
-  assertEquals(result.detail, 'already invalid at provider');
+  assertEquals(result.outcome, 'already_invalid');
 });
 
 Deno.test('revokeProviderToken — MX failure surfaces only the safe code', async () => {
@@ -107,25 +106,25 @@ Deno.test('revokeProviderToken — MX malformed stored credential fails safely',
     depsWith(FULL_ENV, { decrypt: () => Promise.resolve('not-a-pair') }),
   );
   assertEquals(result.outcome, 'failed');
-  assertEquals(result.detail, 'stored credential malformed');
+  assertEquals(result.detail, 'REVOCATION_CREDENTIAL_MALFORMED');
 });
 
-Deno.test('revokeProviderToken — skipped when MX credentials missing', async () => {
+Deno.test('revokeProviderToken — fails when MX credentials missing', async () => {
   const result = await revokeProviderToken(
     { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
     depsWith({ BANK_ENCRYPTION_KEY: 'key-material' }),
   );
-  assertEquals(result.outcome, 'skipped');
-  assertEquals(result.detail, 'provider credentials not configured');
+  assertEquals(result.outcome, 'failed');
+  assertEquals(result.detail, 'PROVIDER_CONFIGURATION_MISSING');
 });
 
-Deno.test('revokeProviderToken — skipped when Plaid credentials missing', async () => {
+Deno.test('revokeProviderToken — fails when Plaid credentials missing', async () => {
   const result = await revokeProviderToken(
     { provider: 'plaid', encryptedAccessToken: 'aes256gcm:iv:ct' },
     depsWith({ BANK_ENCRYPTION_KEY: 'key-material' }),
   );
-  assertEquals(result.outcome, 'skipped');
-  assertEquals(result.detail, 'provider credentials not configured');
+  assertEquals(result.outcome, 'failed');
+  assertEquals(result.detail, 'PROVIDER_CONFIGURATION_MISSING');
 });
 
 Deno.test('revokeProviderToken — failed when encryption key missing', async () => {
@@ -134,7 +133,7 @@ Deno.test('revokeProviderToken — failed when encryption key missing', async ()
     depsWith({ PLAID_CLIENT_ID: 'client', PLAID_SECRET: 'secret' }),
   );
   assertEquals(result.outcome, 'failed');
-  assertEquals(result.detail, 'encryption key not configured');
+  assertEquals(result.detail, 'ENCRYPTION_CONFIGURATION_MISSING');
 });
 
 Deno.test('revokeProviderToken — failed when decryption throws', async () => {
@@ -145,7 +144,7 @@ Deno.test('revokeProviderToken — failed when decryption throws', async () => {
     }),
   );
   assertEquals(result.outcome, 'failed');
-  assertEquals(result.detail, 'token decryption failed');
+  assertEquals(result.detail, 'CREDENTIAL_DECRYPTION_FAILED');
 });
 
 Deno.test('revokeProviderToken — revoked on success with decrypted token', async () => {
@@ -173,8 +172,7 @@ Deno.test('revokeProviderToken — treats already-invalid item as revoked', asyn
       revokePlaid: () => Promise.reject(new PlaidApiError(400, 'ITEM_NOT_FOUND')),
     }),
   );
-  assertEquals(result.outcome, 'revoked');
-  assertEquals(result.detail, 'already invalid at provider');
+  assertEquals(result.outcome, 'already_invalid');
 });
 
 Deno.test('revokeProviderToken — failed carries the safe Plaid error code', async () => {
@@ -196,7 +194,7 @@ Deno.test('revokeProviderToken — failed generically on a non-Plaid error', asy
     }),
   );
   assertEquals(result.outcome, 'failed');
-  assertEquals(result.detail, 'revocation request failed');
+  assertEquals(result.detail, 'REVOCATION_REQUEST_FAILED');
 });
 
 Deno.test('revokeProviderToken — never throws even if getEnv throws', async () => {
@@ -209,7 +207,7 @@ Deno.test('revokeProviderToken — never throws even if getEnv throws', async ()
     },
   );
   assertEquals(result.outcome, 'failed');
-  assertEquals(result.detail, 'unexpected error');
+  assertEquals(result.detail, 'REVOCATION_UNEXPECTED_ERROR');
 });
 
 Deno.test('revokeProviderTokens — processes a batch of connections', async () => {
@@ -223,8 +221,8 @@ Deno.test('revokeProviderTokens — processes a batch of connections', async () 
   );
   assertEquals(results.length, 3);
   assertEquals(results[0].outcome, 'revoked');
-  assertEquals(results[1].outcome, 'skipped');
-  assertEquals(results[2].outcome, 'skipped');
+  assertEquals(results[1].outcome, 'failed');
+  assertEquals(results[2].outcome, 'failed');
 });
 
 Deno.test('revokeProviderTokens — revokes mixed Plaid and MX batches', async () => {

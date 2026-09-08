@@ -118,7 +118,7 @@ interface HarnessOptions {
   script: RpcScript;
   /** `null` makes the provider exchange fail without creating an Item. */
   exchange?: { access_token: string; item_id: string } | null;
-  revokeOutcome?: 'revoked' | 'failed' | 'skipped';
+  revokeOutcome?: 'revoked' | 'already_invalid' | 'failed';
 }
 
 function harness(options: HarnessOptions): Harness {
@@ -189,6 +189,98 @@ function exchangeRequest(): Request {
     }),
   });
 }
+
+function retentionRequest(ids: string[] = [CONNECTION_ID]): Request {
+  return new Request(
+    'http://localhost/functions/v1/bank-connection?action=select_downgrade_retention',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: '******',
+        Origin: 'http://localhost',
+      },
+      body: JSON.stringify({
+        household_id: 'household-1',
+        target_tier: 'premium',
+        retained_connection_ids: ids,
+      }),
+    },
+  );
+}
+
+function disconnectRequest(): Request {
+  return new Request(`http://localhost/functions/v1/bank-connection?id=${CONNECTION_ID}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: '******',
+      Origin: 'http://localhost',
+    },
+  });
+}
+
+Deno.test('downgrade retention selection is validated by the server RPC', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      select_bank_connections_for_downgrade: [
+        {
+          data: [{ status: 'selected', selected_count: 1, target_allowance: 2 }],
+          error: null,
+        },
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(retentionRequest());
+  assertEquals(response.status, 200);
+  const call = h.supabase.calls.find(
+    (candidate) => candidate.fn === 'select_bank_connections_for_downgrade',
+  );
+  assertEquals(call?.args.p_actor_id, 'user-1');
+  assertEquals(call?.args.p_household_id, 'household-1');
+  assertEquals(call?.args.p_selected_connection_ids, [CONNECTION_ID]);
+});
+
+Deno.test('invalid downgrade retention selection is rejected', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      select_bank_connections_for_downgrade: [
+        {
+          data: [{ status: 'invalid_selection', selected_count: 1, target_allowance: 2 }],
+          error: null,
+        },
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(retentionRequest());
+  assertEquals(response.status, 400);
+});
+
+Deno.test(
+  'disconnect durably enqueues before returning and never calls provider inline',
+  async () => {
+    withEnv();
+    const h = harness({
+      script: {
+        enqueue_bank_connection_revocation: [
+          { data: [{ status: 'enqueued', outbox_id: 'outbox-1' }], error: null },
+        ],
+      },
+    });
+
+    const response = await createBankConnectionHandler(h.deps)(disconnectRequest());
+    assertEquals(response.status, 204);
+    assertEquals(h.revokes.length, 0);
+    const call = h.supabase.calls.find(
+      (candidate) => candidate.fn === 'enqueue_bank_connection_revocation',
+    );
+    assertEquals(call?.args.p_connection_id, CONNECTION_ID);
+    assertEquals(call?.args.p_actor_id, 'user-1');
+  },
+);
 
 function ok(data: unknown): RpcResult {
   return { data, error: null };

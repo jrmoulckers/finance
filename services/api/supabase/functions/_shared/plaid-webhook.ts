@@ -52,6 +52,12 @@ function base64UrlToJson<T>(value: string): T {
   return JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))) as T;
 }
 
+function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
 // ---------------------------------------------------------------------------
 // SHA-256 body hashing
 // ---------------------------------------------------------------------------
@@ -146,8 +152,8 @@ export async function verifyPlaidWebhook(
     signatureValid = await crypto.subtle.verify(
       { name: 'ECDSA', hash: 'SHA-256' },
       cryptoKey,
-      signature,
-      signedData,
+      copyToArrayBuffer(signature),
+      copyToArrayBuffer(signedData),
     );
   } catch {
     return false;

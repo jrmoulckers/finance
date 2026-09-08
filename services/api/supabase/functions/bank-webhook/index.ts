@@ -207,6 +207,7 @@ async function processPlaidEvent(
     .select('id, household_id, encrypted_access_token, metadata')
     .eq('provider', 'plaid')
     .contains('metadata', { item_id })
+    .in('status', ['active', 'needs_reauth', 'error'])
     .is('deleted_at', null)
     .single();
 
@@ -308,6 +309,7 @@ async function processMxEvent(
     .select('id, household_id, encrypted_access_token, metadata')
     .eq('provider', 'mx')
     .contains('metadata', { item_id: event.member_guid })
+    .in('status', ['active', 'needs_reauth', 'error'])
     .is('deleted_at', null)
     .single();
 

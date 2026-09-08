@@ -195,6 +195,31 @@ is unaffected. It runs automatically in the **Entitlement Gateway Integration**
 job in `.github/workflows/ci-lint.yml`, which stands up the stack, waits for the
 endpoint to answer `401` (not `503`), and then executes exactly this command.
 
+### 6. Durable Bank Revocation Integration Tests
+
+**Runtime:** PostgreSQL and Deno against local Supabase
+
+`bank-revocation-outbox.test.sql` covers server-validated downgrade retention,
+deterministic Family-to-Premium and Premium-to-Free/Plus fallbacks, immediate
+sync disablement, leased retry/backoff, already-invalid completion, worker
+restart, idempotent delivery, account-deletion identity severing, history
+preservation, RLS, terminal purge, and bounded exhausted retries.
+
+`bank-revocation-concurrency.test.ps1` drives independent PostgreSQL sessions
+through concurrent downgrade, disconnect, account deletion, and worker claims.
+It commits uniquely named fixtures and must run only against a disposable local
+container.
+
+```powershell
+npm run test:bank-revocation-db
+.\supabase\tests\bank-revocation-concurrency.test.ps1 `
+  -Container <disposable-migrated-postgres-container>
+npm run test:bank-revocation-worker
+```
+
+The **Entitlement Gateway Integration** CI job runs all three suites against
+the GitHub-hosted disposable Supabase stack.
+
 ## Adding New Tests
 
 ### Adding a contract test

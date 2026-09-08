@@ -184,11 +184,12 @@ Deno.test('MX webhook event structure', () => {
 // ---------------------------------------------------------------------------
 
 Deno.test('valid connection statuses', () => {
-  const validStatuses = ['active', 'needs_reauth', 'disconnected', 'error'];
+  const validStatuses = ['active', 'needs_reauth', 'disconnected', 'error', 'revocation_pending'];
   assertEquals(validStatuses.includes('active'), true);
   assertEquals(validStatuses.includes('needs_reauth'), true);
   assertEquals(validStatuses.includes('disconnected'), true);
   assertEquals(validStatuses.includes('error'), true);
+  assertEquals(validStatuses.includes('revocation_pending'), true);
   assertEquals(validStatuses.includes('invalid'), false);
 });
 

@@ -191,6 +191,13 @@ available.
 - **Revocation outage:** persist encrypted retry material, disable sync
   immediately, and alert when automated retries are exhausted.
 
+The Stage 6 orphan/pending-reconciliation handoff is also the revocation
+outbox; downgrade, disconnect, and account deletion do not create parallel
+retry stores. Account deletion atomically removes user, household, and
+connection references from queued processor work before erasing application
+rows. The queue retains only provider, encrypted minimum revocation credential,
+retry/disposition state, an opaque deduplication value, and timestamps.
+
 ## Implementation Notes
 
 Delivery is staged under [#4386](https://github.com/jrmoulckers/finance/issues/4386):

@@ -82,9 +82,17 @@ Finance asks which connections to retain. Without a valid selection, it keeps
 the oldest connections by `created_at`, using `id` to break ties.
 
 - Family to Premium retains at most the selected connections or the oldest two,
-  plus any verified Premium add-on allowance.
+  regardless of a later add-on activation.
 - Premium to Plus or Free retains none.
-- Provider revocation is durable and retryable. Local history is preserved.
+- Provider revocation is durably enqueued in the same transaction that marks
+  excess connections `revocation_pending`. Those connections stop
+  synchronizing immediately, while imported accounts, transactions, balances,
+  history, export, and deletion remain available.
+- A server-only worker leases due jobs with bounded exponential backoff and
+  jitter. Credentials are purged only after confirmed revocation or a verified
+  already-invalid response. Exhausted credentials remain encrypted only until
+  the retention ceiling and are surfaced through secret-safe reconciliation
+  status.
 
 ## Not Yet Allocated
 

@@ -1,7 +1,7 @@
 # GDPR Data Inventory and Processing Map
 
 > **Issue:** [#361](https://github.com/jrmoulckers/finance/issues/361)
-> **Last updated:** 2025-07-26
+> **Last updated:** 2026-09-08
 > **Regulation:** EU General Data Protection Regulation (GDPR) — Regulation (EU) 2016/679
 > **Status:** Initial inventory — living document
 
@@ -284,6 +284,19 @@ detail. Source: Supabase migrations in
 **RLS:** Users can only access their own passkey credentials (enforced by
 [`20260306000003_auth_config.sql:59–74`](../../services/api/supabase/migrations/20260306000003_auth_config.sql)).
 
+#### Table: `bank_connection_orphaned_items` (provider revocation outbox)
+
+| Data                                                 | Purpose and minimization                                                                        | Legal basis                                                  | Access and disclosure                                                                                                 |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Provider and encrypted minimum revocation credential | Retry provider erasure after downgrade, disconnect, finalization ambiguity, or account deletion | Art. 6(1)(b) Contract; Art. 17 erasure propagation           | Service worker only; RLS enabled; excluded from API, PowerSync, export, logs, and telemetry                           |
+| Retry/disposition fields                             | Bounded attempts, next-at time, safe error code, lease, and terminal audit timestamps           | Art. 6(1)(f) Legitimate interest (security and cost control) | Service worker and secret-safe aggregate operator status only                                                         |
+| Temporary beneficiary references                     | Complete normal soft delete after confirmed revocation                                          | Art. 6(1)(b) Contract                                        | Cleared atomically when account deletion requests processor erasure; no beneficiary FK remains in queued erasure work |
+
+The encrypted credential is cleared only after confirmed revocation, verified
+already-invalid state, or the hard retention ceiling. An opaque SHA-256
+deduplication value prevents concurrent actions from creating competing jobs;
+it is not exported or client-visible.
+
 ### 5. Operational & Audit Data
 
 #### Table: `data_export_audit_log`
@@ -427,8 +440,10 @@ PowerSync's access to data is governed by sync rules defined in
   authenticated user only.
 
 Tables **not** synced via PowerSync: `passkey_credentials`, `household_invitations`,
-`webauthn_challenges`, `audit_log`, `data_export_audit_log`, `sync_health_logs`. These are
-accessed only via direct API calls or Edge Functions.
+`webauthn_challenges`, `audit_log`, `data_export_audit_log`, `sync_health_logs`,
+`bank_connection_orphaned_items`, and `bank_connection_retention_selections`.
+The revocation tables are also excluded from data export and every
+client-facing API.
 
 ---
 
@@ -477,19 +492,20 @@ the [CCPA Rights Verification](ccpa-verification.md) for US-specific rights.
 
 ## Retention Schedule
 
-| Data Category             | Table(s)                                                     | Intended Retention                          | Current Implementation                                                          | Gap?                                          |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| **User profile**          | `users`                                                      | Account lifetime → deletion on request      | Soft-delete via `deleted_at`; hard delete via `auth.admin.deleteUser()`         | ⚠️ No automated purge of soft-deleted records |
-| **Financial data**        | `accounts`, `transactions`, `budgets`, `goals`, `categories` | Account lifetime → deletion on request      | Soft-delete via `deleted_at`                                                    | ⚠️ No automated purge of soft-deleted records |
-| **Household data**        | `households`, `household_members`                            | Account lifetime → deletion on request      | Soft-delete via `deleted_at`                                                    | ⚠️ No automated purge                         |
-| **Household invitations** | `household_invitations`                                      | 72 hours (`expires_at`)                     | `expires_at` is set, but **no purge job exists** to remove expired invitations  | ❌ Missing purge job                          |
-| **WebAuthn challenges**   | `webauthn_challenges`                                        | 5 minutes (`expires_at`)                    | `expires_at` is set, but **no purge job exists**                                | ❌ Missing purge job                          |
-| **Passkey credentials**   | `passkey_credentials`                                        | Account lifetime → deletion on request      | Soft-delete in account-deletion flow                                            | ⚠️ No standalone revocation UI                |
-| **Audit logs**            | `audit_log`                                                  | Regulatory minimum (recommended: 1–3 years) | Append-only; **no retention policy or purge**                                   | ❌ No retention limit defined or enforced     |
-| **Export audit logs**     | `data_export_audit_log`                                      | Regulatory minimum (recommended: 1 year)    | Append-only; **no retention policy or purge**                                   | ❌ No retention limit defined or enforced     |
-| **Sync health logs**      | `sync_health_logs`                                           | 30 days (per documentation intent)          | **No purge implementation found**                                               | ❌ Missing purge job                          |
-| **Auth sessions**         | Supabase-managed `auth.sessions`                             | Configurable via Supabase dashboard         | Managed by Supabase Auth                                                        | ✅ Managed by sub-processor                   |
-| **Local device data**     | SQLite (all platforms), IndexedDB, OPFS, localStorage        | Until user signs out or deletes account     | No `Clear-Site-Data` header on logout; Android deletion misses onboarding prefs | ⚠️ Incomplete local cleanup                   |
+| Data Category                | Table(s)                                                     | Intended Retention                                                                                        | Current Implementation                                                          | Gap?                                                                              |
+| ---------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **User profile**             | `users`                                                      | Account lifetime → deletion on request                                                                    | Soft-delete via `deleted_at`; hard delete via `auth.admin.deleteUser()`         | ⚠️ No automated purge of soft-deleted records                                     |
+| **Financial data**           | `accounts`, `transactions`, `budgets`, `goals`, `categories` | Account lifetime → deletion on request                                                                    | Soft-delete via `deleted_at`                                                    | ⚠️ No automated purge of soft-deleted records                                     |
+| **Household data**           | `households`, `household_members`                            | Account lifetime → deletion on request                                                                    | Soft-delete via `deleted_at`                                                    | ⚠️ No automated purge                                                             |
+| **Household invitations**    | `household_invitations`                                      | 72 hours (`expires_at`)                                                                                   | `expires_at` is set, but **no purge job exists** to remove expired invitations  | ❌ Missing purge job                                                              |
+| **WebAuthn challenges**      | `webauthn_challenges`                                        | 5 minutes (`expires_at`)                                                                                  | `expires_at` is set, but **no purge job exists**                                | ❌ Missing purge job                                                              |
+| **Passkey credentials**      | `passkey_credentials`                                        | Account lifetime → deletion on request                                                                    | Soft-delete in account-deletion flow                                            | ⚠️ No standalone revocation UI                                                    |
+| **Audit logs**               | `audit_log`                                                  | Regulatory minimum (recommended: 1–3 years)                                                               | Append-only; **no retention policy or purge**                                   | ❌ No retention limit defined or enforced                                         |
+| **Export audit logs**        | `data_export_audit_log`                                      | Regulatory minimum (recommended: 1 year)                                                                  | Append-only; **no retention policy or purge**                                   | ❌ No retention limit defined or enforced                                         |
+| **Sync health logs**         | `sync_health_logs`                                           | 30 days (per documentation intent)                                                                        | **No purge implementation found**                                               | ❌ Missing purge job                                                              |
+| **Auth sessions**            | Supabase-managed `auth.sessions`                             | Configurable via Supabase dashboard                                                                       | Managed by Supabase Auth                                                        | ✅ Managed by sub-processor                                                       |
+| **Provider revocation work** | `bank_connection_orphaned_items`                             | Credential: 30-day ceiling; 7-day ceiling after account deletion. Credential-free terminal audit: 90 days | Automated worker plus scheduled retention purge                                 | ✅ Enforced; exhausted work remains operator-visible without beneficiary identity |
+| **Local device data**        | SQLite (all platforms), IndexedDB, OPFS, localStorage        | Until user signs out or deletes account                                                                   | No `Clear-Site-Data` header on logout; Android deletion misses onboarding prefs | ⚠️ Incomplete local cleanup                                                       |
 
 ### Recommended Actions
 

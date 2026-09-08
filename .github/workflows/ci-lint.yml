@@ -219,10 +219,17 @@ jobs:
         relevant:
           - 'services/api/supabase/functions/entitlements-v1/**'
           - 'services/api/supabase/functions/_shared/**'
+          - 'services/api/supabase/functions/account-delete/**'
+          - 'services/api/supabase/functions/bank-connection/**'
+          - 'services/api/supabase/functions/bank-revocation-worker/**'
+          - 'services/api/supabase/functions/bank-webhook/**'
           - 'services/api/supabase/tests/entitlement-gateway.integration.test.mjs'
+          - 'services/api/supabase/tests/sync-contract.test.ts'
           - 'services/api/supabase/migrations/**'
           - 'services/api/supabase/tests/bank-connection-cap.test.sql'
           - 'services/api/supabase/tests/bank-connection-cap-remediation.test.sql'
+          - 'services/api/supabase/tests/bank-revocation-outbox.test.sql'
+          - 'services/api/supabase/tests/bank-revocation-concurrency.test.ps1'
           - 'services/api/supabase/config.toml'
           - 'services/api/package.json'
           - '.github/workflows/ci-lint.yml'
@@ -258,6 +265,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      - uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
+        with:
+          deno-version: v2.x
+
       - run: npm ci
 
       - name: Install the Supabase CLI
@@ -290,6 +301,16 @@ jobs:
         run: |
           npm run test:bank-connection-cap
           npm run test:bank-connection-cap-remediation
+          npm run test:bank-revocation-db
+          pwsh ./supabase/tests/bank-revocation-concurrency.test.ps1 \
+            -Container supabase_db_finance-local
+
+      - name: Run durable revocation Edge Function suites
+        working-directory: services/api
+        run: |
+          npm run test:bank-revocation-worker
+          npm run test:bank-connection-handler
+          npm run test:sync-contract
 
       - name: Serve the Edge Functions
         working-directory: services/api

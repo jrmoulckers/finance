@@ -18,12 +18,7 @@ import {
 } from '../_shared/cookie.ts';
 import { refreshGrant } from '../_shared/supabase-auth.ts';
 import { type AuthenticatedUser, createAdminClient } from '../_shared/auth.ts';
-import { revokeProviderToken, revokeProviderTokens } from '../_shared/bank-revocation.ts';
-import {
-  claimOrphanedItemsForErasure,
-  completeOrphanedItem,
-  recordOrphanedItemAttempt,
-} from '../_shared/bank-entitlements.ts';
+import { enqueueBankRevocationsForErasure } from '../_shared/bank-revocation-outbox.ts';
 
 const NO_STORE_JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -45,8 +40,6 @@ interface HouseholdPlan {
 interface AccountDeleteDeps {
   createClient?: typeof createAdminClient;
   refreshGrantFn?: typeof refreshGrant;
-  /** Provider revoker, injectable so erasure propagation is testable. */
-  revokeToken?: typeof revokeProviderToken;
 }
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
@@ -148,7 +141,7 @@ export function createAccountDeleteHandler(deps: AccountDeleteDeps = {}) {
     if (!user) return unauthorized(req);
 
     try {
-      await deleteAccountData(supabase, user, deps.revokeToken ?? revokeProviderToken);
+      await deleteAccountData(supabase, user);
       const { error: authDeleteError } = await supabase.auth.admin.deleteUser(user.id);
       if (authDeleteError) throw authDeleteError;
 
@@ -216,7 +209,6 @@ async function getAccessToken(
 async function deleteAccountData(
   supabase: SupabaseAdminClient,
   user: AuthenticatedUser,
-  revokeToken: typeof revokeProviderToken,
 ): Promise<void> {
   // ---------------------------------------------------------------------
   // Household deletion policy (issue #1962):
@@ -255,20 +247,22 @@ async function deleteAccountData(
     .map((plan) => plan.householdId);
   const sharedHouseholds = plans.filter((plan) => plan.otherMemberUserIds.length > 0);
 
+  // Persist every provider-erasure operation before any connection, user, or
+  // household row can be removed. The RPC also marks each connection
+  // revocation_pending immediately and severs every outbox beneficiary
+  // identifier, so account deletion can continue through a provider outage
+  // without losing retry capability or retaining identity foreign keys.
+  await enqueueBankRevocationsForErasure(supabase, {
+    ownerId: user.id,
+    householdIds: soleHouseholdIds,
+  });
+
   // Step 2: crypto-shred user encryption keys (best-effort).
   await bestEffortRpc(supabase, 'destroy_user_encryption_keys', {
     p_user_id: user.id,
     p_destroyed_by: user.id,
     p_reason: 'account_deletion',
   });
-
-  // Step 2b: propagate erasure to provider Items that never became a
-  // `bank_connections` row (#4404). These live in the server-only orphan
-  // handoff table, whose owner/household references are ON DELETE SET NULL — so
-  // they SURVIVE this deletion and must be resolved while we can still identify
-  // them. Run before any row is removed, because deleting the `users` row nulls
-  // `owner_id` and orphans them permanently.
-  await eraseOrphanedBankItems(supabase, user.id, soleHouseholdIds, revokeToken);
 
   // Step 3: crypto-shred + purge sole-owned households.
   for (const householdId of soleHouseholdIds) {
@@ -280,9 +274,6 @@ async function deleteAccountData(
   }
 
   if (soleHouseholdIds.length > 0) {
-    // Revoke aggregator tokens BEFORE their bank_connections rows are deleted
-    // so the processor stops retaining access on the user's behalf (#3869).
-    await revokeConnectionTokens(supabase, 'household_id', soleHouseholdIds);
     await deleteByIn(supabase, 'encryption_keys', 'household_id', soleHouseholdIds);
     for (const table of HOUSEHOLD_CHILD_TABLES) {
       await deleteByIn(supabase, table, 'household_id', soleHouseholdIds);
@@ -321,9 +312,6 @@ async function deleteAccountData(
   // Step 6: delete every user-owned row. For shared households this is
   // how the user's contributed data (transactions, budgets, etc.) is
   // removed — they all carry `owner_id = user.id`.
-  // First revoke any aggregator tokens the user still owns in SHARED
-  // households (sole-household connections were already revoked in step 3).
-  await revokeConnectionTokens(supabase, 'owner_id', user.id);
   for (const [table, column] of USER_OWNED_TABLES) {
     await deleteByEq(supabase, table, column, user.id);
   }
@@ -452,101 +440,6 @@ async function deleteByIn(
   if (values.length === 0) return;
   const { error } = await supabase.from(table).delete().in(column, values);
   if (error) throw error;
-}
-
-/**
- * Best-effort revoke aggregator access tokens for the bank_connections that
- * are about to be deleted (#3869). Fetches the stored encrypted tokens for the
- * matching connections and asks each provider to revoke them so the processor
- * no longer retains access on the user's behalf (GDPR Art. 17 propagation).
- *
- * NEVER throws — account deletion must proceed even if revocation fails, and
- * NEVER logs a token.
- */
-async function revokeConnectionTokens(
-  supabase: SupabaseAdminClient,
-  column: 'household_id' | 'owner_id',
-  values: readonly string[] | string,
-): Promise<void> {
-  try {
-    if (Array.isArray(values) && values.length === 0) return;
-    const base = supabase.from('bank_connections').select('provider, encrypted_access_token');
-    const query = Array.isArray(values)
-      ? base.in(column, values as string[])
-      : base.eq(column, values as string);
-    const { data, error } = await query;
-    if (error || !data) return;
-    const rows = data as Array<{ provider: string; encrypted_access_token: string | null }>;
-    await revokeProviderTokens(
-      rows.map((row) => ({
-        provider: row.provider,
-        encryptedAccessToken: row.encrypted_access_token,
-      })),
-    );
-  } catch {
-    // Best-effort — never block account deletion on revocation.
-  }
-}
-
-/**
- * Propagate erasure to provider Items recorded in the server-only orphan
- * handoff table (#4404).
- *
- * These are billable aggregator Items with no `bank_connections` row: either
- * finalization definitely failed (`pending_revocation`) or its outcome was
- * never confirmed (`pending_reconciliation`). Both hold an encrypted provider
- * credential, and both are invisible to the `bank_connections` sweep above, so
- * without this step a deleted account could leave the processor holding access
- * indefinitely (GDPR Art. 17 propagation).
- *
- * Revoking a `pending_reconciliation` row is correct HERE even though it is
- * never correct in the request path: the account and any connection it might
- * have committed are both being erased, so the Item must go either way.
- *
- * Terminal disposition only on a CONFIRMED revoke, because the stored
- * credential is the only remaining way to revoke and destroying it early would
- * strand the Item forever. A row we could not revoke stays open with its
- * attempt recorded and a shortened `retain_until`; the retention backstop
- * (`purge_expired_orphaned_bank_items`) destroys the credential when that
- * window closes, so retention is bounded either way.
- *
- * NEVER throws — account deletion must proceed — and NEVER logs a credential.
- */
-async function eraseOrphanedBankItems(
-  supabase: SupabaseAdminClient,
-  userId: string,
-  householdIds: readonly string[],
-  revokeToken: typeof revokeProviderToken,
-): Promise<void> {
-  try {
-    const claimed = await claimOrphanedItemsForErasure(supabase, {
-      ownerId: userId,
-      householdIds,
-    });
-
-    for (const item of claimed) {
-      const revocation = await revokeToken({
-        provider: item.provider,
-        encryptedAccessToken: item.encryptedAccessToken,
-      });
-
-      if (revocation.outcome === 'revoked') {
-        await completeOrphanedItem(supabase, {
-          id: item.id,
-          status: 'revoked',
-          lastErrorCode: revocation.detail ?? null,
-        });
-        continue;
-      }
-
-      await recordOrphanedItemAttempt(supabase, {
-        id: item.id,
-        lastErrorCode: revocation.detail ?? null,
-      });
-    }
-  } catch {
-    // Best-effort — never block account deletion on processor revocation.
-  }
 }
 
 async function updateRows(

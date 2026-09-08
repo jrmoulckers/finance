@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Best-effort aggregator token revocation (#3867 / #3869).
+ * Aggregator token revocation (#3867 / #3869 / #4405).
  *
  * When a user disconnects a bank connection or deletes their account, the
  * access token we hold on their behalf must be revoked at the aggregator so
@@ -9,14 +9,15 @@
  * Art. 17 erasure + processor deletion propagation).
  *
  * Design constraints:
- *   - MUST be best-effort: revocation NEVER throws into the caller's
- *     disconnect / delete flow. A processor outage or missing credential
- *     must not block a user from disconnecting or deleting their account.
+ *   - The helper always resolves to a classified result so a durable worker can
+ *     record a retry. Missing configuration, missing/decryption-failed
+ *     credentials, unsupported providers, outages, and ambiguous responses are
+ *     failures, never success-shaped skips.
  *   - MUST NOT log or return the plaintext access token or key material.
  *   - Plaid revokes via POST /item/remove; MX revokes by deleting the member
  *     (DELETE /users/{u}/members/{m}). TrueLayer and Finicity are disabled
- *     placeholders and record a `skipped` outcome so the audit trail still
- *     shows revocation was attempted.
+ *     placeholders and therefore fail closed if a stored row ever reaches this
+ *     helper with one of those providers.
  *
  * The result is returned to the caller so it can be written to an audit log
  * without exposing any secret.
@@ -27,16 +28,16 @@ import { removeItem, PlaidApiError, type PlaidConfig } from './plaid.ts';
 import { decodeMxCredential, deleteMember, MxApiError, type MxConfig } from './mx.ts';
 
 /** Outcome of a best-effort revocation attempt. */
-export type TokenRevocationOutcome = 'revoked' | 'skipped' | 'failed';
+export type TokenRevocationOutcome = 'revoked' | 'already_invalid' | 'failed';
 
 /** Result of a revocation attempt — safe to persist in an audit log. */
 export interface TokenRevocationResult {
   /** The aggregator provider the token belonged to. */
   provider: string;
-  /** Whether the token was revoked, skipped, or the attempt failed. */
+  /** Whether the token was revoked, verified absent, or the attempt failed. */
   outcome: TokenRevocationOutcome;
   /**
-   * Safe, non-sensitive detail for skipped/failed outcomes (e.g. a Plaid
+   * Safe, non-sensitive detail for failed outcomes (e.g. a Plaid
    * error_code or a configuration note). NEVER contains a token.
    */
   detail?: string;
@@ -81,7 +82,7 @@ function defaultGetEnv(key: string): string | undefined {
 }
 
 /**
- * Best-effort revoke a single connection's access token at its aggregator.
+ * Revoke a single connection's access token at its aggregator.
  *
  * Always resolves (never rejects). Returns a {@link TokenRevocationResult}
  * describing what happened so the caller can audit it.
@@ -98,23 +99,23 @@ export async function revokeProviderToken(
 
   try {
     if (!params.encryptedAccessToken) {
-      return { provider, outcome: 'skipped', detail: 'no stored token' };
+      return { provider, outcome: 'failed', detail: 'REVOCATION_CREDENTIAL_MISSING' };
     }
 
     // TrueLayer/Finicity are disabled placeholders with no adapter yet.
     if (provider !== 'plaid' && provider !== 'mx') {
-      return { provider, outcome: 'skipped', detail: 'provider revocation not implemented' };
+      return { provider, outcome: 'failed', detail: 'PROVIDER_REVOCATION_UNSUPPORTED' };
     }
 
     const clientId = getEnv(provider === 'plaid' ? 'PLAID_CLIENT_ID' : 'MX_CLIENT_ID');
     const secret = getEnv(provider === 'plaid' ? 'PLAID_SECRET' : 'MX_API_KEY');
     if (!clientId || !secret) {
-      return { provider, outcome: 'skipped', detail: 'provider credentials not configured' };
+      return { provider, outcome: 'failed', detail: 'PROVIDER_CONFIGURATION_MISSING' };
     }
 
     const key = getEnv('BANK_ENCRYPTION_KEY');
     if (!key) {
-      return { provider, outcome: 'failed', detail: 'encryption key not configured' };
+      return { provider, outcome: 'failed', detail: 'ENCRYPTION_CONFIGURATION_MISSING' };
     }
 
     let accessToken: string;
@@ -122,7 +123,7 @@ export async function revokeProviderToken(
       accessToken = await decrypt(params.encryptedAccessToken, key);
     } catch {
       // Do not surface the crypto error detail — it could echo ciphertext.
-      return { provider, outcome: 'failed', detail: 'token decryption failed' };
+      return { provider, outcome: 'failed', detail: 'CREDENTIAL_DECRYPTION_FAILED' };
     }
 
     if (provider === 'mx') {
@@ -131,7 +132,7 @@ export async function revokeProviderToken(
       try {
         ({ userGuid, memberGuid } = decodeMxCredential(accessToken));
       } catch {
-        return { provider, outcome: 'failed', detail: 'stored credential malformed' };
+        return { provider, outcome: 'failed', detail: 'REVOCATION_CREDENTIAL_MALFORMED' };
       }
 
       const mxConfig: MxConfig = {
@@ -145,10 +146,10 @@ export async function revokeProviderToken(
         return { provider, outcome: 'revoked' };
       } catch (err) {
         if (err instanceof MxApiError && ALREADY_INVALID_MX_CODES.has(err.errorCode)) {
-          return { provider, outcome: 'revoked', detail: 'already invalid at provider' };
+          return { provider, outcome: 'already_invalid' };
         }
         // MxApiError only carries a safe status code; never the raw body.
-        const detail = err instanceof MxApiError ? err.errorCode : 'revocation request failed';
+        const detail = err instanceof MxApiError ? err.errorCode : 'REVOCATION_REQUEST_FAILED';
         return { provider, outcome: 'failed', detail };
       }
     }
@@ -164,15 +165,15 @@ export async function revokeProviderToken(
       return { provider, outcome: 'revoked' };
     } catch (err) {
       if (err instanceof PlaidApiError && ALREADY_INVALID_PLAID_CODES.has(err.errorCode)) {
-        return { provider, outcome: 'revoked', detail: 'already invalid at provider' };
+        return { provider, outcome: 'already_invalid' };
       }
       // PlaidApiError only carries a safe error_code; never the raw body.
-      const detail = err instanceof PlaidApiError ? err.errorCode : 'revocation request failed';
+      const detail = err instanceof PlaidApiError ? err.errorCode : 'REVOCATION_REQUEST_FAILED';
       return { provider, outcome: 'failed', detail };
     }
   } catch {
     // Absolute backstop: revocation must never throw into disconnect/delete.
-    return { provider, outcome: 'failed', detail: 'unexpected error' };
+    return { provider, outcome: 'failed', detail: 'REVOCATION_UNEXPECTED_ERROR' };
   }
 }
 

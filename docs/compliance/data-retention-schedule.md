@@ -1,7 +1,7 @@
 # Data Retention Schedule
 
 > **Issue:** [#1313](https://github.com/jrmoulckers/finance/issues/1313)
-> **Last updated:** 2025-07-27
+> **Last updated:** 2026-09-08
 > **Status:** Alpha — living document
 > **Applies to:** All Finance environments (debug, staging, release)
 
@@ -81,12 +81,13 @@ for all categories of data processed by Finance.
 
 ### Authentication and Security Data
 
-| Data                                                                  | Storage Location       | Retention Period                                                                                          | Trigger for Deletion                | Legal Basis                                 |
-| --------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
-| Passkey credentials (credential ID, public key, counter, device type) | Supabase PostgreSQL    | **Account lifetime** — retained until user removes the passkey or deletes account                         | User revocation or account deletion | Art. 6(1)(f) Legitimate interest (security) |
-| WebAuthn challenge data                                               | Supabase PostgreSQL    | **5 minutes** — challenge expires after the authentication ceremony completes or times out                | Automated purge (expires_at)        | Art. 6(1)(f) Legitimate interest (security) |
-| Session tokens and refresh cookies                                    | Supabase Auth (GoTrue) | **Per GoTrue configuration (24-hour timebox)** — session lifetime is configured in Supabase Auth settings | Session expiry or user sign-out     | Art. 6(1)(b) Contract                       |
-| Refresh tokens                                                        | Supabase Auth (GoTrue) | **Per GoTrue configuration** — revoked on sign-out; expired tokens purged by Supabase                     | Token expiry or revocation          | Art. 6(1)(b) Contract                       |
+| Data                                                                  | Storage Location                 | Retention Period                                                                                                               | Trigger for Deletion                           | Legal Basis                                        |
+| --------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | -------------------------------------------------- |
+| Passkey credentials (credential ID, public key, counter, device type) | Supabase PostgreSQL              | **Account lifetime** — retained until user removes the passkey or deletes account                                              | User revocation or account deletion            | Art. 6(1)(f) Legitimate interest (security)        |
+| WebAuthn challenge data                                               | Supabase PostgreSQL              | **5 minutes** — challenge expires after the authentication ceremony completes or times out                                     | Automated purge (expires_at)                   | Art. 6(1)(f) Legitimate interest (security)        |
+| Session tokens and refresh cookies                                    | Supabase Auth (GoTrue)           | **Per GoTrue configuration (24-hour timebox)** — session lifetime is configured in Supabase Auth settings                      | Session expiry or user sign-out                | Art. 6(1)(b) Contract                              |
+| Refresh tokens                                                        | Supabase Auth (GoTrue)           | **Per GoTrue configuration** — revoked on sign-out; expired tokens purged by Supabase                                          | Token expiry or revocation                     | Art. 6(1)(b) Contract                              |
+| Encrypted provider revocation credential                              | Supabase PostgreSQL, server-only | **Up to 30 days; shortened to 7 days after account deletion**. Cleared earlier on confirmed revoke or verified already-invalid | Worker completion or scheduled retention purge | Art. 6(1)(b) Contract; Art. 17 erasure propagation |
 
 ### Operational and Diagnostic Data
 
@@ -118,22 +119,23 @@ for all categories of data processed by Finance.
 
 Quick reference for all retention periods:
 
-| Data Category                                                            | Retention Period                          |
-| ------------------------------------------------------------------------ | ----------------------------------------- |
-| User financial data (accounts, transactions, budgets, goals, categories) | Until account deletion                    |
-| User profile data                                                        | Until account deletion                    |
-| Soft-deleted records (all types)                                         | 30 days after soft-delete                 |
-| Audit logs                                                               | 90 days                                   |
-| Data export audit logs                                                   | 90 days                                   |
-| Sync health logs                                                         | 30 days                                   |
-| Deletion audit records                                                   | 1 year                                    |
-| WebAuthn challenges                                                      | 5 minutes                                 |
-| Session tokens                                                           | Per GoTrue config (24-hour timebox)       |
-| Household invitations                                                    | 7 days after expiry                       |
-| Passkey credentials                                                      | Until user revocation or account deletion |
-| Analytics and crash reports (opt-in)                                     | 26 months or consent withdrawal           |
-| Encrypted backups                                                        | 30-day rolling window                     |
-| Local device data                                                        | Until sign-out or uninstall               |
+| Data Category                                                            | Retention Period                             |
+| ------------------------------------------------------------------------ | -------------------------------------------- |
+| User financial data (accounts, transactions, budgets, goals, categories) | Until account deletion                       |
+| User profile data                                                        | Until account deletion                       |
+| Soft-deleted records (all types)                                         | 30 days after soft-delete                    |
+| Audit logs                                                               | 90 days                                      |
+| Data export audit logs                                                   | 90 days                                      |
+| Sync health logs                                                         | 30 days                                      |
+| Deletion audit records                                                   | 1 year                                       |
+| WebAuthn challenges                                                      | 5 minutes                                    |
+| Session tokens                                                           | Per GoTrue config (24-hour timebox)          |
+| Household invitations                                                    | 7 days after expiry                          |
+| Passkey credentials                                                      | Until user revocation or account deletion    |
+| Encrypted provider revocation credential                                 | Up to 30 days; 7 days after account deletion |
+| Analytics and crash reports (opt-in)                                     | 26 months or consent withdrawal              |
+| Encrypted backups                                                        | 30-day rolling window                        |
+| Local device data                                                        | Until sign-out or uninstall                  |
 
 ---
 
@@ -152,19 +154,20 @@ Quick reference for all retention periods:
 The following purge jobs enforce retention limits. They should be implemented as
 PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 
-| Purge Job                     | Target Table(s)              | Condition                                 | Schedule         |
-| ----------------------------- | ---------------------------- | ----------------------------------------- | ---------------- |
-| Expired WebAuthn challenges   | `webauthn_challenges`        | `expires_at < NOW()`                      | Every 15 minutes |
-| Expired household invitations | `household_invitations`      | `expires_at + INTERVAL '7 days' < NOW()`  | Daily            |
-| Sync health log rotation      | `sync_health_logs`           | `created_at + INTERVAL '30 days' < NOW()` | Daily            |
-| Audit log rotation            | `audit_log`                  | `created_at + INTERVAL '90 days' < NOW()` | Daily            |
-| Export audit log rotation     | `data_export_audit_log`      | `created_at + INTERVAL '90 days' < NOW()` | Daily            |
-| Soft-deleted record purge     | All tables with `deleted_at` | `deleted_at + INTERVAL '30 days' < NOW()` | Daily            |
+| Purge Job                            | Target Table(s)                  | Condition                                 | Schedule                      |
+| ------------------------------------ | -------------------------------- | ----------------------------------------- | ----------------------------- |
+| Expired WebAuthn challenges          | `webauthn_challenges`            | `expires_at < NOW()`                      | Every 15 minutes              |
+| Expired household invitations        | `household_invitations`          | `expires_at + INTERVAL '7 days' < NOW()`  | Daily                         |
+| Sync health log rotation             | `sync_health_logs`               | `created_at + INTERVAL '30 days' < NOW()` | Daily                         |
+| Audit log rotation                   | `audit_log`                      | `created_at + INTERVAL '90 days' < NOW()` | Daily                         |
+| Export audit log rotation            | `data_export_audit_log`          | `created_at + INTERVAL '90 days' < NOW()` | Daily                         |
+| Soft-deleted record purge            | All tables with `deleted_at`     | `deleted_at + INTERVAL '30 days' < NOW()` | Daily                         |
+| Provider revocation credential purge | `bank_connection_orphaned_items` | `retain_until <= NOW()`                   | Daily plus shared maintenance |
 
-> **⚠️ Implementation status:** These purge jobs are **defined but not yet
-> implemented**. See [Implementation Status](#implementation-status) below and
-> the [GDPR Right to Erasure Audit](gdpr-right-to-erasure-audit.md) for gap
-> details.
+> **⚠️ Implementation status:** The provider revocation purge is implemented.
+> The other jobs are **defined but not yet implemented**. See
+> [Implementation Status](#implementation-status) below and the
+> [GDPR Right to Erasure Audit](gdpr-right-to-erasure-audit.md) for gap details.
 
 ---
 
@@ -182,6 +185,7 @@ PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 | Crypto-shredding (actual key destruction)  | ❌ Placeholder     | Currently synthetic; see [erasure audit](gdpr-right-to-erasure-audit.md) |
 | `Clear-Site-Data` header on web logout     | ❌ Not implemented | Needed for local device data cleanup                                     |
 | Deletion certificate                       | ✅ Implemented     | Returned by `account-deletion` Edge Function                             |
+| Provider revocation credential purge       | ✅ Implemented     | Bounded outbox purge runs in dedicated cron and shared maintenance       |
 
 ---
 
@@ -206,6 +210,7 @@ PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 
 ## Document History
 
-| Date       | Change                                                   | Author                 |
-| ---------- | -------------------------------------------------------- | ---------------------- |
-| 2025-07-27 | Initial data retention schedule created from issue #1313 | docs-writer (AI agent) |
+| Date       | Change                                                         | Author                      |
+| ---------- | -------------------------------------------------------------- | --------------------------- |
+| 2025-07-27 | Initial data retention schedule created from issue #1313       | docs-writer (AI agent)      |
+| 2026-09-08 | Added bounded provider-revocation credential retention (#4405) | backend-engineer (AI agent) |
