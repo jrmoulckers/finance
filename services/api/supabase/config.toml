@@ -137,3 +137,8 @@ verify_jwt = false
 # membership.
 [functions.entitlements-v1]
 verify_jwt = false
+
+# Internal cron worker. It validates CRON_SECRET in constant time before
+# claiming any server-only revocation outbox row.
+[functions.process-bank-revocations]
+verify_jwt = false

@@ -223,6 +223,8 @@ jobs:
           - 'services/api/supabase/migrations/**'
           - 'services/api/supabase/tests/bank-connection-cap.test.sql'
           - 'services/api/supabase/tests/bank-connection-cap-remediation.test.sql'
+          - 'services/api/supabase/tests/durable-bank-revocation.test.sql'
+          - 'services/api/supabase/tests/durable-bank-revocation-concurrency.test.ps1'
           - 'services/api/supabase/config.toml'
           - 'services/api/package.json'
           - '.github/workflows/ci-lint.yml'
@@ -290,6 +292,9 @@ jobs:
         run: |
           npm run test:bank-connection-cap
           npm run test:bank-connection-cap-remediation
+          npm run test:durable-bank-revocation
+          pwsh -NoProfile -File supabase/tests/durable-bank-revocation-concurrency.test.ps1 \
+            -Container supabase_db_finance-local
 
       - name: Serve the Edge Functions
         working-directory: services/api

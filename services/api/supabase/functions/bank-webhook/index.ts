@@ -208,6 +208,7 @@ async function processPlaidEvent(
     .eq('provider', 'plaid')
     .contains('metadata', { item_id })
     .is('deleted_at', null)
+    .eq('sync_enabled', true)
     .single();
 
   if (!connection) {
@@ -309,6 +310,7 @@ async function processMxEvent(
     .eq('provider', 'mx')
     .contains('metadata', { item_id: event.member_guid })
     .is('deleted_at', null)
+    .eq('sync_enabled', true)
     .single();
 
   if (!connection) {

@@ -20,6 +20,7 @@
     "test:billing-entitlements": "psql -v ON_ERROR_STOP=1 -f supabase/tests/billing-entitlements-integration.test.sql",
     "test:bank-connection-cap": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap.test.sql",
     "test:bank-connection-cap-remediation": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap-remediation.test.sql",
+    "test:durable-bank-revocation": "psql -v ON_ERROR_STOP=1 -f supabase/tests/durable-bank-revocation.test.sql",
     "test:bank-entitlements": "deno test --config supabase/functions/deno.json --allow-env supabase/functions/_shared/bank-entitlements.test.ts",
     "test:bank-connection-handler": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/bank-connection/index_test.ts supabase/functions/account-delete/index_test.ts",
     "test:entitlement-api": "psql -v ON_ERROR_STOP=1 -f supabase/tests/entitlement-api-contract.test.sql",

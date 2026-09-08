@@ -81,10 +81,15 @@ When a household's bank allowance falls below its current connection count,
 Finance asks which connections to retain. Without a valid selection, it keeps
 the oldest connections by `created_at`, using `id` to break ties.
 
-- Family to Premium retains at most the selected connections or the oldest two,
-  plus any verified Premium add-on allowance.
+- Family to Premium retains at most the selected connections or the oldest two.
 - Premium to Plus or Free retains none.
-- Provider revocation is durable and retryable. Local history is preserved.
+- The server validates the actor, entitlement subject, current projection, and
+  every selected live connection; client tier claims never authorize retention.
+- Excess connections become `revocation_pending` and stop syncing in the same
+  transaction that preserves their encrypted revocation capability.
+- Provider revocation is durable and retryable. Imported accounts,
+  transactions, balances, history, and exports remain available after a plan
+  downgrade.
 
 ## Not Yet Allocated
 

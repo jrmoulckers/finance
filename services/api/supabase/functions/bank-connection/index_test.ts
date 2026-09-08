@@ -43,7 +43,7 @@ const ENCRYPTED = 'enc::access-token';
 
 interface RpcResult {
   data: unknown;
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
 }
 
 interface RpcCall {
@@ -99,6 +99,15 @@ class FakeQuery {
   }
   maybeSingle(): Promise<{ data: { id: string } | null; error: null }> {
     return Promise.resolve({ data: { id: 'member-1' }, error: null });
+  }
+  single(): Promise<{
+    data: { id: string; household_id: string } | null;
+    error: null;
+  }> {
+    return Promise.resolve({
+      data: { id: CONNECTION_ID, household_id: 'household-1' },
+      error: null,
+    });
   }
 }
 
@@ -190,12 +199,38 @@ function exchangeRequest(): Request {
   });
 }
 
+function prepareDowngradeRequest(retainedConnectionIds: string[]): Request {
+  return new Request('http://localhost/functions/v1/bank-connection?action=prepare_downgrade', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: '******',
+      Origin: 'http://localhost',
+    },
+    body: JSON.stringify({
+      household_id: 'household-1',
+      target_tier: 'premium',
+      retained_connection_ids: retainedConnectionIds,
+    }),
+  });
+}
+
+function disconnectRequest(): Request {
+  return new Request(`http://localhost/functions/v1/bank-connection?id=${CONNECTION_ID}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: '******',
+      Origin: 'http://localhost',
+    },
+  });
+}
+
 function ok(data: unknown): RpcResult {
   return { data, error: null };
 }
 
-function rpcError(message: string): RpcResult {
-  return { data: null, error: { message } };
+function rpcError(message: string, code?: string): RpcResult {
+  return { data: null, error: { message, code } };
 }
 
 const RESERVED = ok([
@@ -623,4 +658,96 @@ Deno.test('entitlement errors carry a stable code and no provider or financial d
   assertEquals(raw.includes('item-1'), false);
   assertEquals(raw.includes('statement timeout'), false, 'internal RPC detail must not leak');
   assertEquals(raw.includes('$'), false, 'no price may appear in an entitlement error');
+});
+
+// ---------------------------------------------------------------------------
+// Downgrade selection and disconnect handoff
+// ---------------------------------------------------------------------------
+
+Deno.test('prepare_downgrade sends the authenticated explicit retention selection', async () => {
+  withEnv();
+  const retained = ['44050000-0000-4000-e000-000000000003', '44050000-0000-4000-e000-000000000004'];
+  const h = harness({
+    script: {
+      prepare_bank_connection_downgrade: [
+        ok([
+          {
+            selection_id: '44050000-0000-4000-a000-000000000001',
+            retained_count: 2,
+            target_allowance: 2,
+          },
+        ]),
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(prepareDowngradeRequest(retained));
+  const body = await response.json();
+
+  assertEquals(response.status, 200);
+  assertEquals(body.status, 'prepared');
+  const call = lastCall(h.supabase, 'prepare_bank_connection_downgrade');
+  assert(call);
+  assertEquals(call.args.p_actor_id, 'user-1');
+  assertEquals(call.args.p_household_id, 'household-1');
+  assertEquals(call.args.p_retained_connection_ids, retained);
+});
+
+Deno.test('prepare_downgrade rejects a server-invalid retention selection', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      prepare_bank_connection_downgrade: [
+        rpcError('retained connection selection is not live', '22023'),
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(
+    prepareDowngradeRequest([
+      '44050000-0000-4000-e000-000000000003',
+      '44050000-0000-4000-e000-000000000099',
+    ]),
+  );
+
+  assertEquals(response.status, 400);
+  assertEquals((await response.json()).error, 'The retained connection selection is invalid');
+});
+
+Deno.test(
+  'disconnect durably enqueues before returning and never calls the provider inline',
+  async () => {
+    withEnv();
+    const h = harness({
+      script: {
+        enqueue_bank_connection_revocation: [ok('44050000-0000-4000-a000-000000000002')],
+      },
+    });
+
+    const response = await createBankConnectionHandler(h.deps)(disconnectRequest());
+
+    assertEquals(response.status, 204);
+    assertEquals(h.revokes.length, 0);
+    const call = lastCall(h.supabase, 'enqueue_bank_connection_revocation');
+    assert(call);
+    assertEquals(call.args, {
+      p_connection_id: CONNECTION_ID,
+      p_operation: 'user_disconnect',
+      p_actor_id: 'user-1',
+    });
+  },
+);
+
+Deno.test('disconnect fails closed when the durable handoff is unavailable', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      enqueue_bank_connection_revocation: [rpcError('database unavailable', '08006')],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(disconnectRequest());
+
+  assertEquals(response.status, 500);
+  assertEquals(h.revokes.length, 0);
 });

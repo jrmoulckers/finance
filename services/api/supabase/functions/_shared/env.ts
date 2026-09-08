@@ -84,6 +84,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'account-deletion': [],
   'sync-health-report': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'process-recurring': [{ name: 'CRON_SECRET', type: 'string' }],
+  'process-bank-revocations': [{ name: 'CRON_SECRET', type: 'string' }],
   'manage-webhooks': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'admin-dashboard': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
   'send-notification': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],

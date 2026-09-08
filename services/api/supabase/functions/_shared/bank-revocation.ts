@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Best-effort aggregator token revocation (#3867 / #3869).
+ * Aggregator token revocation (#3867 / #3869 / #4405).
  *
  * When a user disconnects a bank connection or deletes their account, the
  * access token we hold on their behalf must be revoked at the aggregator so
@@ -9,14 +9,12 @@
  * Art. 17 erasure + processor deletion propagation).
  *
  * Design constraints:
- *   - MUST be best-effort: revocation NEVER throws into the caller's
- *     disconnect / delete flow. A processor outage or missing credential
- *     must not block a user from disconnecting or deleting their account.
+ *   - Revocation NEVER throws. Durable callers treat every non-confirmed
+ *     result as a retryable failure rather than a success-shaped skip.
  *   - MUST NOT log or return the plaintext access token or key material.
  *   - Plaid revokes via POST /item/remove; MX revokes by deleting the member
- *     (DELETE /users/{u}/members/{m}). TrueLayer and Finicity are disabled
- *     placeholders and record a `skipped` outcome so the audit trail still
- *     shows revocation was attempted.
+ *     (DELETE /users/{u}/members/{m}). A provider without a supported adapter
+ *     is a retryable failure, never a success-shaped skip.
  *
  * The result is returned to the caller so it can be written to an audit log
  * without exposing any secret.
@@ -27,13 +25,13 @@ import { removeItem, PlaidApiError, type PlaidConfig } from './plaid.ts';
 import { decodeMxCredential, deleteMember, MxApiError, type MxConfig } from './mx.ts';
 
 /** Outcome of a best-effort revocation attempt. */
-export type TokenRevocationOutcome = 'revoked' | 'skipped' | 'failed';
+export type TokenRevocationOutcome = 'revoked' | 'failed';
 
 /** Result of a revocation attempt — safe to persist in an audit log. */
 export interface TokenRevocationResult {
   /** The aggregator provider the token belonged to. */
   provider: string;
-  /** Whether the token was revoked, skipped, or the attempt failed. */
+  /** Whether the token was confirmed revoked/already-invalid or failed. */
   outcome: TokenRevocationOutcome;
   /**
    * Safe, non-sensitive detail for skipped/failed outcomes (e.g. a Plaid
@@ -98,18 +96,18 @@ export async function revokeProviderToken(
 
   try {
     if (!params.encryptedAccessToken) {
-      return { provider, outcome: 'skipped', detail: 'no stored token' };
+      return { provider, outcome: 'failed', detail: 'no stored token' };
     }
 
     // TrueLayer/Finicity are disabled placeholders with no adapter yet.
     if (provider !== 'plaid' && provider !== 'mx') {
-      return { provider, outcome: 'skipped', detail: 'provider revocation not implemented' };
+      return { provider, outcome: 'failed', detail: 'provider revocation not implemented' };
     }
 
     const clientId = getEnv(provider === 'plaid' ? 'PLAID_CLIENT_ID' : 'MX_CLIENT_ID');
     const secret = getEnv(provider === 'plaid' ? 'PLAID_SECRET' : 'MX_API_KEY');
     if (!clientId || !secret) {
-      return { provider, outcome: 'skipped', detail: 'provider credentials not configured' };
+      return { provider, outcome: 'failed', detail: 'provider credentials not configured' };
     }
 
     const key = getEnv('BANK_ENCRYPTION_KEY');

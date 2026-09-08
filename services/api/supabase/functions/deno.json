@@ -20,6 +20,7 @@
       "spending-forecast/**/*.test.ts",
       "bank-connection/**/*.test.ts",
       "bank-webhook/**/*.test.ts",
+      "process-bank-revocations/**/*.test.ts",
       "anomaly-detection/**/*.test.ts",
       "investment-sync/**/*.test.ts",
       "detect-bills/**/*.test.ts",

@@ -141,28 +141,6 @@ function withEnv(): void {
   Deno.env.set('SUPABASE_ANON_KEY', 'anon');
 }
 
-// ---------------------------------------------------------------------------
-// Orphaned provider Items (#4404)
-//
-// `bank_connection_orphaned_items` holds an encrypted provider credential for a
-// billable Item that never became a `bank_connections` row. Its owner/household
-// FKs are ON DELETE SET NULL, so it SURVIVES account deletion — which means it
-// is invisible to the `bank_connections` sweep and, without this step, would
-// leave the processor holding access to a deleted user's account indefinitely
-// (GDPR Art. 17 processor propagation).
-// ---------------------------------------------------------------------------
-
-function orphanRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return {
-    id: 'handoff-1',
-    provider: 'plaid',
-    encrypted_access_token: 'enc::orphan',
-    status: 'pending_revocation',
-    connection_id: null,
-    ...overrides,
-  };
-}
-
 function deleteRequest(): Request {
   return new Request('http://localhost/functions/v1/account-delete', {
     method: 'DELETE',
@@ -174,135 +152,50 @@ function deleteRequest(): Request {
   });
 }
 
-Deno.test(
-  'account-delete revokes orphaned provider Items and purges their credential',
-  async () => {
-    withEnv();
-    const fake = createFakeSupabase({
-      orphanedItems: [
-        orphanRow(),
-        orphanRow({
-          id: 'handoff-2',
-          provider: 'mx',
-          status: 'pending_reconciliation',
-          connection_id: 'conn-2',
-        }),
-      ],
-    });
-    const revoked: Array<{ provider: string; encryptedAccessToken: string | null | undefined }> =
-      [];
-
-    const response = await createAccountDeleteHandler({
-      createClient: () => fake.client as unknown as AdminClient,
-      revokeToken: ((params: { provider: string; encryptedAccessToken: string | null }) => {
-        revoked.push(params);
-        return Promise.resolve({ provider: params.provider, outcome: 'revoked' as const });
-      }) as never,
-    })(deleteRequest());
-
-    assertEquals(response.status, 204);
-    assertEquals(revoked.length, 2);
-    assertEquals(revoked[0].encryptedAccessToken, 'enc::orphan');
-
-    // Both are dispositioned terminally, which destroys the stored credential in
-    // the same database statement.
-    const completions = fake.rpcCalls.filter((c) => c.name === 'complete_orphaned_bank_item');
-    assertEquals(completions.length, 2);
-    for (const completion of completions) {
-      assertEquals(completion.args.p_status, 'revoked');
-    }
-    assertEquals(
-      fake.rpcCalls.filter((c) => c.name === 'record_orphaned_bank_item_attempt').length,
-      0,
-    );
-
-    // A reconciliation row is revoked here even though it never is in the request
-    // path: the account and any row it might have committed are both being erased.
-    assertEquals(revoked[1].provider, 'mx');
-  },
-);
-
-// The stored credential is the ONLY remaining way to revoke, so a failed
-// attempt must not destroy it. Retention stays bounded by `retain_until`.
-Deno.test(
-  'account-delete retains the credential when revocation could not be confirmed',
-  async () => {
-    withEnv();
-    const fake = createFakeSupabase({ orphanedItems: [orphanRow()] });
-
-    const response = await createAccountDeleteHandler({
-      createClient: () => fake.client as unknown as AdminClient,
-      revokeToken: ((params: { provider: string }) =>
-        Promise.resolve({
-          provider: params.provider,
-          outcome: 'failed' as const,
-          detail: 'PROVIDER_DOWN',
-        })) as never,
-    })(deleteRequest());
-
-    assertEquals(response.status, 204);
-    assertEquals(fake.rpcCalls.filter((c) => c.name === 'complete_orphaned_bank_item').length, 0);
-    const attempts = fake.rpcCalls.filter((c) => c.name === 'record_orphaned_bank_item_attempt');
-    assertEquals(attempts.length, 1);
-    assertEquals(attempts[0].args.p_last_error_code, 'PROVIDER_DOWN');
-  },
-);
-
-// The handoff rows must be claimed while the account can still be identified —
-// once `users` is deleted the ON DELETE SET NULL FKs erase the linkage.
-Deno.test('account-delete claims orphaned Items before deleting any rows', async () => {
+Deno.test('account-delete durably hands off provider revocation before deleting rows', async () => {
   withEnv();
-  const fake = createFakeSupabase({ orphanedItems: [orphanRow()] });
-
-  await createAccountDeleteHandler({
-    createClient: () => fake.client as unknown as AdminClient,
-    revokeToken: ((params: { provider: string }) =>
-      Promise.resolve({ provider: params.provider, outcome: 'revoked' as const })) as never,
-  })(deleteRequest());
-
-  const claimIndex = fake.operations.indexOf('rpc:claim_orphaned_bank_items_for_erasure');
-  assert(claimIndex >= 0, 'account deletion must claim orphaned provider Items');
-  assert(claimIndex < fake.operations.indexOf('delete:users'));
-  assert(claimIndex < fake.operations.indexOf('auth.deleteUser:user-1'));
-
-  const claim = fake.rpcCalls.find((c) => c.name === 'claim_orphaned_bank_items_for_erasure');
-  assertEquals(claim?.args.p_owner_id, 'user-1');
-  assertEquals(claim?.args.p_household_ids, ['household-1']);
-});
-
-// Erasure of an auxiliary table must never be able to strand a user in a
-// half-deleted account.
-Deno.test('account-delete completes even if the orphan handoff table is unavailable', async () => {
-  withEnv();
-  const fake = createFakeSupabase({ orphanedItems: [orphanRow()] });
+  const fake = createFakeSupabase();
 
   const response = await createAccountDeleteHandler({
     createClient: () => fake.client as unknown as AdminClient,
-    revokeToken: (() => {
-      throw new Error('revocation exploded');
-    }) as never,
   })(deleteRequest());
 
   assertEquals(response.status, 204);
-  assertEquals(fake.deletedAuthUser, 'user-1');
+  const handoffIndex = fake.operations.indexOf('rpc:prepare_bank_connection_erasure');
+  assert(handoffIndex >= 0);
+  assert(handoffIndex < fake.operations.indexOf('delete:bank_connections'));
+  assert(handoffIndex < fake.operations.indexOf('delete:users'));
+  const handoff = fake.rpcCalls.find((call) => call.name === 'prepare_bank_connection_erasure');
+  assertEquals(handoff?.args.p_owner_id, 'user-1');
+  assertEquals(handoff?.args.p_household_ids, ['household-1']);
 });
 
-Deno.test('account-delete never returns orphaned credential or provider data', async () => {
+Deno.test(
+  'account-delete stops before erasure if the durable revocation handoff fails',
+  async () => {
+    withEnv();
+    const fake = createFakeSupabase({ failRevocationHandoff: true });
+
+    const response = await createAccountDeleteHandler({
+      createClient: () => fake.client as unknown as AdminClient,
+    })(deleteRequest());
+
+    assertEquals(response.status, 500);
+    assertEquals(fake.operations.includes('delete:users'), false);
+    assertEquals(fake.deletedAuthUser, null);
+  },
+);
+
+Deno.test('account-delete response exposes no durable revocation metadata', async () => {
   withEnv();
-  const fake = createFakeSupabase({
-    orphanedItems: [orphanRow({ connection_id: 'conn-1' })],
-  });
+  const fake = createFakeSupabase();
 
   const response = await createAccountDeleteHandler({
     createClient: () => fake.client as unknown as AdminClient,
-    revokeToken: ((params: { provider: string }) =>
-      Promise.resolve({ provider: params.provider, outcome: 'revoked' as const })) as never,
   })(deleteRequest());
 
   const raw = await response.text();
-  assertEquals(raw.includes('enc::orphan'), false);
-  assertEquals(raw.includes('handoff-1'), false);
-  assertEquals(raw.includes('conn-1'), false);
+  assertEquals(raw, '');
 });
 
 interface FakeState {
@@ -311,7 +204,7 @@ interface FakeState {
   rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
   deletedAuthUser: string | null;
   sharedHousehold: boolean;
-  orphanedItems: unknown[];
+  failRevocationHandoff: boolean;
 }
 
 interface FakeClient {
@@ -327,8 +220,7 @@ interface FakeClient {
 
 interface FakeSupabaseOptions {
   sharedHousehold?: boolean;
-  /** Rows returned by `claim_orphaned_bank_items_for_erasure`. */
-  orphanedItems?: unknown[];
+  failRevocationHandoff?: boolean;
 }
 
 function createFakeSupabase(opts: FakeSupabaseOptions = {}): FakeState & { client: FakeClient } {
@@ -338,7 +230,7 @@ function createFakeSupabase(opts: FakeSupabaseOptions = {}): FakeState & { clien
     rpcCalls: [],
     deletedAuthUser: null,
     sharedHousehold: opts.sharedHousehold === true,
-    orphanedItems: opts.orphanedItems ?? [],
+    failRevocationHandoff: opts.failRevocationHandoff === true,
   };
   const client = {
     auth: {
@@ -358,8 +250,11 @@ function createFakeSupabase(opts: FakeSupabaseOptions = {}): FakeState & { clien
     rpc: (name: string, args: Record<string, unknown>) => {
       state.operations.push(`rpc:${name}`);
       state.rpcCalls.push({ name, args });
-      if (name === 'claim_orphaned_bank_items_for_erasure') {
-        return Promise.resolve({ data: state.orphanedItems, error: null });
+      if (name === 'prepare_bank_connection_erasure' && state.failRevocationHandoff) {
+        return Promise.resolve({
+          data: [],
+          error: { message: 'handoff failed' },
+        }) as never;
       }
       return Promise.resolve({ data: [], error: null });
     },
@@ -375,8 +270,8 @@ function createFakeSupabase(opts: FakeSupabaseOptions = {}): FakeState & { clien
     get sharedHousehold() {
       return state.sharedHousehold;
     },
-    get orphanedItems() {
-      return state.orphanedItems;
+    get failRevocationHandoff() {
+      return state.failRevocationHandoff;
     },
     client,
   };

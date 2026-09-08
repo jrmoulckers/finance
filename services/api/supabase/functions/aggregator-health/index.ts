@@ -205,6 +205,7 @@ serve(async (req: Request): Promise<Response> => {
         )
         .eq('household_id', householdId)
         .is('deleted_at', null)
+        .eq('sync_enabled', true)
         .order('created_at', { ascending: false });
 
       if (connError) {
@@ -259,6 +260,7 @@ serve(async (req: Request): Promise<Response> => {
         .select('household_id')
         .eq('id', connectionId)
         .is('deleted_at', null)
+        .eq('sync_enabled', true)
         .single();
 
       if (connError || !connection) {
@@ -316,6 +318,7 @@ serve(async (req: Request): Promise<Response> => {
         )
         .eq('id', connectionId)
         .is('deleted_at', null)
+        .eq('sync_enabled', true)
         .maybeSingle();
 
       if (connError) {

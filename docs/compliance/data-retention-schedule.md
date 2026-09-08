@@ -66,11 +66,13 @@ for all categories of data processed by Finance.
 
 ### Financial Data
 
-| Data                                               | Storage Location                   | Retention Period                                                                             | Trigger for Deletion           | Legal Basis                     |
-| -------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- |
-| Accounts, transactions, budgets, goals, categories | Supabase PostgreSQL + local SQLite | **Account lifetime** — retained until account deletion or individual record deletion by user | User deletes record or account | Art. 6(1)(b) Contract           |
-| Soft-deleted financial records                     | Supabase PostgreSQL                | **30 days** after soft-delete, then hard-deleted                                             | Automated purge job            | Art. 5(1)(e) Storage limitation |
-| Transaction notes (free-text)                      | Supabase PostgreSQL + local SQLite | Same as transaction record                                                                   | Same as transaction record     | Art. 6(1)(b) Contract           |
+| Data                                               | Storage Location                   | Retention Period                                                                                                 | Trigger for Deletion                                | Legal Basis                                            |
+| -------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| Accounts, transactions, budgets, goals, categories | Supabase PostgreSQL + local SQLite | **Account lifetime** — retained until account deletion or individual record deletion by user                     | User deletes record or account                      | Art. 6(1)(b) Contract                                  |
+| Soft-deleted financial records                     | Supabase PostgreSQL                | **30 days** after soft-delete, then hard-deleted                                                                 | Automated purge job                                 | Art. 5(1)(e) Storage limitation                        |
+| Transaction notes (free-text)                      | Supabase PostgreSQL + local SQLite | Same as transaction record                                                                                       | Same as transaction record                          | Art. 6(1)(b) Contract                                  |
+| Bank connection provider credential                | Server-only PostgreSQL outbox      | Until confirmed revoked/already invalid; hard ceiling **30 days**, shortened to **7 days** after account erasure | Provider confirmation or automated credential purge | Art. 6(1)(b) Contract; Art. 5(1)(e) Storage limitation |
+| Bank downgrade retention selection                 | Server-only PostgreSQL             | Valid for **24 hours**; expired metadata purged after **30 days**                                                | Automated purge job                                 | Art. 6(1)(b) Contract; Art. 5(1)(e) Storage limitation |
 
 ### Household and Collaboration Data
 
@@ -118,22 +120,24 @@ for all categories of data processed by Finance.
 
 Quick reference for all retention periods:
 
-| Data Category                                                            | Retention Period                          |
-| ------------------------------------------------------------------------ | ----------------------------------------- |
-| User financial data (accounts, transactions, budgets, goals, categories) | Until account deletion                    |
-| User profile data                                                        | Until account deletion                    |
-| Soft-deleted records (all types)                                         | 30 days after soft-delete                 |
-| Audit logs                                                               | 90 days                                   |
-| Data export audit logs                                                   | 90 days                                   |
-| Sync health logs                                                         | 30 days                                   |
-| Deletion audit records                                                   | 1 year                                    |
-| WebAuthn challenges                                                      | 5 minutes                                 |
-| Session tokens                                                           | Per GoTrue config (24-hour timebox)       |
-| Household invitations                                                    | 7 days after expiry                       |
-| Passkey credentials                                                      | Until user revocation or account deletion |
-| Analytics and crash reports (opt-in)                                     | 26 months or consent withdrawal           |
-| Encrypted backups                                                        | 30-day rolling window                     |
-| Local device data                                                        | Until sign-out or uninstall               |
+| Data Category                                                            | Retention Period                                                |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| User financial data (accounts, transactions, budgets, goals, categories) | Until account deletion                                          |
+| User profile data                                                        | Until account deletion                                          |
+| Soft-deleted records (all types)                                         | 30 days after soft-delete                                       |
+| Audit logs                                                               | 90 days                                                         |
+| Data export audit logs                                                   | 90 days                                                         |
+| Sync health logs                                                         | 30 days                                                         |
+| Deletion audit records                                                   | 1 year                                                          |
+| WebAuthn challenges                                                      | 5 minutes                                                       |
+| Session tokens                                                           | Per GoTrue config (24-hour timebox)                             |
+| Household invitations                                                    | 7 days after expiry                                             |
+| Passkey credentials                                                      | Until user revocation or account deletion                       |
+| Analytics and crash reports (opt-in)                                     | 26 months or consent withdrawal                                 |
+| Encrypted backups                                                        | 30-day rolling window                                           |
+| Local device data                                                        | Until sign-out or uninstall                                     |
+| Encrypted bank revocation credential                                     | Confirmed revoke, or 30-day hard ceiling (7 days after erasure) |
+| Bank downgrade retention selection                                       | 24-hour validity; purge 30 days after expiry                    |
 
 ---
 
@@ -152,14 +156,16 @@ Quick reference for all retention periods:
 The following purge jobs enforce retention limits. They should be implemented as
 PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 
-| Purge Job                     | Target Table(s)              | Condition                                 | Schedule         |
-| ----------------------------- | ---------------------------- | ----------------------------------------- | ---------------- |
-| Expired WebAuthn challenges   | `webauthn_challenges`        | `expires_at < NOW()`                      | Every 15 minutes |
-| Expired household invitations | `household_invitations`      | `expires_at + INTERVAL '7 days' < NOW()`  | Daily            |
-| Sync health log rotation      | `sync_health_logs`           | `created_at + INTERVAL '30 days' < NOW()` | Daily            |
-| Audit log rotation            | `audit_log`                  | `created_at + INTERVAL '90 days' < NOW()` | Daily            |
-| Export audit log rotation     | `data_export_audit_log`      | `created_at + INTERVAL '90 days' < NOW()` | Daily            |
-| Soft-deleted record purge     | All tables with `deleted_at` | `deleted_at + INTERVAL '30 days' < NOW()` | Daily            |
+| Purge Job                     | Target Table(s)                        | Condition                                  | Schedule                |
+| ----------------------------- | -------------------------------------- | ------------------------------------------ | ----------------------- |
+| Expired WebAuthn challenges   | `webauthn_challenges`                  | `expires_at < NOW()`                       | Every 15 minutes        |
+| Expired household invitations | `household_invitations`                | `expires_at + INTERVAL '7 days' < NOW()`   | Daily                   |
+| Sync health log rotation      | `sync_health_logs`                     | `created_at + INTERVAL '30 days' < NOW()`  | Daily                   |
+| Audit log rotation            | `audit_log`                            | `created_at + INTERVAL '90 days' < NOW()`  | Daily                   |
+| Export audit log rotation     | `data_export_audit_log`                | `created_at + INTERVAL '90 days' < NOW()`  | Daily                   |
+| Soft-deleted record purge     | All tables with `deleted_at`           | `deleted_at + INTERVAL '30 days' < NOW()`  | Daily                   |
+| Bank revocation capability    | `bank_connection_orphaned_items`       | Confirmed revoke or `retain_until < NOW()` | Daily plus retry worker |
+| Expired downgrade selections  | `bank_connection_retention_selections` | `valid_until + INTERVAL '30 days' < NOW()` | Daily                   |
 
 > **⚠️ Implementation status:** These purge jobs are **defined but not yet
 > implemented**. See [Implementation Status](#implementation-status) below and
@@ -182,6 +188,8 @@ PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 | Crypto-shredding (actual key destruction)  | ❌ Placeholder     | Currently synthetic; see [erasure audit](gdpr-right-to-erasure-audit.md) |
 | `Clear-Site-Data` header on web logout     | ❌ Not implemented | Needed for local device data cleanup                                     |
 | Deletion certificate                       | ✅ Implemented     | Returned by `account-deletion` Edge Function                             |
+| Bank revocation credential purge           | ✅ Implemented     | Daily `purge-orphaned-bank-items` job enforces the hard ceiling          |
+| Bank downgrade selection purge             | ✅ Implemented     | Same daily job removes expired selection metadata                        |
 
 ---
 
@@ -206,6 +214,7 @@ PostgreSQL `pg_cron` scheduled tasks or Supabase Edge Function crons.
 
 ## Document History
 
-| Date       | Change                                                   | Author                 |
-| ---------- | -------------------------------------------------------- | ---------------------- |
-| 2025-07-27 | Initial data retention schedule created from issue #1313 | docs-writer (AI agent) |
+| Date       | Change                                                                  | Author                 |
+| ---------- | ----------------------------------------------------------------------- | ---------------------- |
+| 2025-07-27 | Initial data retention schedule created from issue #1313                | docs-writer (AI agent) |
+| 2026-09-08 | Added bounded bank revocation and downgrade-selection retention (#4405) | backend-engineer       |

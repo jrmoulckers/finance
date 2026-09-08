@@ -195,6 +195,31 @@ is unaffected. It runs automatically in the **Entitlement Gateway Integration**
 job in `.github/workflows/ci-lint.yml`, which stands up the stack, waits for the
 endpoint to answer `401` (not `503`), and then executes exactly this command.
 
+### 6. Durable Bank Revocation Integration Tests
+
+**Runtime:** PostgreSQL plus PowerShell concurrency sessions (requires local
+Supabase)
+
+`durable-bank-revocation.test.sql` validates authenticated downgrade selection,
+deterministic fallback, immediate sync disablement, encrypted credential
+handoff, provider retry/already-invalid/idempotent completion, restart recovery,
+history preservation, account-erasure identity severance, least privilege,
+PowerSync/export exclusion, and bounded exhausted credentials.
+
+`durable-bank-revocation-concurrency.test.ps1` runs downgrade, disconnect, and
+account-erasure transactions concurrently, then proves two
+`FOR UPDATE SKIP LOCKED` workers claim disjoint work.
+
+```bash
+# From services/api/ with the disposable local stack running:
+npm run test:durable-bank-revocation
+pwsh -NoProfile -File supabase/tests/durable-bank-revocation-concurrency.test.ps1 \
+  -Container supabase_db_finance-local
+```
+
+Both suites execute in the existing GitHub-hosted Supabase integration job.
+Never point either suite at staging or production.
+
 ## Adding New Tests
 
 ### Adding a contract test

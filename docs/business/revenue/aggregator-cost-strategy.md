@@ -3,14 +3,14 @@
 **Issue:** #4380
 **Related:** #4379 (P0 — bank connections have no entitlement gate or cap)
 **Priority:** P1 — High
-**Status:** Complete — Item cap decided (2 per household); enforced in #4379
+**Status:** Complete — tier cap and durable removal enforced through #4405
 
 > **Decision (2026-08-23):** the allowance proposed in §4 Option F was adopted —
 > **Free 0 Items, Premium 2 plus a $0.99/Item/month add-on, Family 4 shared.** The
 > recommendation to stay on Plaid was accepted; no provider migration is planned.
-> The server-side enforcement shipped as a **flat cap of 2 for every household**,
-> because no entitlement record exists to resolve tier — so the cost exposure in §3
-> is now bounded, but bank connections are not yet Premium-only. The approved
+> The initial server-side enforcement shipped as a flat cap of 2. The current
+> PostgreSQL entitlement projection now enforces the tier allowance, and #4405
+> durably disables and revokes excess Items when that allowance falls. The approved
 > allocation is authoritative in the
 > [subscription entitlement catalog](../pricing/subscription-entitlement-catalog.md);
 > server authority and staged enforcement are defined by
@@ -95,8 +95,11 @@ We call five endpoints, all in `services/api/supabase/functions/_shared/plaid.ts
 
 > **Correction to the brief:** the brief listed four endpoints. There are five — `/item/remove`
 > exists at line 275. This matters: it is the _only_ lever that stops an accrued charge, so every
-> disconnect and soft-delete path must reach it or we keep paying for connections the user has
-> already abandoned. That is remediation item 4 in #4379.
+> disconnect, downgrade, and account-erasure path must reach it or we keep paying for connections
+> the user has already abandoned. #4405 moves the minimum encrypted revocation credential into a
+> server-only outbox before sync is disabled or identity is erased, then retries confirmed removal
+> with bounded backoff. Missing configuration, provider outage, decryption failure, and ambiguous
+> responses remain failures rather than success-shaped skips.
 
 **Consequence:** every billable event is `exchange` (start) and `remove` (stop). Nothing between
 them costs anything at the margin. Sync cadence, webhook volume, and historical backfill depth are
@@ -442,12 +445,12 @@ Two hard side conditions, neither of which is a pricing question:
 The rule is currently unmeasurable. To operate it we need:
 
 - Monthly Plaid/MX invoice total, tagged by product.
-- Count of active (non-revoked) `bank_connections` rows, split by paying vs free — derivable from
-  `bank_connections` once an entitlement source of truth exists.
+- Count of active, sync-enabled `bank_connections` rows joined to the PostgreSQL entitlement
+  projection, plus the secret-safe outbox status aggregate for delayed/exhausted removals.
 - Blended net ARPU from the existing revenue model.
 
-Until an entitlement table exists, the free-vs-paying split cannot be computed at all. **#4379 is a
-prerequisite for this decision rule, not merely a remediation.**
+The PostgreSQL projection is the sole entitlement authority. Expired or unavailable projections
+fail closed and must not be replaced with client tier claims.
 
 ---
 
@@ -487,16 +490,16 @@ effectively zero.
 
 ## 9. Immediate Actions — Ordered by Cost-to-Fix vs Exposure Reduced
 
-| #   | Action                                                                                                                    | Effort           | Exposure reduced                                                                              | Owner                                  | Tracking  |
-| --- | ------------------------------------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------- | -------------------------------------- | --------- |
-| 1   | **Cap `bank_connections` per household** in `bank-connection/index.ts` — count non-revoked rows, reject beyond a constant | Hours            | Converts unbounded → bounded. Largest single reduction available                              | @backend-engineer                      | **#4379** |
-| 2   | **Confirm the Plaid plan and actual rate** (§8 Q1–Q2)                                                                     | One conversation | Removes the largest modeling uncertainty in this document                                     | Business Analysis                      | **#4379** |
-| 3   | **Verify `/item/remove` is reached on every disconnect path**                                                             | Hours            | Stops paying for abandoned connections                                                        | @backend-engineer                      | **#4379** |
-| 4   | **Add a DB-level cap** (trigger) so the limit survives any caller bypassing the edge function                             | ~1 day           | Defence in depth; RLS currently has no cap at all                                             | @database-engineer                     | **#4379** |
-| 5   | **Alert on `bank_connections` row-count growth rate**                                                                     | ~1 day           | Detection — ensures this cannot silently recur                                                | @sre-engineer                          | **#4379** |
-| 6   | **Introduce an entitlement source of truth** and enforce the documented premium gate                                      | ~1 sprint        | Closes the gap in `premium-strategy-conversion-funnel.md:72`; unblocks the §7.2 decision rule | @database-engineer + @backend-engineer | New issue |
-| 7   | **Finish CSV import; add OFX/QFX** (`import-data/index.ts:3` is `SPECULATIVE`)                                            | ~1 sprint        | Makes the free tier zero-COGS **by construction** and softens the cap for high-Item users     | @backend-engineer + @web-engineer      | New issue |
-| 8   | **Ratify tier Item allowances** (§5 Option F table)                                                                       | Pricing decision | Converts a fixed liability into a revenue-linked one                                          | Business Analysis + human sign-off     | New issue |
+| #   | Action                                                                               | Effort           | Exposure reduced                                                                              | Owner                                  | Tracking  |
+| --- | ------------------------------------------------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------- | -------------------------------------- | --------- |
+| 1   | **Cap `bank_connections` per household** from the PostgreSQL entitlement projection  | Hours            | Converts unbounded → bounded. Largest single reduction available                              | @backend-engineer                      | **Done**  |
+| 2   | **Confirm the Plaid plan and actual rate** (§8 Q1–Q2)                                | One conversation | Removes the largest modeling uncertainty in this document                                     | Business Analysis                      | **#4379** |
+| 3   | **Durably retry provider removal for disconnect, downgrade, and account erasure**    | Hours            | Stops paying for abandoned connections without losing retry capability                        | @backend-engineer                      | **#4405** |
+| 4   | **Add a DB-level cap** so the limit survives any caller bypassing the edge function  | ~1 day           | Defence in depth                                                                              | @database-engineer                     | **Done**  |
+| 5   | **Alert on `bank_connections` row-count growth rate**                                | ~1 day           | Detection — ensures this cannot silently recur                                                | @sre-engineer                          | **#4379** |
+| 6   | **Introduce an entitlement source of truth** and enforce the documented premium gate | ~1 sprint        | Closes the gap in `premium-strategy-conversion-funnel.md:72`; unblocks the §7.2 decision rule | @database-engineer + @backend-engineer | **Done**  |
+| 7   | **Finish CSV import; add OFX/QFX** (`import-data/index.ts:3` is `SPECULATIVE`)       | ~1 sprint        | Makes the free tier zero-COGS **by construction** and softens the cap for high-Item users     | @backend-engineer + @web-engineer      | New issue |
+| 8   | **Ratify tier Item allowances** (§5 Option F table)                                  | Pricing decision | Converts a fixed liability into a revenue-linked one                                          | Business Analysis + human sign-off     | New issue |
 
 Actions 1–3 are same-day and remove the majority of the exposure. Everything below action 5 is
 strategy, not incident response.
