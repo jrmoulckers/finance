@@ -504,8 +504,11 @@ SELECT pg_temp.assert_true(
 -- Soft-delete, reconnect/undelete, and the direct-writer boundary
 -- ---------------------------------------------------------------------------
 
+-- `encrypted_access_token` is NOT NULL on this table, so a soft delete marks the
+-- row rather than clearing the credential; credential destruction happens
+-- through the crypto-shred path, not here.
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected', encrypted_access_token = NULL
+SET deleted_at = now(), status = 'disconnected'
 WHERE id = '44041000-0000-4000-e000-000000000002';
 
 SELECT pg_temp.assert_true(
@@ -590,7 +593,7 @@ SELECT pg_temp.expect_error(
 -- protects — a held reservation is consumed capacity for EVERY other writer.
 
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected', encrypted_access_token = NULL
+SET deleted_at = now(), status = 'disconnected'
 WHERE id = '44041000-0000-4000-e000-000000000003';
 
 INSERT INTO bank_connection_reservations (id, household_id, owner_id, provider, expires_at)
