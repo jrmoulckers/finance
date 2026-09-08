@@ -1082,8 +1082,9 @@ BEGIN
 END;
 $$;
 
--- Extend the Stage 6 purge to exhausted rows and remove all identity remnants
--- from terminal records.
+-- Extend the Stage 6 purge to exhausted rows. Account-erasure rows have
+-- already severed every beneficiary reference transactionally; normal
+-- lifecycle rows keep Stage 6's credential-free audit correlation.
 CREATE OR REPLACE FUNCTION public.purge_expired_orphaned_bank_items(
     p_terminal_retention INTERVAL DEFAULT interval '90 days'
 )
@@ -1103,10 +1104,7 @@ BEGIN
             revoked_at = now(),
             last_error_code = COALESCE(last_error_code, 'RETENTION_EXPIRED'),
             claimed_by = NULL,
-            claim_expires_at = NULL,
-            household_id = NULL,
-            owner_id = NULL,
-            connection_id = NULL
+            claim_expires_at = NULL
         WHERE status IN ('pending_revocation', 'pending_reconciliation', 'exhausted')
           AND retain_until <= now()
         RETURNING 1
