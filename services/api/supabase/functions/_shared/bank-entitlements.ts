@@ -306,7 +306,9 @@ export async function confirmConnectionFinalization(
 
   switch (row.state) {
     case 'finalized':
-      return row.created_at ? { state: 'finalized', createdAt: row.created_at } : { state: 'unknown' };
+      return row.created_at
+        ? { state: 'finalized', createdAt: row.created_at }
+        : { state: 'unknown' };
     case 'disconnected':
       return { state: 'disconnected' };
     case 'absent':

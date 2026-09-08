@@ -124,6 +124,27 @@ interface ExchangeTokenRequest {
   institution_name: string;
 }
 
+/**
+ * Injectable collaborators. Production uses the real implementations; the
+ * handler tests substitute them so the reserve → exchange → finalize
+ * orchestration — including every revoke decision — is exercised without a
+ * database, an aggregator, or key material.
+ */
+export interface BankConnectionDeps {
+  createClient?: typeof createAdminClient;
+  requireAuthFn?: typeof requireAuth;
+  exchangeToken?: (
+    provider: Provider,
+    publicToken: string,
+    userId: string,
+  ) => Promise<{ access_token: string; item_id: string }>;
+  revokeToken?: typeof revokeProviderToken;
+  encrypt?: (plaintext: string) => Promise<string>;
+  linkAccounts?: typeof provisionAndLinkAccounts;
+  /** Generates the caller-owned connection id that makes finalization idempotent. */
+  newConnectionId?: () => string;
+}
+
 // ---------------------------------------------------------------------------
 // Encryption
 // ---------------------------------------------------------------------------
@@ -455,460 +476,616 @@ async function precheckConnectionCapacity(
   return null;
 }
 
+/**
+ * The resolver's verdict. `confirmed_absent` is a DEFINITE failure — a
+ * confirming read proved no row committed — while `unknown` means the outcome
+ * was never observed and the provider Item must NOT be revoked.
+ */
+type ResolvedFinalization =
+  | Exclude<FinalizeOutcome, { status: 'unknown' }>
+  | { status: 'confirmed_absent' }
+  | { status: 'unknown'; message: string };
+
+/** How many times the idempotent finalize call may be replayed in one request. */
+const MAX_FINALIZE_ATTEMPTS = 2;
+
+/**
+ * Drive finalization to a verdict the caller can act on.
+ *
+ * The problem this solves: an RPC can COMMIT and still lose its response. The
+ * original flow treated every finalize error as "nothing was persisted" and
+ * revoked the provider Item — which, after a committed-then-lost response,
+ * destroys the Item behind a live `bank_connections` row and leaves the
+ * household with a connection that can never sync.
+ *
+ * Because the connection id is generated here and the RPC is idempotent on it,
+ * an unobserved outcome is recoverable:
+ *   - confirm the id against the database;
+ *   - `finalized` / `disconnected` → a definite answer, no retry needed;
+ *   - `absent` → the attempt definitely did not commit, so replaying the
+ *     identical call is safe (it cannot create a second billable row);
+ *   - the confirming read itself failing → still unknown; return unknown so the
+ *     caller withholds revocation.
+ */
+async function resolveFinalization(
+  supabase: SupabaseClient,
+  params: {
+    reservationId: string;
+    householdId: string;
+    ownerId: string;
+    provider: Provider;
+    institutionId: string;
+    institutionName: string;
+    encryptedAccessToken: string;
+    connectionId: string;
+    metadata?: Record<string, unknown>;
+  },
+  logger: FunctionLogger,
+): Promise<ResolvedFinalization> {
+  let outcome = await finalizeConnectionReservation(supabase, params);
+  let attempts = 1;
+
+  while (outcome.status === 'unknown') {
+    const confirmation = await confirmConnectionFinalization(supabase, {
+      connectionId: params.connectionId,
+      householdId: params.householdId,
+    });
+
+    if (confirmation.state === 'finalized') {
+      // The lost response hid a successful commit. Report the persisted row.
+      logger.warn('Recovered a bank connection finalization whose response was lost', {
+        connectionId: params.connectionId,
+        provider: params.provider,
+      });
+      return {
+        status: 'finalized',
+        connectionId: params.connectionId,
+        createdAt: confirmation.createdAt,
+      };
+    }
+
+    if (confirmation.state === 'disconnected') {
+      return { status: 'already_disconnected' };
+    }
+
+    if (confirmation.state === 'unknown') {
+      // We still do not know. Fail closed WITHOUT revoking.
+      return outcome;
+    }
+
+    if (attempts >= MAX_FINALIZE_ATTEMPTS) {
+      // Proven absent by a successful confirming read — safe to revoke.
+      return { status: 'confirmed_absent' };
+    }
+
+    logger.warn('Replaying an unobserved bank connection finalization', {
+      connectionId: params.connectionId,
+      provider: params.provider,
+    });
+    outcome = await finalizeConnectionReservation(supabase, params);
+    attempts++;
+  }
+
+  return outcome;
+}
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
-serve(async (req: Request): Promise<Response> => {
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest(req);
-  }
+/**
+ * Build the request handler with its collaborators resolved.
+ *
+ * Exported so the reserve → exchange → finalize orchestration can be driven
+ * end-to-end in tests. The production entry point below binds the real
+ * implementations.
+ */
+export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
+  const createClient = deps.createClient ?? createAdminClient;
+  const authenticate = deps.requireAuthFn ?? requireAuth;
+  const exchangeToken = deps.exchangeToken ?? exchangeProviderToken;
+  const revokeToken = deps.revokeToken ?? revokeProviderToken;
+  const encrypt = deps.encrypt ?? encryptAccessToken;
+  const linkAccounts = deps.linkAccounts ?? provisionAndLinkAccounts;
+  const newConnectionId = deps.newConnectionId ?? (() => crypto.randomUUID());
 
-  const logger = createLogger('bank-connection');
-  logger.info('Request received', { method: req.method });
+  return async (req: Request): Promise<Response> => {
+    if (req.method === 'OPTIONS') {
+      return handleCorsPreflightRequest(req);
+    }
 
-  const envError = validateEnv('bank-connection', req);
-  if (envError) return envError;
+    const logger = createLogger('bank-connection');
+    logger.info('Request received', { method: req.method });
 
-  try {
-    let user;
+    const envError = validateEnv('bank-connection', req);
+    if (envError) return envError;
+
     try {
-      user = await requireAuth(req);
-    } catch (response) {
-      return response as Response;
-    }
-
-    logger.setUserId(user.id);
-    const supabase = createAdminClient();
-
-    // Rate limiting
-    const rateLimitResult = await checkRateLimit(supabase, user.id, RATE_LIMITS['bank-connection']);
-    if (!rateLimitResult.allowed) {
-      logger.warn('Rate limit exceeded', { httpStatus: 429 });
-      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['bank-connection']);
-    }
-
-    const url = new URL(req.url);
-    const action = url.searchParams.get('action');
-
-    // -----------------------------------------------------------------------
-    // POST ?action=create_link_token
-    // -----------------------------------------------------------------------
-    if (req.method === 'POST' && action === 'create_link_token') {
-      const body = (await req.json()) as CreateLinkTokenRequest;
-
-      if (!body.provider || !(VALID_PROVIDERS as readonly string[]).includes(body.provider)) {
-        return errorResponse(req, `provider must be one of: ${VALID_PROVIDERS.join(', ')}`);
-      }
-      if (!body.household_id) {
-        return errorResponse(req, 'household_id is required');
+      let user;
+      try {
+        user = await authenticate(req);
+      } catch (response) {
+        return response as Response;
       }
 
-      if (
-        !(await ensureCanManageHousehold(supabase, body.household_id, user.id, {
-          provisionIfMissing: true,
-          userEmail: user.email,
-        }))
-      ) {
-        return errorResponse(
-          req,
-          'Only household owners and admins can manage bank connections',
-          403,
-        );
-      }
+      logger.setUserId(user.id);
+      const supabase = createClient();
 
-      const linkCapRejection = await precheckConnectionCapacity(
+      // Rate limiting
+      const rateLimitResult = await checkRateLimit(
         supabase,
-        body.household_id,
-        req,
-        logger,
-      );
-      if (linkCapRejection) return linkCapRejection;
-
-      const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
-        (err: unknown) => {
-          if (err instanceof PlaidApiError || err instanceof MxApiError) {
-            logger.warn('Provider link token failed', {
-              provider: body.provider,
-              errorCode: err.errorCode,
-            });
-            return null;
-          }
-          throw err;
-        },
-      );
-
-      if (!linkResult) {
-        return errorResponse(req, 'Provider link token request failed', 502);
-      }
-
-      logger.info('Link token created', {
-        provider: body.provider,
-        httpStatus: 200,
-      });
-
-      return jsonResponse(req, {
-        link_token: linkResult.link_token,
-        expiration: linkResult.expiration,
-      });
-    }
-
-    // -----------------------------------------------------------------------
-    // POST ?action=exchange_token
-    // -----------------------------------------------------------------------
-    if (req.method === 'POST' && action === 'exchange_token') {
-      const body = (await req.json()) as ExchangeTokenRequest;
-
-      if (!body.provider || !(VALID_PROVIDERS as readonly string[]).includes(body.provider)) {
-        return errorResponse(req, `provider must be one of: ${VALID_PROVIDERS.join(', ')}`);
-      }
-      if (!body.household_id) return errorResponse(req, 'household_id is required');
-      if (!body.public_token) return errorResponse(req, 'public_token is required');
-      if (!body.institution_id) return errorResponse(req, 'institution_id is required');
-      if (!body.institution_name) return errorResponse(req, 'institution_name is required');
-
-      if (!(await ensureCanManageHousehold(supabase, body.household_id, user.id))) {
-        return errorResponse(
-          req,
-          'Only household owners and admins can manage bank connections',
-          403,
-        );
-      }
-
-      // Atomic reservation — claims capacity BEFORE the provider exchange
-      // creates a billable Item, so concurrent requests cannot all pass a
-      // count-then-create check. This is the AUTHORITATIVE gate: a client can
-      // reach exchange_token without ever requesting a link token.
-      const reservation = await reserveConnectionSlot(supabase, {
-        householdId: body.household_id,
-        ownerId: user.id,
-        provider: body.provider,
-      });
-
-      if (reservation.status === 'premium_required') {
-        logger.warn('Bank connection requires an eligible plan', { httpStatus: 403 });
-        return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
-      }
-      if (reservation.status === 'at_cap') {
-        logger.warn('Bank connection cap reached', { httpStatus: 409 });
-        return entitlementErrorResponse(
-          req,
-          'CONNECTION_CAP_REACHED',
-          connectionCapMessage(reservation.cap),
-          409,
-        );
-      }
-      if (reservation.status === 'forbidden') {
-        return errorResponse(
-          req,
-          'Only household owners and admins can manage bank connections',
-          403,
-        );
-      }
-      if (reservation.status === 'error') {
-        // Fail closed — never fall back to a client tier, flag, or cached cap.
-        logger.error('Failed to reserve a bank connection slot', {
-          errorMessage: reservation.message,
-        });
-        return entitlementErrorResponse(
-          req,
-          'ENTITLEMENT_UNAVAILABLE',
-          'Bank connection availability is temporarily unavailable. Try again shortly.',
-          503,
-        );
-      }
-
-      const reservationId = reservation.reservationId;
-
-      // Exchange the client handle for the stored credential — NEVER log it.
-      const exchangeResult = await exchangeProviderToken(
-        body.provider,
-        body.public_token,
         user.id,
-      ).catch((err: unknown) => {
-        if (err instanceof PlaidApiError || err instanceof MxApiError) {
-          logger.warn('Provider token exchange failed', {
-            provider: body.provider,
-            errorCode: err.errorCode,
-          });
-          return null;
-        }
-        throw err;
-      });
-
-      if (!exchangeResult) {
-        // No billable Item was created; free the reserved slot immediately.
-        await releaseConnectionReservation(supabase, {
-          reservationId,
-          householdId: body.household_id,
-        });
-        return errorResponse(req, 'Provider token exchange failed', 502);
+        RATE_LIMITS['bank-connection'],
+      );
+      if (!rateLimitResult.allowed) {
+        logger.warn('Rate limit exceeded', { httpStatus: 429 });
+        return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['bank-connection']);
       }
 
-      // A billable Item now exists at the provider. Encrypt before storage.
-      const encryptedToken = await encryptAccessToken(exchangeResult.access_token);
+      const url = new URL(req.url);
+      const action = url.searchParams.get('action');
 
-      // Consume the reservation and persist the row atomically under the same
-      // per-household lock the reservation was taken under.
-      const finalize = await finalizeConnectionReservation(supabase, {
-        reservationId,
-        householdId: body.household_id,
-        ownerId: user.id,
-        provider: body.provider,
-        institutionId: body.institution_id,
-        institutionName: body.institution_name,
-        encryptedAccessToken: encryptedToken,
-        metadata: { item_id: exchangeResult.item_id },
-      });
+      // -----------------------------------------------------------------------
+      // POST ?action=create_link_token
+      // -----------------------------------------------------------------------
+      if (req.method === 'POST' && action === 'create_link_token') {
+        const body = (await req.json()) as CreateLinkTokenRequest;
 
-      if (finalize.status !== 'finalized') {
-        // The Item is billable but could not be persisted (the slot was
-        // reclaimed, the reservation expired, or the projection changed).
-        // Attempt an immediate, idempotent revoke; if it cannot be confirmed,
-        // durably hand the encrypted credential to Stage 7 so revocation is
-        // retried and never lost. NEVER report a success-shaped result here.
-        const revocation = await revokeProviderToken({
+        if (!body.provider || !(VALID_PROVIDERS as readonly string[]).includes(body.provider)) {
+          return errorResponse(req, `provider must be one of: ${VALID_PROVIDERS.join(', ')}`);
+        }
+        if (!body.household_id) {
+          return errorResponse(req, 'household_id is required');
+        }
+
+        if (
+          !(await ensureCanManageHousehold(supabase, body.household_id, user.id, {
+            provisionIfMissing: true,
+            userEmail: user.email,
+          }))
+        ) {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
+        }
+
+        const linkCapRejection = await precheckConnectionCapacity(
+          supabase,
+          body.household_id,
+          req,
+          logger,
+        );
+        if (linkCapRejection) return linkCapRejection;
+
+        const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
+          (err: unknown) => {
+            if (err instanceof PlaidApiError || err instanceof MxApiError) {
+              logger.warn('Provider link token failed', {
+                provider: body.provider,
+                errorCode: err.errorCode,
+              });
+              return null;
+            }
+            throw err;
+          },
+        );
+
+        if (!linkResult) {
+          return errorResponse(req, 'Provider link token request failed', 502);
+        }
+
+        logger.info('Link token created', {
           provider: body.provider,
-          encryptedAccessToken: encryptedToken,
+          httpStatus: 200,
         });
 
-        if (revocation.outcome === 'revoked') {
-          logger.warn('Provider Item revoked after finalization failure', {
-            provider: body.provider,
-            finalizeStatus: finalize.status,
+        return jsonResponse(req, {
+          link_token: linkResult.link_token,
+          expiration: linkResult.expiration,
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // POST ?action=exchange_token
+      // -----------------------------------------------------------------------
+      if (req.method === 'POST' && action === 'exchange_token') {
+        const body = (await req.json()) as ExchangeTokenRequest;
+
+        if (!body.provider || !(VALID_PROVIDERS as readonly string[]).includes(body.provider)) {
+          return errorResponse(req, `provider must be one of: ${VALID_PROVIDERS.join(', ')}`);
+        }
+        if (!body.household_id) return errorResponse(req, 'household_id is required');
+        if (!body.public_token) return errorResponse(req, 'public_token is required');
+        if (!body.institution_id) return errorResponse(req, 'institution_id is required');
+        if (!body.institution_name) return errorResponse(req, 'institution_name is required');
+
+        if (!(await ensureCanManageHousehold(supabase, body.household_id, user.id))) {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
+        }
+
+        // Atomic reservation — claims capacity BEFORE the provider exchange
+        // creates a billable Item, so concurrent requests cannot all pass a
+        // count-then-create check. This is the AUTHORITATIVE gate: a client can
+        // reach exchange_token without ever requesting a link token.
+        const reservation = await reserveConnectionSlot(supabase, {
+          householdId: body.household_id,
+          ownerId: user.id,
+          provider: body.provider,
+        });
+
+        if (reservation.status === 'premium_required') {
+          logger.warn('Bank connection requires an eligible plan', { httpStatus: 403 });
+          return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
+        }
+        if (reservation.status === 'at_cap') {
+          logger.warn('Bank connection cap reached', { httpStatus: 409 });
+          return entitlementErrorResponse(
+            req,
+            'CONNECTION_CAP_REACHED',
+            connectionCapMessage(reservation.cap),
+            409,
+          );
+        }
+        if (reservation.status === 'forbidden') {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
+        }
+        if (reservation.status === 'error') {
+          // Fail closed — never fall back to a client tier, flag, or cached cap.
+          logger.error('Failed to reserve a bank connection slot', {
+            errorMessage: reservation.message,
           });
-        } else {
+          return entitlementErrorResponse(
+            req,
+            'ENTITLEMENT_UNAVAILABLE',
+            'Bank connection availability is temporarily unavailable. Try again shortly.',
+            503,
+          );
+        }
+
+        const reservationId = reservation.reservationId;
+
+        // Exchange the client handle for the stored credential — NEVER log it.
+        const exchangeResult = await exchangeToken(body.provider, body.public_token, user.id).catch(
+          (err: unknown) => {
+            if (err instanceof PlaidApiError || err instanceof MxApiError) {
+              logger.warn('Provider token exchange failed', {
+                provider: body.provider,
+                errorCode: err.errorCode,
+              });
+              return null;
+            }
+            throw err;
+          },
+        );
+
+        if (!exchangeResult) {
+          // No billable Item was created; free the reserved slot immediately.
+          await releaseConnectionReservation(supabase, {
+            reservationId,
+            householdId: body.household_id,
+          });
+          return errorResponse(req, 'Provider token exchange failed', 502);
+        }
+
+        // A billable Item now exists at the provider. Encrypt before storage.
+        const encryptedToken = await encrypt(exchangeResult.access_token);
+
+        // The connection id is generated HERE so finalization is idempotent on
+        // it: a replay after a lost response returns the committed row instead of
+        // creating a second billable connection.
+        const connectionId = newConnectionId();
+
+        // Consume the reservation and persist the row atomically under the same
+        // per-household lock the reservation was taken under, driving the call to
+        // a verdict that is either definite or explicitly unknown.
+        const finalize = await resolveFinalization(
+          supabase,
+          {
+            reservationId,
+            householdId: body.household_id,
+            ownerId: user.id,
+            provider: body.provider,
+            institutionId: body.institution_id,
+            institutionName: body.institution_name,
+            encryptedAccessToken: encryptedToken,
+            connectionId,
+            metadata: { item_id: exchangeResult.item_id },
+          },
+          logger,
+        );
+
+        if (finalize.status === 'unknown') {
+          // The Item is billable and we do NOT know whether its row committed.
+          // Revoking here could destroy the Item behind a live connection, so we
+          // withhold revocation and durably hand the credential off for
+          // reconciliation: Stage 7 resolves `connection_id` against
+          // `bank_connections` BEFORE it revokes anything.
           const handoffId = await recordOrphanedItem(supabase, {
             householdId: body.household_id,
             ownerId: user.id,
             provider: body.provider,
             encryptedAccessToken: encryptedToken,
-            lastErrorCode: revocation.detail,
+            lastErrorCode: 'FINALIZE_OUTCOME_UNKNOWN',
+            status: 'pending_reconciliation',
+            connectionId,
           });
-          logger.error('Orphaned provider Item retained for revocation retry', {
+          logger.error('Bank connection finalization outcome unknown; revocation withheld', {
             provider: body.provider,
-            revocationOutcome: revocation.outcome,
+            connectionId,
             handoffRecorded: handoffId !== null,
-            finalizeStatus: finalize.status,
           });
-        }
-
-        if (finalize.status === 'premium_required') {
-          return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
-        }
-        if (finalize.status === 'at_cap') {
           return entitlementErrorResponse(
             req,
-            'CONNECTION_CAP_REACHED',
-            'This household has reached its bank connection limit. ' +
-              'Disconnect a bank before connecting another.',
-            409,
+            'ENTITLEMENT_UNAVAILABLE',
+            'Bank connection could not be completed. Try again shortly.',
+            503,
           );
         }
-        // reservation_not_found or error → fail closed.
-        return entitlementErrorResponse(
-          req,
-          'ENTITLEMENT_UNAVAILABLE',
-          'Bank connection could not be completed. Try again shortly.',
-          503,
-        );
-      }
 
-      const connection = {
-        id: finalize.connectionId,
-        provider: body.provider,
-        institution_name: body.institution_name,
-        status: 'active',
-        created_at: finalize.createdAt,
-      };
-
-      logger.info('Bank connection created', {
-        connectionId: connection.id,
-        provider: body.provider,
-        httpStatus: 201,
-      });
-
-      // Discover + link the institution's accounts, then run an initial
-      // backfill so transactions appear immediately (webhooks only deliver
-      // DELTAS after this point). Best-effort: a failure here must NOT fail the
-      // connection — the next webhook or a manual refresh will catch up.
-      try {
-        const linkedCount = await provisionAndLinkAccounts(
-          supabase,
-          {
+        if (finalize.status !== 'finalized') {
+          // A DEFINITE rejection: a confirming read or the RPC itself proved no
+          // row is in place, so the Item is billable and orphaned. Revoke it
+          // immediately and idempotently; if that cannot be confirmed, durably
+          // hand the encrypted credential to Stage 7 so revocation is retried and
+          // never lost. NEVER report a success-shaped result here.
+          const revocation = await revokeToken({
             provider: body.provider,
-            accessToken: exchangeResult.access_token,
-            connectionId: connection.id,
-            householdId: body.household_id,
-          },
-          logger,
-        );
+            encryptedAccessToken: encryptedToken,
+          });
 
-        if (linkedCount > 0) {
-          const initialSync = await runInitialProviderSync(
+          if (revocation.outcome === 'revoked') {
+            logger.warn('Provider Item revoked after finalization failure', {
+              provider: body.provider,
+              finalizeStatus: finalize.status,
+            });
+          } else {
+            const handoffId = await recordOrphanedItem(supabase, {
+              householdId: body.household_id,
+              ownerId: user.id,
+              provider: body.provider,
+              encryptedAccessToken: encryptedToken,
+              lastErrorCode: revocation.detail,
+              status: 'pending_revocation',
+              connectionId,
+            });
+            logger.error('Orphaned provider Item retained for revocation retry', {
+              provider: body.provider,
+              revocationOutcome: revocation.outcome,
+              handoffRecorded: handoffId !== null,
+              finalizeStatus: finalize.status,
+            });
+          }
+
+          if (finalize.status === 'premium_required') {
+            return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
+          }
+          if (finalize.status === 'at_cap') {
+            return entitlementErrorResponse(
+              req,
+              'CONNECTION_CAP_REACHED',
+              'This household has reached its bank connection limit. ' +
+                'Disconnect a bank before connecting another.',
+              409,
+            );
+          }
+          // reservation_not_found / already_disconnected / confirmed_absent →
+          // fail closed with the stable unavailable code.
+          return entitlementErrorResponse(
+            req,
+            'ENTITLEMENT_UNAVAILABLE',
+            'Bank connection could not be completed. Try again shortly.',
+            503,
+          );
+        }
+
+        const connection = {
+          id: finalize.connectionId,
+          provider: body.provider,
+          institution_name: body.institution_name,
+          status: 'active',
+          created_at: finalize.createdAt,
+        };
+
+        logger.info('Bank connection created', {
+          connectionId: connection.id,
+          provider: body.provider,
+          httpStatus: 201,
+        });
+
+        // Discover + link the institution's accounts, then run an initial
+        // backfill so transactions appear immediately (webhooks only deliver
+        // DELTAS after this point). Best-effort: a failure here must NOT fail the
+        // connection — the next webhook or a manual refresh will catch up.
+        try {
+          const linkedCount = await linkAccounts(
             supabase,
-            body.provider,
             {
-              id: connection.id,
-              household_id: body.household_id,
-              encrypted_access_token: encryptedToken,
-              metadata: { item_id: exchangeResult.item_id },
+              provider: body.provider,
+              accessToken: exchangeResult.access_token,
+              connectionId: connection.id,
+              householdId: body.household_id,
             },
             logger,
           );
-          logger.info('Initial account link + sync complete', {
+
+          if (linkedCount > 0) {
+            const initialSync = await runInitialProviderSync(
+              supabase,
+              body.provider,
+              {
+                id: connection.id,
+                household_id: body.household_id,
+                encrypted_access_token: encryptedToken,
+                metadata: { item_id: exchangeResult.item_id },
+              },
+              logger,
+            );
+            logger.info('Initial account link + sync complete', {
+              connectionId: connection.id,
+              linkedAccounts: linkedCount,
+              added: initialSync.added,
+              modified: initialSync.modified,
+            });
+          } else {
+            logger.warn('No external accounts linked for connection', {
+              connectionId: connection.id,
+            });
+          }
+        } catch (err) {
+          logger.error('Account linking / initial sync failed (connection retained)', {
             connectionId: connection.id,
-            linkedAccounts: linkedCount,
-            added: initialSync.added,
-            modified: initialSync.modified,
-          });
-        } else {
-          logger.warn('No external accounts linked for connection', {
-            connectionId: connection.id,
+            errorMessage: (err as Error).message,
           });
         }
-      } catch (err) {
-        logger.error('Account linking / initial sync failed (connection retained)', {
-          connectionId: connection.id,
-          errorMessage: (err as Error).message,
+
+        // NEVER return the access token
+        return createdResponse(req, {
+          id: connection.id,
+          provider: connection.provider,
+          institution_name: connection.institution_name,
+          status: connection.status,
+          created_at: connection.created_at,
         });
       }
 
-      // NEVER return the access token
-      return createdResponse(req, {
-        id: connection.id,
-        provider: connection.provider,
-        institution_name: connection.institution_name,
-        status: connection.status,
-        created_at: connection.created_at,
-      });
-    }
+      // -----------------------------------------------------------------------
+      // GET — List connections
+      // -----------------------------------------------------------------------
+      if (req.method === 'GET') {
+        const householdId = url.searchParams.get('household_id');
+        if (!householdId) {
+          return errorResponse(req, 'household_id query parameter is required');
+        }
 
-    // -----------------------------------------------------------------------
-    // GET — List connections
-    // -----------------------------------------------------------------------
-    if (req.method === 'GET') {
-      const householdId = url.searchParams.get('household_id');
-      if (!householdId) {
-        return errorResponse(req, 'household_id query parameter is required');
+        const { data: membership, error: memError } = await supabase
+          .from('household_members')
+          .select('id')
+          .eq('household_id', householdId)
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .single();
+
+        if (memError || !membership) {
+          return errorResponse(req, 'Household access denied', 403);
+        }
+
+        // NEVER include encrypted_access_token in response
+        const { data: connections, error: listError } = await supabase
+          .from('bank_connections')
+          .select(
+            'id, provider, institution_id, institution_name, status, last_synced_at, error_code, created_at, updated_at',
+          )
+          .eq('household_id', householdId)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false });
+
+        if (listError) {
+          logger.error('Failed to list bank connections', { errorMessage: listError.message });
+          return internalErrorResponse(req);
+        }
+
+        return jsonResponse(req, { connections: connections ?? [] });
       }
 
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id')
-        .eq('household_id', householdId)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .single();
+      // -----------------------------------------------------------------------
+      // DELETE — Disconnect: revoke the provider token, purge it, soft-delete.
+      // -----------------------------------------------------------------------
+      if (req.method === 'DELETE') {
+        const connectionId = url.searchParams.get('id');
+        if (!connectionId) {
+          return errorResponse(req, 'id query parameter is required');
+        }
 
-      if (memError || !membership) {
-        return errorResponse(req, 'Household access denied', 403);
-      }
+        const { data: existing, error: fetchError } = await supabase
+          .from('bank_connections')
+          .select('id, household_id, provider, encrypted_access_token')
+          .eq('id', connectionId)
+          .is('deleted_at', null)
+          .single();
 
-      // NEVER include encrypted_access_token in response
-      const { data: connections, error: listError } = await supabase
-        .from('bank_connections')
-        .select(
-          'id, provider, institution_id, institution_name, status, last_synced_at, error_code, created_at, updated_at',
-        )
-        .eq('household_id', householdId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        if (fetchError || !existing) {
+          return errorResponse(req, 'Bank connection not found', 404);
+        }
 
-      if (listError) {
-        logger.error('Failed to list bank connections', { errorMessage: listError.message });
-        return internalErrorResponse(req);
-      }
+        if (!(await ensureCanManageHousehold(supabase, existing.household_id, user.id))) {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
+        }
 
-      return jsonResponse(req, { connections: connections ?? [] });
-    }
-
-    // -----------------------------------------------------------------------
-    // DELETE — Disconnect: revoke the provider token, purge it, soft-delete.
-    // -----------------------------------------------------------------------
-    if (req.method === 'DELETE') {
-      const connectionId = url.searchParams.get('id');
-      if (!connectionId) {
-        return errorResponse(req, 'id query parameter is required');
-      }
-
-      const { data: existing, error: fetchError } = await supabase
-        .from('bank_connections')
-        .select('id, household_id, provider, encrypted_access_token')
-        .eq('id', connectionId)
-        .is('deleted_at', null)
-        .single();
-
-      if (fetchError || !existing) {
-        return errorResponse(req, 'Bank connection not found', 404);
-      }
-
-      if (!(await ensureCanManageHousehold(supabase, existing.household_id, user.id))) {
-        return errorResponse(
-          req,
-          'Only household owners and admins can manage bank connections',
-          403,
-        );
-      }
-
-      // Best-effort revoke the token at the aggregator so the processor no
-      // longer retains access on the user's behalf (#3867). NEVER throws —
-      // a processor outage must not block the user's disconnect.
-      const revocation = await revokeProviderToken({
-        provider: existing.provider,
-        encryptedAccessToken: existing.encrypted_access_token,
-      });
-
-      // Soft-delete AND purge the stored credential — even if revocation was
-      // skipped/failed at the provider, we must not keep the token at rest.
-      const { error: deleteError } = await supabase
-        .from('bank_connections')
-        .update({
-          deleted_at: new Date().toISOString(),
-          status: 'disconnected',
-          encrypted_access_token: null,
-        })
-        .eq('id', connectionId);
-
-      if (deleteError) {
-        logger.error('Failed to soft-delete bank connection', {
-          errorMessage: deleteError.message,
+        // Best-effort revoke the token at the aggregator so the processor no
+        // longer retains access on the user's behalf (#3867). NEVER throws —
+        // a processor outage must not block the user's disconnect.
+        const revocation = await revokeToken({
+          provider: existing.provider,
+          encryptedAccessToken: existing.encrypted_access_token,
         });
-        return internalErrorResponse(req);
-      }
 
-      // Audit the revocation attempt (best-effort — never block the response).
-      const auditStatus =
-        revocation.outcome === 'revoked'
-          ? 'success'
-          : revocation.outcome === 'skipped'
-            ? 'partial'
-            : 'failure';
-      const { error: auditError } = await supabase.from('connector_access_log').insert({
-        bank_connection_id: connectionId,
-        household_id: existing.household_id,
-        access_type: 'revoke_access',
-        provider_name: existing.provider,
-        status: auditStatus,
-        error_message: revocation.detail ?? null,
-      });
-      if (auditError) {
-        logger.warn('Failed to write revocation audit log', {
-          errorMessage: auditError.message,
+        // Soft-delete AND purge the stored credential — even if revocation was
+        // skipped/failed at the provider, we must not keep the token at rest.
+        const { error: deleteError } = await supabase
+          .from('bank_connections')
+          .update({
+            deleted_at: new Date().toISOString(),
+            status: 'disconnected',
+            encrypted_access_token: null,
+          })
+          .eq('id', connectionId);
+
+        if (deleteError) {
+          logger.error('Failed to soft-delete bank connection', {
+            errorMessage: deleteError.message,
+          });
+          return internalErrorResponse(req);
+        }
+
+        // Audit the revocation attempt (best-effort — never block the response).
+        const auditStatus =
+          revocation.outcome === 'revoked'
+            ? 'success'
+            : revocation.outcome === 'skipped'
+              ? 'partial'
+              : 'failure';
+        const { error: auditError } = await supabase.from('connector_access_log').insert({
+          bank_connection_id: connectionId,
+          household_id: existing.household_id,
+          access_type: 'revoke_access',
+          provider_name: existing.provider,
+          status: auditStatus,
+          error_message: revocation.detail ?? null,
         });
+        if (auditError) {
+          logger.warn('Failed to write revocation audit log', {
+            errorMessage: auditError.message,
+          });
+        }
+
+        logger.info('Bank connection disconnected', {
+          connectionId,
+          revocationOutcome: revocation.outcome,
+          httpStatus: 204,
+        });
+        return noContentResponse(req);
       }
 
-      logger.info('Bank connection disconnected', {
-        connectionId,
-        revocationOutcome: revocation.outcome,
-        httpStatus: 204,
-      });
-      return noContentResponse(req);
+      return methodNotAllowedResponse(req);
+    } catch (err) {
+      logger.error('Bank connection error', { errorMessage: (err as Error).message });
+      return internalErrorResponse(req);
     }
+  };
+}
 
-    return methodNotAllowedResponse(req);
-  } catch (err) {
-    logger.error('Bank connection error', { errorMessage: (err as Error).message });
-    return internalErrorResponse(req);
-  }
-});
+serve(createBankConnectionHandler());
