@@ -100,7 +100,7 @@ ALTER TABLE bank_connection_orphaned_items
     );
 
 UPDATE bank_connection_orphaned_items
-SET dedupe_key = digest(connection_id::TEXT, 'sha256')
+SET dedupe_key = extensions.digest(connection_id::TEXT, 'sha256')
 WHERE connection_id IS NOT NULL;
 
 ALTER TABLE bank_connection_orphaned_items
@@ -353,7 +353,7 @@ BEGIN
 
     SELECT id INTO v_outbox_id
     FROM bank_connection_orphaned_items o
-    WHERE o.dedupe_key = digest(p_connection_id::TEXT, 'sha256')
+    WHERE o.dedupe_key = extensions.digest(p_connection_id::TEXT, 'sha256')
       AND o.status IN ('pending_revocation', 'pending_reconciliation', 'exhausted')
     FOR UPDATE;
 
@@ -382,7 +382,7 @@ BEGIN
             NULL,
             p_reason,
             now(),
-            digest(v_connection.id::TEXT, 'sha256')
+            extensions.digest(v_connection.id::TEXT, 'sha256')
         )
         RETURNING id INTO v_outbox_id;
     END IF;
@@ -471,7 +471,7 @@ BEGIN
         now(),
         now(),
         now() + interval '7 days',
-        digest(c.id::TEXT, 'sha256')
+        extensions.digest(c.id::TEXT, 'sha256')
     FROM bank_connections c
     WHERE c.deleted_at IS NULL
       AND c.status <> 'disconnected'
@@ -482,7 +482,7 @@ BEGIN
       AND NOT EXISTS (
           SELECT 1
           FROM bank_connection_orphaned_items o
-          WHERE o.dedupe_key = digest(c.id::TEXT, 'sha256')
+          WHERE o.dedupe_key = extensions.digest(c.id::TEXT, 'sha256')
             AND o.status IN ('pending_revocation', 'pending_reconciliation', 'exhausted')
       );
 
@@ -662,13 +662,13 @@ BEGIN
         0,
         'downgrade',
         now(),
-        digest(c.id::TEXT, 'sha256')
+        extensions.digest(c.id::TEXT, 'sha256')
     FROM bank_connections c
     WHERE c.id = ANY(v_excess)
       AND c.encrypted_access_token IS NOT NULL
       AND NOT EXISTS (
           SELECT 1 FROM bank_connection_orphaned_items o
-          WHERE o.dedupe_key = digest(c.id::TEXT, 'sha256')
+          WHERE o.dedupe_key = extensions.digest(c.id::TEXT, 'sha256')
             AND o.status IN ('pending_revocation', 'pending_reconciliation', 'exhausted')
       );
 
@@ -1073,7 +1073,7 @@ BEGIN
         now(),
         CASE
             WHEN p_connection_id IS NULL THEN NULL
-            ELSE digest(p_connection_id::TEXT, 'sha256')
+            ELSE extensions.digest(p_connection_id::TEXT, 'sha256')
         END
     )
     RETURNING id INTO v_id;
