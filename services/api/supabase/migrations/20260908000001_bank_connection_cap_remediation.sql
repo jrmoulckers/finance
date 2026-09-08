@@ -636,5 +636,92 @@ GRANT EXECUTE ON FUNCTION public.purge_expired_orphaned_bank_items(INTERVAL)
     TO service_role;
 
 -- =============================================================================
+-- Retention enforcement — give the ceiling an actual caller
+-- =============================================================================
+-- `retain_until` is only a ceiling if something enforces it. A purge function
+-- nobody calls leaves live provider credentials on disk indefinitely, which is
+-- exactly the risk the ceiling exists to bound. It is therefore wired in twice,
+-- deliberately:
+--
+--   1. Into `run_all_maintenance()`, the orchestrator the daily 3 AM UTC
+--      `daily-maintenance` cron job already runs. This is the load-bearing
+--      path: it works on any deployment where maintenance runs at all, and it
+--      cannot be forgotten when the cron inventory is rebuilt.
+--   2. As a dedicated `purge-orphaned-bank-items` cron job, so credential
+--      expiry keeps being enforced even if the shared orchestrator is later
+--      trimmed, fails partway through an earlier step, or is disabled.
+--
+-- Both calls are idempotent and cheap (two indexed predicates over a table
+-- that is empty in the normal case), so running twice a day costs nothing and
+-- double-execution is harmless.
+
+-- Replaces the orchestrator from 20260330000005 to add the orphan purge. Every
+-- prior step is preserved verbatim; only the bank-item purge is new.
+CREATE OR REPLACE FUNCTION public.run_all_maintenance()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_rate_limits    INTEGER;
+    v_webauthn       INTEGER;
+    v_sync_logs      INTEGER;
+    v_invitations    INTEGER;
+    v_audit_logs     INTEGER;
+    v_bank_orphans   RECORD;
+    v_analyze_result TEXT;
+BEGIN
+    -- Run each cleanup with default retention periods
+    v_rate_limits    := cleanup_expired_rate_limits();
+    v_webauthn       := cleanup_expired_webauthn_challenges();
+    v_sync_logs      := cleanup_old_sync_health_logs();
+    v_invitations    := cleanup_expired_invitations();
+    v_audit_logs     := cleanup_old_audit_logs();
+
+    -- Enforce the orphaned-credential retention ceiling (#4404). Counts only;
+    -- no provider or credential values are returned.
+    SELECT * INTO v_bank_orphans FROM purge_expired_orphaned_bank_items();
+
+    -- Update planner statistics
+    v_analyze_result := vacuum_analyze_tables();
+
+    RETURN jsonb_build_object(
+        'rate_limits_deleted',            v_rate_limits,
+        'webauthn_challenges_deleted',    v_webauthn,
+        'sync_health_logs_deleted',       v_sync_logs,
+        'invitations_expired',            v_invitations,
+        'audit_logs_deleted',             v_audit_logs,
+        'bank_orphans_abandoned',         v_bank_orphans.abandoned,
+        'bank_orphans_deleted',           v_bank_orphans.deleted,
+        'analyze_result',                 v_analyze_result,
+        'completed_at',                   NOW()
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.run_all_maintenance() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM anon;
+
+-- Dedicated schedule, guarded exactly like the existing jobs: pg_cron ships on
+-- Supabase Pro but not on free tier or local dev, so its absence must not fail
+-- the migration.
+DO $maint$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        PERFORM cron.schedule(
+            'purge-orphaned-bank-items',
+            '15 4 * * *',
+            $$SELECT public.purge_expired_orphaned_bank_items()$$
+        );
+
+        RAISE NOTICE 'pg_cron job scheduled: purge-orphaned-bank-items (daily 4:15 AM UTC)';
+    ELSE
+        RAISE NOTICE 'pg_cron not available — orphan retention runs via run_all_maintenance().';
+    END IF;
+END $maint$;
+
+-- =============================================================================
 -- Rollback (see down/20260908000001_bank_connection_cap_remediation.down.sql)
 -- =============================================================================

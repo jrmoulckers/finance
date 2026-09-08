@@ -486,13 +486,14 @@ Deno.test(
   },
 );
 
-Deno.test('an outcome proven absent after retrying is revoked as a definite failure', async () => {
+Deno.test('an ambiguous outcome that cannot be resolved never authorises a revoke', async () => {
   withEnv();
   const h = harness({
     script: {
       reserve_bank_connection_slot: [RESERVED],
       finalize_bank_connection_reservation: [rpcError('connection reset')],
       bank_connection_finalization_state: [ok([{ state: 'absent', created_at: null }])],
+      record_orphaned_bank_item: [ok('handoff-4')],
     },
   });
 
@@ -501,13 +502,50 @@ Deno.test('an outcome proven absent after retrying is revoked as a definite fail
 
   assertEquals(response.status, 503);
   assertEquals(body.code, 'ENTITLEMENT_UNAVAILABLE');
-  // Bounded: the idempotent call is replayed once, then the proven-absent state
-  // authorises revocation.
+  // Bounded: the idempotent call is replayed once and then we stop.
   assertEquals(countCalls(h.supabase, 'finalize_bank_connection_reservation'), 2);
-  assertEquals(h.revokes.length, 1, 'a confirmed-absent row means the Item is genuinely orphaned');
+  // The confirming read is unlocked, so `absent` only means "not visible to
+  // that snapshot" — a finalize still in flight can commit moments later.
+  // Revoking on it would destroy the Item behind a row that is about to exist.
+  assertEquals(h.revokes.length, 0, 'an unlocked absence must NEVER authorise a revoke');
+  const handoff = lastCall(h.supabase, 'record_orphaned_bank_item');
+  assert(handoff, 'the unresolved outcome must be handed off for reconciliation');
+  assertEquals(handoff.args.p_status, 'pending_reconciliation');
+  assertEquals(handoff.args.p_connection_id, CONNECTION_ID);
 });
 
-// The confirming read is the only thing that can license a revoke here. When it
+// The exact race the resolver must survive: every observation says "absent"
+// while the first finalize is still in flight, and it commits afterwards.
+Deno.test('a finalize still in flight during confirmation is recovered, not revoked', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      reserve_bank_connection_slot: [RESERVED],
+      // Attempt #1 loses its response; attempt #2 blocks on the advisory lock
+      // held by the still-in-flight attempt #1 and also fails.
+      finalize_bank_connection_reservation: [
+        rpcError('canceling statement due to statement timeout'),
+        rpcError('canceling statement due to statement timeout'),
+      ],
+      bank_connection_finalization_state: [
+        // Read while attempt #1 is uncommitted: nothing visible yet.
+        ok([{ state: 'absent', created_at: null }]),
+        // Attempt #1 has now committed; the row is visible.
+        ok([{ state: 'finalized', created_at: '2026-09-08T00:03:00Z' }]),
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(exchangeRequest());
+  const body = await response.json();
+
+  assertEquals(response.status, 201);
+  assertEquals(body.id, CONNECTION_ID);
+  assertEquals(h.revokes.length, 0, 'the Item backing the committed row must survive');
+  assertEquals(countCalls(h.supabase, 'record_orphaned_bank_item'), 0);
+});
+
+// Nothing in the ambiguous path can license a revoke. When the confirming read
 // fails too, the outcome stays unknown and revocation MUST be withheld.
 Deno.test(
   'an unconfirmable finalization withholds revocation and hands off for reconciliation',

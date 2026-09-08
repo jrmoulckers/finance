@@ -477,14 +477,13 @@ async function precheckConnectionCapacity(
 }
 
 /**
- * The resolver's verdict. `confirmed_absent` is a DEFINITE failure — a
- * confirming read proved no row committed — while `unknown` means the outcome
- * was never observed and the provider Item must NOT be revoked.
+ * The resolver's verdict — either a DEFINITE database answer, or `unknown`.
+ *
+ * There is deliberately no third "we are fairly sure nothing committed" state.
+ * Only a definite answer authorises revoking the provider Item; see
+ * {@link resolveFinalization} for why an unlocked absence is not one.
  */
-type ResolvedFinalization =
-  | Exclude<FinalizeOutcome, { status: 'unknown' }>
-  | { status: 'confirmed_absent' }
-  | { status: 'unknown'; message: string };
+type ResolvedFinalization = FinalizeOutcome;
 
 /** How many times the idempotent finalize call may be replayed in one request. */
 const MAX_FINALIZE_ATTEMPTS = 2;
@@ -499,13 +498,29 @@ const MAX_FINALIZE_ATTEMPTS = 2;
  * household with a connection that can never sync.
  *
  * Because the connection id is generated here and the RPC is idempotent on it,
- * an unobserved outcome is recoverable:
+ * an unobserved outcome is partly recoverable:
  *   - confirm the id against the database;
  *   - `finalized` / `disconnected` → a definite answer, no retry needed;
- *   - `absent` → the attempt definitely did not commit, so replaying the
- *     identical call is safe (it cannot create a second billable row);
- *   - the confirming read itself failing → still unknown; return unknown so the
- *     caller withholds revocation.
+ *   - `absent` → nothing is visible yet, so replaying the identical call is
+ *     safe (it cannot create a second billable row) and often resolves it;
+ *   - the confirming read itself failing → still unknown.
+ *
+ * WHY A REPORTED ABSENCE IS NOT A LICENCE TO REVOKE
+ *
+ * `bank_connection_finalization_state` reads WITHOUT the per-household
+ * reservation advisory lock, so `absent` means "not visible to this snapshot",
+ * not "will never exist". A finalize transaction that is still in flight — or
+ * one that is merely queued behind the lock — is invisible to it and can commit
+ * moments later. Taking the lock in the confirming read would narrow that window
+ * but not close it, because a finalize that has not yet reached the lock would
+ * simply acquire it afterwards.
+ *
+ * Revocation is destructive and unrecoverable, so exhausting the retries WITHOUT
+ * a definite answer resolves to `unknown`: the caller withholds revocation and
+ * hands the credential off for reconciliation instead. The Item is still
+ * revoked promptly in every case where the database DID answer definitively
+ * (`at_cap`, `premium_required`, `reservation_not_found`,
+ * `already_disconnected`), which is what "definitely absent" means here.
  */
 async function resolveFinalization(
   supabase: SupabaseClient,
@@ -548,14 +563,10 @@ async function resolveFinalization(
       return { status: 'already_disconnected' };
     }
 
-    if (confirmation.state === 'unknown') {
-      // We still do not know. Fail closed WITHOUT revoking.
+    if (confirmation.state === 'unknown' || attempts >= MAX_FINALIZE_ATTEMPTS) {
+      // Either the confirming read failed, or it reported an absence we cannot
+      // treat as final (see the note above). Fail closed WITHOUT revoking.
       return outcome;
-    }
-
-    if (attempts >= MAX_FINALIZE_ATTEMPTS) {
-      // Proven absent by a successful confirming read — safe to revoke.
-      return { status: 'confirmed_absent' };
     }
 
     logger.warn('Replaying an unobserved bank connection finalization', {
@@ -878,8 +889,8 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
               409,
             );
           }
-          // reservation_not_found / already_disconnected / confirmed_absent →
-          // fail closed with the stable unavailable code.
+          // reservation_not_found / already_disconnected → fail closed with the
+          // stable unavailable code.
           return entitlementErrorResponse(
             req,
             'ENTITLEMENT_UNAVAILABLE',

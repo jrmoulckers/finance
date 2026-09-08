@@ -920,6 +920,81 @@ SELECT pg_temp.assert_true(
     'a force-abandoned row is dispositioned and keeps its non-sensitive error detail'
 );
 
+-- ---------------------------------------------------------------------------
+-- The ceiling has a caller: retention is actually enforced on a schedule
+--
+-- `retain_until` bounds nothing if no process ever evaluates it. These
+-- assertions pin the two independent callers wired up by the migration.
+-- ---------------------------------------------------------------------------
+
+-- 1. The shared orchestrator that the existing daily `daily-maintenance` cron
+--    job runs. This is the load-bearing path — it works even on deployments
+--    without pg_cron, where maintenance is driven externally.
+SELECT pg_temp.assert_true(
+    (
+        SELECT prosrc LIKE '%purge_expired_orphaned_bank_items%'
+        FROM pg_proc
+        WHERE proname = 'run_all_maintenance'
+          AND pronamespace = 'public'::regnamespace
+    ),
+    'run_all_maintenance() must call the orphan retention purge'
+);
+
+-- 2. The dedicated job, which keeps enforcing expiry if the shared orchestrator
+--    is later trimmed or fails partway through an earlier step. pg_cron is not
+--    installed on local dev or free tier, so the check is conditional and
+--    dynamic (the `cron` schema does not exist to be parsed against) — but
+--    where the extension IS present, the job must exist.
+DO $cron$
+DECLARE
+    v_scheduled BOOLEAN;
+BEGIN
+    IF to_regclass('cron.job') IS NULL THEN
+        RAISE NOTICE 'pg_cron not installed - dedicated retention job assertion skipped';
+        RETURN;
+    END IF;
+
+    EXECUTE $q$
+        SELECT EXISTS (
+            SELECT 1 FROM cron.job WHERE jobname = 'purge-orphaned-bank-items'
+        )
+    $q$ INTO v_scheduled;
+
+    IF NOT v_scheduled THEN
+        RAISE EXCEPTION 'ASSERTION FAILED: the dedicated orphan retention job must be scheduled';
+    END IF;
+END $cron$;
+
+-- 3. The contract that matters: driving the ORCHESTRATOR (not the purge
+--    directly) destroys a credential whose ceiling has passed. The probe row is
+--    tracked by its non-sensitive error code, because the credential column it
+--    was inserted with is exactly what the purge must destroy.
+SELECT record_orphaned_bank_item(
+    '44041000-0000-4000-9000-000000000001',
+    '44041000-0000-4000-8000-000000000001',
+    'plaid', 'enc_orphan_retention', 'RETENTION_PROBE'
+);
+
+UPDATE bank_connection_orphaned_items
+SET retain_until = now() - interval '1 second'
+WHERE last_error_code = 'RETENTION_PROBE';
+
+SELECT pg_temp.assert_true(
+    (SELECT (run_all_maintenance() ->> 'bank_orphans_abandoned')::BIGINT >= 1),
+    'the scheduled maintenance run reports the orphan rows it force-abandoned'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'abandoned'
+           AND encrypted_access_token IS NULL
+           AND revoked_at IS NOT NULL
+        FROM bank_connection_orphaned_items
+        WHERE last_error_code = 'RETENTION_PROBE'
+    ),
+    'maintenance destroys a credential whose retention ceiling has passed'
+);
+
 ROLLBACK;
 
 \echo 'bank-connection-cap-remediation.test.sql: all assertions passed'

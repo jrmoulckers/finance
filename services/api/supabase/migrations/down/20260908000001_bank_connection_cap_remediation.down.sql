@@ -14,6 +14,9 @@
 --      response can revoke a provider Item that is already backing a live row.
 --   3. Orphan credentials become unbounded again and stop participating in
 --      account deletion.
+--   4. Retention stops being enforced: the dedicated cron job is unscheduled
+--      and `run_all_maintenance()` no longer purges expired orphan rows, so a
+--      credential past its ceiling is retained indefinitely.
 --
 -- Revert only after redeploying `bank-connection` and `account-delete` to the
 -- pre-remediation revision. The bank-connection revision that ships with this
@@ -52,6 +55,56 @@ COMMENT ON FUNCTION public.bank_connection_cap_for_household(UUID) IS
     'projection row exists. Never trusts a client tier, flag, cache, or '
     'requested cap. The Edge Function and the cap trigger both resolve through '
     'this function so they cannot disagree.';
+
+-- Unschedule the dedicated retention job and restore the orchestrator to its
+-- 20260330000005 shape. Both must happen BEFORE the purge function is dropped,
+-- so nothing is left calling a function that no longer exists.
+DO $maint$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'purge-orphaned-bank-items') THEN
+            PERFORM cron.unschedule('purge-orphaned-bank-items');
+        END IF;
+    END IF;
+END $maint$;
+
+CREATE OR REPLACE FUNCTION public.run_all_maintenance()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_rate_limits    INTEGER;
+    v_webauthn       INTEGER;
+    v_sync_logs      INTEGER;
+    v_invitations    INTEGER;
+    v_audit_logs     INTEGER;
+    v_analyze_result TEXT;
+BEGIN
+    v_rate_limits    := cleanup_expired_rate_limits();
+    v_webauthn       := cleanup_expired_webauthn_challenges();
+    v_sync_logs      := cleanup_old_sync_health_logs();
+    v_invitations    := cleanup_expired_invitations();
+    v_audit_logs     := cleanup_old_audit_logs();
+
+    v_analyze_result := vacuum_analyze_tables();
+
+    RETURN jsonb_build_object(
+        'rate_limits_deleted',          v_rate_limits,
+        'webauthn_challenges_deleted',  v_webauthn,
+        'sync_health_logs_deleted',     v_sync_logs,
+        'invitations_expired',          v_invitations,
+        'audit_logs_deleted',           v_audit_logs,
+        'analyze_result',               v_analyze_result,
+        'completed_at',                 NOW()
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.run_all_maintenance() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM anon;
 
 -- Drop the remediation-only RPCs.
 DROP FUNCTION IF EXISTS public.purge_expired_orphaned_bank_items(INTERVAL);
