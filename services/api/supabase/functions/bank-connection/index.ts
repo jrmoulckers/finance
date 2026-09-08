@@ -54,6 +54,7 @@ import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-
 import { encryptToken } from '../_shared/bank-crypto.ts';
 import { ensureCanManageHousehold } from '../_shared/bank-authorization.ts';
 import {
+  confirmConnectionFinalization,
   connectionCapMessage,
   finalizeConnectionReservation,
   premiumRequiredMessage,
@@ -62,6 +63,7 @@ import {
   releaseConnectionReservation,
   reserveConnectionSlot,
   type BankEntitlementErrorCode,
+  type FinalizeOutcome,
 } from '../_shared/bank-entitlements.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
