@@ -78,7 +78,9 @@ async function deriveKeyBytes(keyMaterial: string): Promise<Uint8Array> {
 
 async function importAesKey(keyMaterial: string, usage: KeyUsage): Promise<CryptoKey> {
   const keyBytes = await deriveKeyBytes(keyMaterial);
-  return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, [usage]);
+  return crypto.subtle.importKey('raw', copyToArrayBuffer(keyBytes), { name: 'AES-GCM' }, false, [
+    usage,
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +131,11 @@ export async function decryptToken(envelope: string, keyMaterial: string): Promi
   const iv = base64UrlToBytes(parts[1]);
   const ciphertext = base64UrlToBytes(parts[2]);
 
-  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: copyToArrayBuffer(iv) },
+    key,
+    copyToArrayBuffer(ciphertext),
+  );
   return new TextDecoder().decode(plaintext);
 }
+import { copyToArrayBuffer } from './crypto.ts';

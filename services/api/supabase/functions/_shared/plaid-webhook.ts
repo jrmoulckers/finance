@@ -21,6 +21,7 @@
  */
 
 import type { PlaidVerificationKey } from './plaid.ts';
+import { copyToArrayBuffer } from './crypto.ts';
 
 /** Maximum accepted age of a webhook JWT (seconds) — replay protection. */
 const MAX_WEBHOOK_AGE_SECONDS = 300;
@@ -146,7 +147,7 @@ export async function verifyPlaidWebhook(
     signatureValid = await crypto.subtle.verify(
       { name: 'ECDSA', hash: 'SHA-256' },
       cryptoKey,
-      signature,
+      copyToArrayBuffer(signature),
       signedData,
     );
   } catch {

@@ -137,3 +137,8 @@ verify_jwt = false
 # membership.
 [functions.entitlements-v1]
 verify_jwt = false
+
+# The durable provider-revocation worker (#4405) authenticates machine-to-machine
+# requests with CRON_SECRET and returns minimized aggregate counts only.
+[functions.process-bank-revocations]
+verify_jwt = false

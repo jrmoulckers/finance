@@ -18,6 +18,13 @@
 // Timing-safe string comparison
 // ---------------------------------------------------------------------------
 
+/** Copy bytes into a standalone ArrayBuffer accepted by Web Crypto APIs. */
+export function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 /**
  * Compare two strings in constant time to prevent timing attacks.
  *

@@ -228,7 +228,8 @@ export async function persistPlaidSyncMetadata(
   const { error } = await supabase
     .from('bank_connections')
     .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
+    .eq('id', connection.id)
+    .eq('status', 'active');
 
   if (error) {
     throw ingestionDatabaseError('persisting the connection sync cursor');
@@ -354,7 +355,8 @@ export async function persistMxSyncMetadata(
   const { error } = await supabase
     .from('bank_connections')
     .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
+    .eq('id', connection.id)
+    .eq('status', 'active');
 
   if (error) {
     throw ingestionDatabaseError('persisting the connection sync window', 'MX');

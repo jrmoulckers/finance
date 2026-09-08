@@ -93,6 +93,10 @@ import {
 } from '../_shared/bank-ingest.ts';
 import { revokeProviderToken } from '../_shared/bank-revocation.ts';
 import {
+  queueConnectionRevocation,
+  saveRetentionSelection,
+} from '../_shared/bank-revocation-outbox.ts';
+import {
   createdResponse,
   errorResponse,
   internalErrorResponse,
@@ -122,6 +126,11 @@ interface ExchangeTokenRequest {
   public_token: string;
   institution_id: string;
   institution_name: string;
+}
+
+interface RetentionSelectionRequest {
+  household_id: string;
+  retained_connection_ids: string[];
 }
 
 /**
@@ -637,6 +646,54 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
       const action = url.searchParams.get('action');
 
       // -----------------------------------------------------------------------
+      // POST ?action=select_retained_connections
+      // -----------------------------------------------------------------------
+      if (req.method === 'POST' && action === 'select_retained_connections') {
+        const body = (await req.json()) as RetentionSelectionRequest;
+        if (!body.household_id) return errorResponse(req, 'household_id is required');
+        if (
+          !Array.isArray(body.retained_connection_ids) ||
+          body.retained_connection_ids.some((id) => typeof id !== 'string' || id.length === 0)
+        ) {
+          return errorResponse(req, 'retained_connection_ids must be an array of connection ids');
+        }
+
+        const selection = await saveRetentionSelection(supabase, {
+          householdId: body.household_id,
+          actorUserId: user.id,
+          retainedConnectionIds: body.retained_connection_ids,
+        });
+
+        if (selection.status === 'forbidden') {
+          return errorResponse(
+            req,
+            'Only household owners and admins can select retained bank connections',
+            403,
+          );
+        }
+        if (selection.status === 'not_scheduled') {
+          return errorResponse(req, 'No scheduled bank connection allowance change was found', 409);
+        }
+        if (selection.status === 'invalid_selection') {
+          return errorResponse(
+            req,
+            'Retention selection must contain current live connections',
+            400,
+          );
+        }
+
+        logger.info('Bank connection retention selection saved', {
+          selectedCount: selection.selectedCount,
+          httpStatus: 200,
+        });
+        return jsonResponse(req, {
+          status: 'saved',
+          effective_at: selection.effectiveAt,
+          selected_count: selection.selectedCount,
+        });
+      }
+
+      // -----------------------------------------------------------------------
       // POST ?action=create_link_token
       // -----------------------------------------------------------------------
       if (req.method === 'POST' && action === 'create_link_token') {
@@ -1009,7 +1066,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
       }
 
       // -----------------------------------------------------------------------
-      // DELETE — Disconnect: revoke the provider token, purge it, soft-delete.
+      // DELETE — Disable immediately and durably queue provider revocation.
       // -----------------------------------------------------------------------
       if (req.method === 'DELETE') {
         const connectionId = url.searchParams.get('id');
@@ -1019,7 +1076,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
 
         const { data: existing, error: fetchError } = await supabase
           .from('bank_connections')
-          .select('id, household_id, provider, encrypted_access_token')
+          .select('id, household_id')
           .eq('id', connectionId)
           .is('deleted_at', null)
           .single();
@@ -1036,56 +1093,23 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           );
         }
 
-        // Best-effort revoke the token at the aggregator so the processor no
-        // longer retains access on the user's behalf (#3867). NEVER throws —
-        // a processor outage must not block the user's disconnect.
-        const revocation = await revokeToken({
-          provider: existing.provider,
-          encryptedAccessToken: existing.encrypted_access_token,
+        const queueStatus = await queueConnectionRevocation(supabase, {
+          connectionId,
+          actorUserId: user.id,
         });
-
-        // Soft-delete AND purge the stored credential — even if revocation was
-        // skipped/failed at the provider, we must not keep the token at rest.
-        const { error: deleteError } = await supabase
-          .from('bank_connections')
-          .update({
-            deleted_at: new Date().toISOString(),
-            status: 'disconnected',
-            encrypted_access_token: null,
-          })
-          .eq('id', connectionId);
-
-        if (deleteError) {
-          logger.error('Failed to soft-delete bank connection', {
-            errorMessage: deleteError.message,
-          });
-          return internalErrorResponse(req);
+        if (queueStatus === 'forbidden') {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
         }
-
-        // Audit the revocation attempt (best-effort — never block the response).
-        const auditStatus =
-          revocation.outcome === 'revoked'
-            ? 'success'
-            : revocation.outcome === 'skipped'
-              ? 'partial'
-              : 'failure';
-        const { error: auditError } = await supabase.from('connector_access_log').insert({
-          bank_connection_id: connectionId,
-          household_id: existing.household_id,
-          access_type: 'revoke_access',
-          provider_name: existing.provider,
-          status: auditStatus,
-          error_message: revocation.detail ?? null,
-        });
-        if (auditError) {
-          logger.warn('Failed to write revocation audit log', {
-            errorMessage: auditError.message,
-          });
+        if (queueStatus === 'not_found') {
+          return errorResponse(req, 'Bank connection not found', 404);
         }
 
         logger.info('Bank connection disconnected', {
-          connectionId,
-          revocationOutcome: revocation.outcome,
+          revocationOutcome: 'queued',
           httpStatus: 204,
         });
         return noContentResponse(req);

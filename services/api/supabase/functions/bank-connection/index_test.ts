@@ -100,6 +100,15 @@ class FakeQuery {
   maybeSingle(): Promise<{ data: { id: string } | null; error: null }> {
     return Promise.resolve({ data: { id: 'member-1' }, error: null });
   }
+  single(): Promise<{
+    data: { id: string; household_id: string } | null;
+    error: null;
+  }> {
+    return Promise.resolve({
+      data: { id: CONNECTION_ID, household_id: 'household-1' },
+      error: null,
+    });
+  }
 }
 
 interface RevokeCall {
@@ -190,6 +199,34 @@ function exchangeRequest(): Request {
   });
 }
 
+function selectionRequest(retainedConnectionIds: readonly string[]): Request {
+  return new Request(
+    'http://localhost/functions/v1/bank-connection?action=select_retained_connections',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: '******',
+        Origin: 'http://localhost',
+      },
+      body: JSON.stringify({
+        household_id: 'household-1',
+        retained_connection_ids: retainedConnectionIds,
+      }),
+    },
+  );
+}
+
+function deleteRequest(): Request {
+  return new Request(`http://localhost/functions/v1/bank-connection?id=${CONNECTION_ID}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: '******',
+      Origin: 'http://localhost',
+    },
+  });
+}
+
 function ok(data: unknown): RpcResult {
   return { data, error: null };
 }
@@ -223,6 +260,77 @@ function lastCall(supabase: FakeSupabase, fn: string): RpcCall | undefined {
 // ---------------------------------------------------------------------------
 // Reservation gate — nothing billable is created before capacity is claimed
 // ---------------------------------------------------------------------------
+
+Deno.test('retention selection is saved against the authenticated server subject', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      save_bank_connection_retention_selection: [
+        ok([
+          {
+            status: 'saved',
+            effective_at: '2026-10-01T00:00:00Z',
+            selected_count: '2',
+          },
+        ]),
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(
+    selectionRequest(['connection-1', 'connection-2']),
+  );
+  const body = await response.json();
+
+  assertEquals(response.status, 200);
+  assertEquals(body, {
+    status: 'saved',
+    effective_at: '2026-10-01T00:00:00Z',
+    selected_count: 2,
+  });
+  const call = lastCall(h.supabase, 'save_bank_connection_retention_selection');
+  assertEquals(call?.args.p_actor_user_id, 'user-1');
+  assertEquals(call?.args.p_household_id, 'household-1');
+});
+
+Deno.test('invalid retention selection is rejected without a success-shaped response', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      save_bank_connection_retention_selection: [
+        ok([
+          {
+            status: 'invalid_selection',
+            effective_at: '2026-10-01T00:00:00Z',
+            selected_count: '0',
+          },
+        ]),
+      ],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(
+    selectionRequest(['other-household-connection']),
+  );
+  assertEquals(response.status, 400);
+});
+
+Deno.test('disconnect queues durable revocation without calling the provider', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      request_bank_connection_revocation: [ok([{ status: 'queued', outbox_id: 'outbox-1' }])],
+    },
+  });
+
+  const response = await createBankConnectionHandler(h.deps)(deleteRequest());
+
+  assertEquals(response.status, 204);
+  assertEquals(h.revokes.length, 0);
+  const call = lastCall(h.supabase, 'request_bank_connection_revocation');
+  assertEquals(call?.args.p_connection_id, CONNECTION_ID);
+  assertEquals(call?.args.p_actor_user_id, 'user-1');
+});
 
 Deno.test('exchange_token refuses a zero allowance before touching the provider', async () => {
   withEnv();
