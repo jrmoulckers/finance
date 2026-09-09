@@ -429,20 +429,48 @@ BEGIN
             SELECT 1 FROM auth.users WHERE id = p_owner_id
         );
 
-        v_handoff_id := record_orphaned_bank_item(
+        INSERT INTO bank_connection_orphaned_items (
+            household_id,
+            owner_id,
+            connection_id,
+            provider,
+            encrypted_access_token,
+            status,
+            attempts,
+            last_error_code,
+            operation_reason,
+            idempotency_key,
+            available_at,
+            retain_until,
+            erasure_requested_at,
+            reconciliation_required
+        )
+        VALUES (
             v_handoff_household_id,
             v_handoff_owner_id,
+            p_connection_id,
             p_provider,
             p_encrypted_access_token,
-            'ACCOUNT_DELETION_IN_PROGRESS',
             'pending_revocation',
-            p_connection_id
-        );
-        UPDATE bank_connection_orphaned_items
+            0,
+            'ACCOUNT_DELETION_IN_PROGRESS',
+            'account-deletion:' || p_connection_id::TEXT,
+            now(),
+            now() + interval '7 days',
+            now(),
+            false
+        )
+        ON CONFLICT (idempotency_key) DO UPDATE
         SET operation_reason = 'account_deletion',
-            erasure_requested_at = COALESCE(erasure_requested_at, now()),
-            retain_until = LEAST(retain_until, now() + interval '7 days')
-        WHERE id = v_handoff_id;
+            erasure_requested_at = COALESCE(
+                bank_connection_orphaned_items.erasure_requested_at,
+                now()
+            ),
+            retain_until = LEAST(
+                bank_connection_orphaned_items.retain_until,
+                now() + interval '7 days'
+            )
+        RETURNING id INTO v_handoff_id;
 
         RETURN QUERY SELECT
             'account_deleting'::TEXT,

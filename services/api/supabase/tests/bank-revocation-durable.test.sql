@@ -1108,29 +1108,33 @@ SELECT pg_temp.expect_error(
     '23514',
     'a deleting owner cannot reserve another provider Item'
 );
+CREATE TEMP TABLE deletion_race_result AS
+SELECT *
+FROM finalize_or_enqueue_bank_connection(
+    gen_random_uuid(),
+    '44050000-0000-4000-9000-000000000004',
+    '44050000-0000-4000-8000-000000000005',
+    'plaid',
+    'delete-race',
+    'Synthetic race',
+    'enc-delete-race',
+    '{}'::JSONB,
+    '44050000-0000-4000-d000-000000000498'
+);
+SELECT status FROM deletion_race_result;
 SELECT pg_temp.assert_true(
-    (
-        SELECT status = 'account_deleting'
-        FROM finalize_or_enqueue_bank_connection(
-            gen_random_uuid(),
-            '44050000-0000-4000-9000-000000000004',
-            '44050000-0000-4000-8000-000000000005',
-            'plaid',
-            'delete-race',
-            'Synthetic race',
-            'enc-delete-race',
-            '{}'::JSONB,
-            '44050000-0000-4000-d000-000000000498'
-        )
-    )
-    AND EXISTS (
+    (SELECT status = 'account_deleting' FROM deletion_race_result),
+    'an in-flight finalization is rejected while deletion is in progress'
+);
+SELECT pg_temp.assert_true(
+    EXISTS (
         SELECT 1
         FROM bank_connection_orphaned_items
         WHERE connection_id = '44050000-0000-4000-d000-000000000498'
           AND operation_reason = 'account_deletion'
           AND encrypted_access_token = 'enc-delete-race'
     ),
-    'an in-flight finalization is handed off instead of committing during deletion'
+    'an in-flight finalization is durably handed off during deletion'
 );
 SELECT pg_temp.assert_true(
     (
