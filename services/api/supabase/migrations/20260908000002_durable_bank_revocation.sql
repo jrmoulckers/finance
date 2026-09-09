@@ -454,6 +454,7 @@ BEGIN
             'pending_revocation',
             0,
             'ACCOUNT_DELETION_IN_PROGRESS',
+            'account_deletion',
             'account-deletion:' || p_connection_id::TEXT,
             now(),
             now() + interval '7 days',
