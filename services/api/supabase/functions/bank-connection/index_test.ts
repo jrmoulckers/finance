@@ -761,3 +761,39 @@ Deno.test('entitlement errors carry a stable code and no provider or financial d
   assertEquals(raw.includes('statement timeout'), false, 'internal RPC detail must not leak');
   assertEquals(raw.includes('$'), false, 'no price may appear in an entitlement error');
 });
+
+Deno.test('bank failure logs exclude credentials, connection ids, and raw errors', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      reserve_bank_connection_slot: [RESERVED],
+      finalize_bank_connection_reservation: [rpcError('statement timeout for sensitive row')],
+      bank_connection_finalization_state: [rpcError('provider item item-1 was unavailable')],
+      record_orphaned_bank_item: [ok('handoff-3')],
+    },
+  });
+  const output: string[] = [];
+  const original = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+  };
+  console.log = (...values: unknown[]) => output.push(values.map(String).join(' '));
+  console.warn = (...values: unknown[]) => output.push(values.map(String).join(' '));
+  console.error = (...values: unknown[]) => output.push(values.map(String).join(' '));
+
+  try {
+    await createBankConnectionHandler(h.deps)(exchangeRequest());
+  } finally {
+    console.log = original.log;
+    console.warn = original.warn;
+    console.error = original.error;
+  }
+
+  const logs = output.join('\n');
+  assertEquals(logs.includes(CONNECTION_ID), false);
+  assertEquals(logs.includes(ENCRYPTED), false);
+  assertEquals(logs.includes('raw-access-token'), false);
+  assertEquals(logs.includes('item-1'), false);
+  assertEquals(logs.includes('statement timeout'), false);
+});

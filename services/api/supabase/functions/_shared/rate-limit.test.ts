@@ -479,6 +479,7 @@ Deno.test('RATE_LIMITS — has entries for all expected functions', () => {
     'revenuecat-webhook',
     'revenuecat-confirm',
     'revenuecat-reconcile',
+    'stripe-webhook',
     'stripe-checkout',
     'stripe-portal',
     'stripe-reconcile',
@@ -545,6 +546,12 @@ Deno.test('RATE_LIMITS — passkey-authenticate is per-minute (pre-auth)', () =>
 });
 
 Deno.test('RATE_LIMITS — Stripe user endpoints fail closed with bounded limits', () => {
+  assertEquals(RATE_LIMITS['stripe-webhook'], {
+    maxRequests: 120,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-webhook',
+    failMode: 'closed',
+  });
   assertEquals(RATE_LIMITS['stripe-checkout'], {
     maxRequests: 10,
     windowSeconds: 60,

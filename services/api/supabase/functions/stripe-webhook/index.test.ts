@@ -27,6 +27,45 @@ Deno.test('Stripe webhook passes the exact raw body to signature processing', as
   assertEquals(response.status, 200);
 });
 
+Deno.test('Stripe webhook rejects oversized bodies before signature processing', async () => {
+  let processed = false;
+  const handler = createStripeWebhookHandler({
+    process: () => {
+      processed = true;
+      return Promise.resolve('ignored');
+    },
+  });
+  const response = await handler(
+    new Request('http://localhost/functions/v1/stripe-webhook', {
+      method: 'POST',
+      body: 'x'.repeat(256 * 1024 + 1),
+    }),
+  );
+  assertEquals(response.status, 413);
+  assertEquals(processed, false);
+});
+
+Deno.test('Stripe webhook enforces its request budget before reading the body', async () => {
+  let processed = false;
+  const handler = createStripeWebhookHandler(
+    {
+      process: () => {
+        processed = true;
+        return Promise.resolve('ignored');
+      },
+    },
+    () => Promise.resolve(new Response('rate limited', { status: 429 })),
+  );
+  const response = await handler(
+    new Request('http://localhost/functions/v1/stripe-webhook', {
+      method: 'POST',
+      body: '{"id":"evt_placeholder"}',
+    }),
+  );
+  assertEquals(response.status, 429);
+  assertEquals(processed, false);
+});
+
 Deno.test('Stripe webhook responses exclude provider identifiers and payloads', async () => {
   const handler = createStripeWebhookHandler({
     process: () => Promise.resolve('applied'),
