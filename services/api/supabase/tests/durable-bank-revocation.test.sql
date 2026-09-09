@@ -229,6 +229,15 @@ INSERT INTO bank_connection_accounts (
     'external-1', 'Imported History', true
 );
 
+CREATE TEMP TABLE preserved_history_snapshot AS
+SELECT
+    a.balance_cents,
+    t.amount_cents
+FROM accounts a
+JOIN transactions t ON t.account_id = a.id
+WHERE a.id = '44050000-0000-4000-f000-000000000001'
+  AND t.id = '44050000-0000-4000-f100-000000000001';
+
 SELECT pg_temp.expect_error(
     $sql$
         SELECT * FROM prepare_bank_connection_downgrade(
@@ -420,20 +429,24 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
     EXISTS (
-        SELECT 1 FROM accounts
-        WHERE id = '44050000-0000-4000-f000-000000000001'
-          AND balance_cents = 12345
-          AND deleted_at IS NULL
+        SELECT 1
+        FROM accounts a
+        CROSS JOIN preserved_history_snapshot h
+        WHERE a.id = '44050000-0000-4000-f000-000000000001'
+          AND a.balance_cents = h.balance_cents
+          AND a.deleted_at IS NULL
     ),
     'terminal revocation preserves imported account history'
 );
 
 SELECT pg_temp.assert_true(
     EXISTS (
-        SELECT 1 FROM transactions
-        WHERE id = '44050000-0000-4000-f100-000000000001'
-          AND amount_cents = 1234
-          AND deleted_at IS NULL
+        SELECT 1
+        FROM transactions t
+        CROSS JOIN preserved_history_snapshot h
+        WHERE t.id = '44050000-0000-4000-f100-000000000001'
+          AND t.amount_cents = h.amount_cents
+          AND t.deleted_at IS NULL
     ),
     'terminal revocation preserves imported transaction history'
 );
