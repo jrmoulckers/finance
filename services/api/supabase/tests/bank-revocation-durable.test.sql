@@ -863,13 +863,21 @@ SELECT pg_temp.assert_true(
             '{}'::jsonb,
             '44050000-0000-4000-dffe-000000000002'
         )
-    )
-    AND NOT EXISTS (
+    ),
+    'an expired reservation is rejected as reservation_not_found'
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
         SELECT 1
         FROM bank_connection_reservations
         WHERE id = '44050000-0000-4000-dffe-000000000001'
-    )
-    AND NOT EXISTS (
+    ),
+    'an expired reservation is consumed after rejection'
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
         SELECT 1
         FROM bank_connections
         WHERE id = '44050000-0000-4000-dffe-000000000002'
@@ -1016,13 +1024,17 @@ SELECT pg_temp.assert_true(
             '{}'::jsonb,
             '44050000-0000-4000-f000-000000000002'
         )
-    )
-    AND NOT EXISTS (
+    ),
+    'a delayed finalizer is rejected after account identity severance'
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
         SELECT 1
         FROM bank_connections
         WHERE id = '44050000-0000-4000-f000-000000000002'
     ),
-    'a delayed finalizer is rejected after account identity severance'
+    'a delayed finalizer cannot recreate a connection after identity severance'
 );
 
 SELECT pg_temp.assert_true(
