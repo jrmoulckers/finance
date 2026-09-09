@@ -177,20 +177,35 @@ BEGIN
     IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
         RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
     END IF;
+    IF p_owner_id IS NULL THEN
+        RAISE EXCEPTION 'owner is required' USING ERRCODE = 'not_null_violation';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('bank-connection-owner:' || p_owner_id::TEXT, 0)
+    );
 
     SELECT
         EXISTS (
-            SELECT 1 FROM household_members m
-            WHERE m.household_id = p_household_id
-              AND m.user_id = p_owner_id
-              AND m.deleted_at IS NULL
-              AND m.role IN ('owner', 'admin')
+            SELECT 1
+            FROM users u
+            WHERE u.id = p_owner_id
+              AND u.deleted_at IS NULL
         )
-        OR EXISTS (
-            SELECT 1 FROM households h
-            WHERE h.id = p_household_id
-              AND h.created_by = p_owner_id
-              AND h.deleted_at IS NULL
+        AND (
+            EXISTS (
+                SELECT 1 FROM household_members m
+                WHERE m.household_id = p_household_id
+                  AND m.user_id = p_owner_id
+                  AND m.deleted_at IS NULL
+                  AND m.role IN ('owner', 'admin')
+            )
+            OR EXISTS (
+                SELECT 1 FROM households h
+                WHERE h.id = p_household_id
+                  AND h.created_by = p_owner_id
+                  AND h.deleted_at IS NULL
+            )
         )
     INTO v_authorized;
 
@@ -283,6 +298,7 @@ AS $$
 DECLARE
     v_reservation bank_connection_reservations%ROWTYPE;
     v_existing    bank_connections%ROWTYPE;
+    v_handoff_id  UUID;
     v_cap         BIGINT;
     v_live        BIGINT;
     v_reserved    BIGINT;
@@ -292,15 +308,43 @@ BEGIN
     IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
         RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
     END IF;
+    IF p_owner_id IS NULL THEN
+        RAISE EXCEPTION 'owner is required' USING ERRCODE = 'not_null_violation';
+    END IF;
 
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('bank-connection-owner:' || p_owner_id::TEXT, 0)
+    );
     PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(p_household_id));
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM users u
+        WHERE u.id = p_owner_id
+          AND u.deleted_at IS NULL
+    ) THEN
+        DELETE FROM bank_connection_reservations
+        WHERE id = p_reservation_id
+          AND household_id = p_household_id;
+
+        RETURN QUERY SELECT
+            'already_disconnected'::TEXT,
+            NULL::UUID,
+            NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
 
     IF p_connection_id IS NOT NULL THEN
         SELECT * INTO v_existing
         FROM bank_connections
-        WHERE id = p_connection_id AND household_id = p_household_id;
+        WHERE id = p_connection_id AND household_id = p_household_id
+        FOR UPDATE;
 
         IF FOUND THEN
+            DELETE FROM bank_connection_reservations
+            WHERE id = p_reservation_id
+              AND household_id = p_household_id;
+
             IF bank_connection_consumes_cap(v_existing.status, v_existing.deleted_at) THEN
                 RETURN QUERY SELECT 'finalized'::TEXT, v_existing.id, v_existing.created_at;
             ELSE
@@ -308,11 +352,33 @@ BEGIN
             END IF;
             RETURN;
         END IF;
+
+        -- A reconciliation handoff is a durable tombstone created under this
+        -- same household lock. Once it wins, this provider Item belongs to the
+        -- revocation worker and finalization must never recreate a live row.
+        SELECT id INTO v_handoff_id
+        FROM bank_connection_orphaned_items
+        WHERE connection_id = p_connection_id
+        ORDER BY created_at, id
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_handoff_id IS NOT NULL THEN
+            DELETE FROM bank_connection_reservations
+            WHERE id = p_reservation_id
+              AND household_id = p_household_id;
+
+            RETURN QUERY SELECT
+                'already_disconnected'::TEXT,
+                NULL::UUID,
+                NULL::TIMESTAMPTZ;
+            RETURN;
+        END IF;
     END IF;
 
     DELETE FROM bank_connection_reservations
     WHERE household_id = p_household_id
-      AND expires_at <= now()
+      AND expires_at <= clock_timestamp()
       AND id <> p_reservation_id;
 
     SELECT * INTO v_reservation
@@ -321,6 +387,12 @@ BEGIN
     FOR UPDATE;
 
     IF NOT FOUND THEN
+        RETURN QUERY SELECT 'reservation_not_found'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    IF v_reservation.expires_at <= clock_timestamp() THEN
+        DELETE FROM bank_connection_reservations WHERE id = p_reservation_id;
         RETURN QUERY SELECT 'reservation_not_found'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
         RETURN;
     END IF;
@@ -424,6 +496,7 @@ ALTER TABLE bank_connection_orphaned_items
     ADD COLUMN next_attempt_at TIMESTAMPTZ DEFAULT now(),
     ADD COLUMN lease_token UUID,
     ADD COLUMN lease_expires_at TIMESTAMPTZ,
+    ADD COLUMN provider_work_started_at TIMESTAMPTZ,
     ADD COLUMN max_attempts SMALLINT NOT NULL DEFAULT 8,
     ADD COLUMN recovery_attempts SMALLINT NOT NULL DEFAULT 0,
     DROP CONSTRAINT bank_connection_orphaned_items_status_valid,
@@ -517,11 +590,139 @@ COMMENT ON TABLE bank_connection_orphaned_items IS
     'service-role only, excluded from APIs, export, logs, telemetry, and '
     'PowerSync. Terminal rows never retain a credential.';
 
+COMMENT ON COLUMN bank_connection_orphaned_items.provider_work_started_at IS
+    'Set atomically when a lease first exposes the encrypted credential to a '
+    'provider worker. A non-null value makes rollback unsafe because the '
+    'provider result may be externally irreversible or ambiguous.';
+
 -- Stage 6's direct mutators bypass leases and bounded retry accounting. Stage 7
 -- owns every transition through the claim/result state machine instead.
 DROP FUNCTION IF EXISTS public.complete_orphaned_bank_item(UUID, TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.record_orphaned_bank_item_attempt(UUID, TEXT);
 DROP FUNCTION IF EXISTS public.claim_orphaned_bank_items_for_erasure(UUID, UUID[]);
+
+-- Unknown finalization handoff shares the finalizer's household lock. The
+-- outbox row is therefore a connection-ID tombstone: finalization-first
+-- produces a credential-free reconciled audit row, while handoff-first blocks
+-- every later finalization replay from creating an active connection.
+CREATE OR REPLACE FUNCTION public.record_orphaned_bank_item(
+    p_household_id UUID,
+    p_owner_id UUID,
+    p_provider TEXT,
+    p_encrypted_access_token TEXT,
+    p_last_error_code TEXT DEFAULT NULL,
+    p_status TEXT DEFAULT 'pending_revocation',
+    p_connection_id UUID DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_connection bank_connections%ROWTYPE;
+    v_existing_id UUID;
+    v_effective_status TEXT;
+    v_owner_active BOOLEAN;
+    v_id UUID;
+BEGIN
+    IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
+        RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
+    END IF;
+    IF p_status IS NULL OR p_status NOT IN ('pending_revocation', 'pending_reconciliation') THEN
+        RAISE EXCEPTION 'an orphan handoff must be recorded in an open status'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    IF p_encrypted_access_token IS NULL OR btrim(p_encrypted_access_token) = '' THEN
+        RAISE EXCEPTION 'encrypted access token is required to retain revocation capability'
+            USING ERRCODE = 'not_null_violation';
+    END IF;
+    IF p_owner_id IS NULL THEN
+        RAISE EXCEPTION 'owner is required' USING ERRCODE = 'not_null_violation';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('bank-connection-owner:' || p_owner_id::TEXT, 0)
+    );
+    PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(p_household_id));
+    SELECT EXISTS (
+        SELECT 1
+        FROM users u
+        WHERE u.id = p_owner_id
+          AND u.deleted_at IS NULL
+    ) INTO v_owner_active;
+    v_effective_status := CASE WHEN v_owner_active THEN p_status ELSE 'pending_revocation' END;
+
+    IF v_owner_active AND p_connection_id IS NOT NULL THEN
+        SELECT * INTO v_connection
+        FROM bank_connections
+        WHERE id = p_connection_id
+          AND household_id = p_household_id
+        FOR UPDATE;
+
+        SELECT id INTO v_existing_id
+        FROM bank_connection_orphaned_items
+        WHERE connection_id = p_connection_id
+        ORDER BY created_at, id
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_existing_id IS NOT NULL THEN
+            RETURN v_existing_id;
+        END IF;
+
+        IF v_connection.id IS NOT NULL
+           AND bank_connection_consumes_cap(
+               v_connection.status,
+               v_connection.deleted_at
+           ) THEN
+            v_effective_status := 'pending_reconciliation';
+        END IF;
+    END IF;
+
+    INSERT INTO bank_connection_orphaned_items (
+        household_id,
+        owner_id,
+        connection_id,
+        provider,
+        encrypted_access_token,
+        status,
+        attempts,
+        reason,
+        last_error_code,
+        erasure_requested_at,
+        retain_until
+    )
+    VALUES (
+        CASE WHEN v_owner_active THEN p_household_id ELSE NULL END,
+        CASE WHEN v_owner_active THEN p_owner_id ELSE NULL END,
+        CASE WHEN v_owner_active THEN p_connection_id ELSE NULL END,
+        p_provider,
+        p_encrypted_access_token,
+        v_effective_status,
+        1,
+        CASE WHEN v_owner_active THEN 'finalization_failure' ELSE 'account_deletion' END,
+        p_last_error_code,
+        CASE WHEN v_owner_active THEN NULL ELSE now() END,
+        CASE
+            WHEN v_owner_active THEN now() + interval '30 days'
+            ELSE now() + interval '7 days'
+        END
+    )
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.record_orphaned_bank_item(
+    UUID, UUID, TEXT, TEXT, TEXT, TEXT, UUID
+) IS
+    'Durably records a provider Item under the household finalization lock '
+    '(#4405). The connection id becomes a tombstone: an existing live '
+    'connection forces reconciliation before any revocation; an absent '
+    'connection blocks every later finalization replay and remains available '
+    'for bounded provider revocation.';
 
 -- A selection is non-credential state, kept server-only and bound to the
 -- server-resolved projection subject that was current when it was submitted.
@@ -1088,6 +1289,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_reconciliation RECORD;
+    v_connection_is_live BOOLEAN;
+    v_household_locked BOOLEAN;
 BEGIN
     IF p_limit IS NULL OR p_limit < 1 OR p_limit > 100 THEN
         RAISE EXCEPTION 'limit must be between 1 and 100'
@@ -1098,7 +1303,78 @@ BEGIN
             USING ERRCODE = 'check_violation';
     END IF;
 
-    -- A crashed provider call is an ambiguous failure, never success.
+    -- Reconciliation uses the same advisory -> connection -> outbox order as
+    -- finalization and handoff creation. A handoff row is therefore a durable
+    -- tombstone: once it exists, no later finalization can race an absent read
+    -- and create an active connection behind a revoked provider Item.
+    FOR v_reconciliation IN
+        SELECT o.id, o.household_id, o.connection_id
+        FROM bank_connection_orphaned_items o
+        WHERE o.status = 'pending_reconciliation'
+        ORDER BY o.household_id NULLS LAST, o.created_at, o.id
+        LIMIT p_limit
+    LOOP
+        IF v_reconciliation.household_id IS NOT NULL THEN
+            SELECT pg_try_advisory_xact_lock(
+                bank_connection_reservation_lock_key(v_reconciliation.household_id)
+            ) INTO v_household_locked;
+
+            IF NOT v_household_locked THEN
+                CONTINUE;
+            END IF;
+        END IF;
+
+        v_connection_is_live := false;
+        IF v_reconciliation.connection_id IS NOT NULL THEN
+            BEGIN
+                SELECT true INTO v_connection_is_live
+                FROM bank_connections c
+                WHERE c.id = v_reconciliation.connection_id
+                  AND bank_connection_consumes_cap(c.status, c.deleted_at)
+                FOR UPDATE NOWAIT;
+                v_connection_is_live := COALESCE(v_connection_is_live, false);
+            EXCEPTION
+                WHEN lock_not_available THEN
+                    CONTINUE;
+            END;
+        END IF;
+
+        BEGIN
+            PERFORM 1
+            FROM bank_connection_orphaned_items o
+            WHERE o.id = v_reconciliation.id
+              AND o.status = 'pending_reconciliation'
+              AND o.household_id IS NOT DISTINCT FROM v_reconciliation.household_id
+              AND o.connection_id IS NOT DISTINCT FROM v_reconciliation.connection_id
+            FOR UPDATE NOWAIT;
+        EXCEPTION
+            WHEN lock_not_available THEN
+                CONTINUE;
+        END;
+
+        IF NOT FOUND THEN
+            CONTINUE;
+        END IF;
+
+        IF v_connection_is_live THEN
+            UPDATE bank_connection_orphaned_items
+            SET status = 'reconciled',
+                encrypted_access_token = NULL,
+                revoked_at = now(),
+                next_attempt_at = NULL,
+                last_error_code = 'CONNECTION_FINALIZED'
+            WHERE id = v_reconciliation.id;
+        ELSE
+            UPDATE bank_connection_orphaned_items
+            SET status = 'pending_revocation',
+                next_attempt_at = now()
+            WHERE id = v_reconciliation.id;
+        END IF;
+    END LOOP;
+
+    -- A crashed provider call is an ambiguous failure, never success. This
+    -- outbox-only mutation runs after every connection-locking reconciliation
+    -- step so the transaction never acquires a connection behind an outbox.
     UPDATE bank_connection_orphaned_items
     SET status = CASE WHEN attempts >= max_attempts THEN 'exhausted' ELSE 'retry_wait' END,
         next_attempt_at = CASE WHEN attempts >= max_attempts THEN NULL ELSE now() END,
@@ -1107,35 +1383,6 @@ BEGIN
         last_error_code = 'WORKER_LEASE_EXPIRED'
     WHERE status = 'processing'
       AND lease_expires_at <= now();
-
-    -- Reconciliation rows are never blindly revoked. If the connection exists,
-    -- the duplicate credential is purged; otherwise the Item is safe to revoke.
-    UPDATE bank_connection_orphaned_items o
-    SET status = 'reconciled',
-        encrypted_access_token = NULL,
-        revoked_at = now(),
-        next_attempt_at = NULL,
-        last_error_code = 'CONNECTION_FINALIZED'
-    WHERE o.status = 'pending_reconciliation'
-      AND EXISTS (
-          SELECT 1
-          FROM bank_connections c
-          WHERE c.id = o.connection_id
-            AND c.deleted_at IS NULL
-            AND c.status <> 'disconnected'
-      );
-
-    UPDATE bank_connection_orphaned_items o
-    SET status = 'pending_revocation',
-        next_attempt_at = now()
-    WHERE o.status = 'pending_reconciliation'
-      AND NOT EXISTS (
-          SELECT 1
-          FROM bank_connections c
-          WHERE c.id = o.connection_id
-            AND c.deleted_at IS NULL
-            AND c.status <> 'disconnected'
-      );
 
     RETURN QUERY
     WITH candidates AS (
@@ -1153,6 +1400,7 @@ BEGIN
         UPDATE bank_connection_orphaned_items o
         SET status = 'processing',
             attempts = o.attempts + 1,
+            provider_work_started_at = COALESCE(o.provider_work_started_at, now()),
             lease_token = gen_random_uuid(),
             lease_expires_at = now() + make_interval(secs => p_lease_seconds),
             next_attempt_at = NULL
@@ -1340,9 +1588,71 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    v_household_id UUID;
     v_connection_id UUID;
     v_count BIGINT := 0;
 BEGIN
+    IF p_owner_id IS NULL THEN
+        RAISE EXCEPTION 'owner is required' USING ERRCODE = 'not_null_violation';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('bank-connection-owner:' || p_owner_id::TEXT, 0)
+    );
+
+    UPDATE users
+    SET deleted_at = COALESCE(deleted_at, now())
+    WHERE id = p_owner_id;
+
+    -- Serialize every household that can still finalize a reservation before
+    -- identities are removed. If finalization won, its connection is observed
+    -- below; if erasure won, deleting the reservation makes every delayed
+    -- finalizer return a definitive non-finalized result.
+    FOR v_household_id IN
+        SELECT DISTINCT scope.household_id
+        FROM (
+            SELECT unnest(p_household_ids) AS household_id
+            WHERE p_household_ids IS NOT NULL
+            UNION
+            SELECT c.household_id
+            FROM bank_connections c
+            WHERE c.owner_id = p_owner_id
+               OR (
+                   p_household_ids IS NOT NULL
+                   AND c.household_id = ANY(p_household_ids)
+               )
+            UNION
+            SELECT o.household_id
+            FROM bank_connection_orphaned_items o
+            WHERE o.owner_id = p_owner_id
+               OR (
+                   p_household_ids IS NOT NULL
+                   AND o.household_id = ANY(p_household_ids)
+               )
+            UNION
+            SELECT r.household_id
+            FROM bank_connection_reservations r
+            WHERE r.owner_id = p_owner_id
+               OR (
+                   p_household_ids IS NOT NULL
+                   AND r.household_id = ANY(p_household_ids)
+               )
+        ) AS scope
+        WHERE scope.household_id IS NOT NULL
+        ORDER BY scope.household_id
+    LOOP
+        PERFORM pg_advisory_xact_lock(
+            bank_connection_reservation_lock_key(v_household_id)
+        );
+    END LOOP;
+
+    DELETE FROM bank_connection_reservations r
+    WHERE r.owner_id = p_owner_id
+       OR (
+           p_household_ids IS NOT NULL
+           AND r.household_id = ANY(p_household_ids)
+       );
+
     FOR v_connection_id IN
         SELECT c.id
         FROM bank_connections c
@@ -1481,9 +1791,17 @@ BEGIN
     SELECT count(*) INTO v_abandoned FROM expired;
 
     WITH purged AS (
-        DELETE FROM bank_connection_orphaned_items
-        WHERE status IN ('revoked', 'reconciled', 'abandoned')
-          AND revoked_at <= now() - COALESCE(p_terminal_retention, interval '90 days')
+        DELETE FROM bank_connection_orphaned_items o
+        WHERE o.status IN ('revoked', 'reconciled', 'abandoned')
+          AND o.revoked_at <= now() - COALESCE(p_terminal_retention, interval '90 days')
+          AND NOT EXISTS (
+              SELECT 1
+              FROM bank_connection_reservations r
+              WHERE r.household_id = o.household_id
+                AND r.owner_id = o.owner_id
+                AND r.provider = o.provider
+                AND r.expires_at > clock_timestamp()
+          )
         RETURNING 1
     )
     SELECT count(*) INTO v_deleted FROM purged;

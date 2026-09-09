@@ -15,10 +15,7 @@ BEGIN
         SELECT 1
         FROM bank_connection_orphaned_items
         WHERE reason = 'account_deletion'
-           OR (
-               reason IN ('user_disconnect', 'entitlement_downgrade')
-               AND status IN ('revoked', 'reconciled', 'abandoned')
-           )
+           OR provider_work_started_at IS NOT NULL
     ) THEN
         RAISE EXCEPTION
             'cannot reverse durable bank revocation after identity severance or terminal provider work';
@@ -82,6 +79,11 @@ $$;
 DROP TRIGGER IF EXISTS trg_bank_connection_retention_selections_updated_at
     ON bank_connection_retention_selections;
 DROP TABLE IF EXISTS bank_connection_retention_selections;
+
+-- Allow the Stage 6 credential shape while pending and legacy credentials are
+-- restored. The Stage 6 NOT NULL/status constraints are installed below.
+ALTER TABLE bank_connections
+    DROP CONSTRAINT bank_connections_credential_state_check;
 
 -- Restore pending Stage 7 connection credentials before deleting their outbox
 -- records. The guard above guarantees none has completed externally.
@@ -158,6 +160,7 @@ ALTER TABLE bank_connection_orphaned_items
     ),
     DROP COLUMN recovery_attempts,
     DROP COLUMN max_attempts,
+    DROP COLUMN provider_work_started_at,
     DROP COLUMN lease_expires_at,
     DROP COLUMN lease_token,
     DROP COLUMN next_attempt_at,
@@ -169,13 +172,189 @@ CREATE INDEX idx_bank_connection_orphaned_items_open
     WHERE status IN ('pending_revocation', 'pending_reconciliation');
 
 ALTER TABLE bank_connections
-    DROP CONSTRAINT bank_connections_credential_state_check,
     DROP CONSTRAINT bank_connections_status_valid,
     ADD CONSTRAINT bank_connections_status_valid CHECK (
         status IN ('active', 'needs_reauth', 'disconnected', 'error')
     ),
     ALTER COLUMN encrypted_access_token SET NOT NULL,
     DROP COLUMN revocation_enqueued_at;
+
+-- Restore the Stage 6 finalizer and handoff recorder without the Stage 7
+-- connection-id tombstone protocol.
+CREATE OR REPLACE FUNCTION public.finalize_bank_connection_reservation(
+    p_reservation_id UUID,
+    p_household_id UUID,
+    p_owner_id UUID,
+    p_provider TEXT,
+    p_institution_id TEXT,
+    p_institution_name TEXT,
+    p_encrypted_access_token TEXT,
+    p_metadata JSONB DEFAULT '{}'::jsonb,
+    p_connection_id UUID DEFAULT NULL
+)
+RETURNS TABLE (
+    status        TEXT,
+    connection_id UUID,
+    created_at    TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_reservation bank_connection_reservations%ROWTYPE;
+    v_existing    bank_connections%ROWTYPE;
+    v_cap         BIGINT;
+    v_live        BIGINT;
+    v_reserved    BIGINT;
+    v_id          UUID;
+    v_created_at  TIMESTAMPTZ;
+BEGIN
+    IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
+        RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(p_household_id));
+
+    IF p_connection_id IS NOT NULL THEN
+        SELECT * INTO v_existing
+        FROM bank_connections
+        WHERE id = p_connection_id AND household_id = p_household_id;
+
+        IF FOUND THEN
+            IF v_existing.deleted_at IS NULL THEN
+                RETURN QUERY SELECT 'finalized'::TEXT, v_existing.id, v_existing.created_at;
+            ELSE
+                RETURN QUERY SELECT
+                    'already_disconnected'::TEXT,
+                    NULL::UUID,
+                    NULL::TIMESTAMPTZ;
+            END IF;
+            RETURN;
+        END IF;
+    END IF;
+
+    DELETE FROM bank_connection_reservations
+    WHERE household_id = p_household_id
+      AND expires_at <= now()
+      AND id <> p_reservation_id;
+
+    SELECT * INTO v_reservation
+    FROM bank_connection_reservations
+    WHERE id = p_reservation_id AND household_id = p_household_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT
+            'reservation_not_found'::TEXT,
+            NULL::UUID,
+            NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    DELETE FROM bank_connection_reservations WHERE id = p_reservation_id;
+    v_cap := bank_connection_cap_for_household(p_household_id);
+
+    SELECT count(*) INTO v_live
+    FROM bank_connections
+    WHERE household_id = p_household_id AND deleted_at IS NULL;
+
+    SELECT count(*) INTO v_reserved
+    FROM bank_connection_reservations
+    WHERE household_id = p_household_id AND expires_at > now();
+
+    IF v_cap <= 0 THEN
+        RETURN QUERY SELECT 'premium_required'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    IF (v_live + v_reserved) >= v_cap THEN
+        RETURN QUERY SELECT 'at_cap'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    INSERT INTO bank_connections (
+        id,
+        household_id,
+        owner_id,
+        provider,
+        institution_id,
+        institution_name,
+        encrypted_access_token,
+        status,
+        metadata
+    )
+    VALUES (
+        COALESCE(p_connection_id, gen_random_uuid()),
+        p_household_id,
+        p_owner_id,
+        p_provider,
+        p_institution_id,
+        p_institution_name,
+        p_encrypted_access_token,
+        'active',
+        COALESCE(p_metadata, '{}'::jsonb)
+    )
+    RETURNING id, bank_connections.created_at INTO v_id, v_created_at;
+
+    RETURN QUERY SELECT 'finalized'::TEXT, v_id, v_created_at;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.record_orphaned_bank_item(
+    p_household_id UUID,
+    p_owner_id UUID,
+    p_provider TEXT,
+    p_encrypted_access_token TEXT,
+    p_last_error_code TEXT DEFAULT NULL,
+    p_status TEXT DEFAULT 'pending_revocation',
+    p_connection_id UUID DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
+        RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
+    END IF;
+    IF p_status IS NULL OR p_status NOT IN ('pending_revocation', 'pending_reconciliation') THEN
+        RAISE EXCEPTION 'an orphan handoff must be recorded in an open status'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    IF p_encrypted_access_token IS NULL OR btrim(p_encrypted_access_token) = '' THEN
+        RAISE EXCEPTION 'encrypted access token is required to retain revocation capability'
+            USING ERRCODE = 'not_null_violation';
+    END IF;
+
+    INSERT INTO bank_connection_orphaned_items (
+        household_id,
+        owner_id,
+        connection_id,
+        provider,
+        encrypted_access_token,
+        status,
+        attempts,
+        last_error_code
+    )
+    VALUES (
+        p_household_id,
+        p_owner_id,
+        p_connection_id,
+        p_provider,
+        p_encrypted_access_token,
+        p_status,
+        1,
+        p_last_error_code
+    )
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
+END;
+$$;
 
 -- Restore the Stage 6 retention implementation.
 CREATE OR REPLACE FUNCTION public.purge_expired_orphaned_bank_items(

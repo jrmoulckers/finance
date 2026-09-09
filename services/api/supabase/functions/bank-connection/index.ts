@@ -520,16 +520,18 @@ const MAX_FINALIZE_ATTEMPTS = 2;
  * reservation advisory lock, so `absent` means "not visible to this snapshot",
  * not "will never exist". A finalize transaction that is still in flight — or
  * one that is merely queued behind the lock — is invisible to it and can commit
- * moments later. Taking the lock in the confirming read would narrow that window
- * but not close it, because a finalize that has not yet reached the lock would
- * simply acquire it afterwards.
+ * moments later.
  *
  * Revocation is destructive and unrecoverable, so exhausting the retries WITHOUT
  * a definite answer resolves to `unknown`: the caller withholds revocation and
- * hands the credential off for reconciliation instead. The Item is still
- * revoked promptly in every case where the database DID answer definitively
- * (`at_cap`, `premium_required`, `reservation_not_found`,
- * `already_disconnected`), which is what "definitely absent" means here.
+ * hands the credential off for reconciliation instead. That handoff acquires
+ * the same household lock as finalization and records the connection id as a
+ * durable tombstone. If finalization won, reconciliation preserves its live
+ * connection; if the handoff won, every later finalize replay returns
+ * `already_disconnected` without inserting a row. The Item is still revoked
+ * promptly in every case where the database DID answer definitively (`at_cap`,
+ * `premium_required`, `reservation_not_found`, `already_disconnected`), which
+ * is what "definitely absent" means here.
  */
 async function resolveFinalization(
   supabase: SupabaseClient,

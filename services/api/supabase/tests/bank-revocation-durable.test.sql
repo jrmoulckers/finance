@@ -425,6 +425,7 @@ SELECT pg_temp.assert_true(
         SELECT status = 'processing'
            AND attempts = 1
            AND encrypted_access_token IS NOT NULL
+           AND provider_work_started_at IS NOT NULL
         FROM bank_connection_orphaned_items
         WHERE id = (SELECT id FROM claimed_job)
     ),
@@ -836,6 +837,92 @@ SELECT pg_temp.assert_true(
     'Premium to Free/Plus disables every remaining live provider Item'
 );
 
+INSERT INTO bank_connection_reservations (
+    id, household_id, owner_id, provider, created_at, expires_at
+)
+VALUES (
+    '44050000-0000-4000-dffe-000000000001',
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'mx',
+    now() - interval '2 minutes',
+    now() - interval '1 minute'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'reservation_not_found'
+        FROM finalize_bank_connection_reservation(
+            '44050000-0000-4000-dffe-000000000001',
+            '44050000-0000-4000-9000-000000000001',
+            '44050000-0000-4000-8000-000000000001',
+            'mx',
+            'ins_expired_replay',
+            'Expired Replay Institution',
+            'enc_expired_replay',
+            '{}'::jsonb,
+            '44050000-0000-4000-dffe-000000000002'
+        )
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM bank_connection_reservations
+        WHERE id = '44050000-0000-4000-dffe-000000000001'
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM bank_connections
+        WHERE id = '44050000-0000-4000-dffe-000000000002'
+    ),
+    'an expired reservation cannot recreate a provider connection'
+);
+
+INSERT INTO bank_connection_orphaned_items (
+    id, household_id, owner_id, connection_id, provider,
+    encrypted_access_token, status, attempts, reason, revoked_at, retain_until
+)
+VALUES (
+    '44050000-0000-4000-dfff-000000000001',
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    '44050000-0000-4000-dfff-000000000002',
+    'plaid', NULL, 'revoked', 1, 'finalization_failure',
+    now() - interval '1 day', now() + interval '30 days'
+);
+
+INSERT INTO bank_connection_reservations (
+    id, household_id, owner_id, provider, expires_at
+)
+VALUES (
+    '44050000-0000-4000-dfff-000000000003',
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'plaid',
+    now() + interval '15 minutes'
+);
+
+SELECT * FROM purge_expired_orphaned_bank_items(interval '0 seconds');
+SELECT pg_temp.assert_true(
+    EXISTS (
+        SELECT 1
+        FROM bank_connection_orphaned_items
+        WHERE id = '44050000-0000-4000-dfff-000000000001'
+    ),
+    'terminal tombstones are retained while a matching reservation can still finalize'
+);
+
+DELETE FROM bank_connection_reservations
+WHERE id = '44050000-0000-4000-dfff-000000000003';
+SELECT * FROM purge_expired_orphaned_bank_items(interval '0 seconds');
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
+        SELECT 1
+        FROM bank_connection_orphaned_items
+        WHERE id = '44050000-0000-4000-dfff-000000000001'
+    ),
+    'terminal tombstones become purgeable after matching reservations are consumed'
+);
+
 -- ---------------------------------------------------------------------------
 -- Account deletion: durable processor erasure plus identity severance
 -- ---------------------------------------------------------------------------
@@ -884,9 +971,97 @@ SELECT status, attempts, recovery_attempts, next_attempt_at, last_error_code
 FROM bank_connection_orphaned_items
 WHERE id = '44050000-0000-4000-e000-000000000002';
 
+INSERT INTO bank_connection_reservations (
+    id, household_id, owner_id, provider, expires_at
+)
+VALUES (
+    '44050000-0000-4000-f000-000000000001',
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'plaid',
+    now() + interval '15 minutes'
+);
+
 SELECT sever_bank_revocation_identities_for_account(
     '44050000-0000-4000-8000-000000000001',
     ARRAY['44050000-0000-4000-9000-000000000001']::UUID[]
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
+        SELECT 1
+        FROM bank_connection_reservations
+        WHERE id = '44050000-0000-4000-f000-000000000001'
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM users
+        WHERE id = '44050000-0000-4000-8000-000000000001'
+          AND deleted_at IS NOT NULL
+    ),
+    'account deletion tombstones the owner and consumes reservations before identity severance'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'already_disconnected'
+        FROM finalize_bank_connection_reservation(
+            '44050000-0000-4000-f000-000000000001',
+            '44050000-0000-4000-9000-000000000001',
+            '44050000-0000-4000-8000-000000000001',
+            'plaid',
+            'ins_erasure_replay',
+            'Erasure Replay Institution',
+            'enc_erasure_replay',
+            '{}'::jsonb,
+            '44050000-0000-4000-f000-000000000002'
+        )
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM bank_connections
+        WHERE id = '44050000-0000-4000-f000-000000000002'
+    ),
+    'a delayed finalizer is rejected after account identity severance'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'forbidden'
+        FROM reserve_bank_connection_slot(
+            '44050000-0000-4000-9000-000000000001',
+            '44050000-0000-4000-8000-000000000001',
+            'plaid',
+            60
+        )
+    ),
+    'a deleted account cannot create a new bank reservation'
+);
+
+CREATE TEMP TABLE late_erasure_handoff AS
+SELECT record_orphaned_bank_item(
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'plaid',
+    'enc_late_erasure_handoff',
+    'FINALIZE_OUTCOME_UNKNOWN',
+    'pending_reconciliation',
+    '44050000-0000-4000-f000-000000000003'
+) AS id;
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'pending_revocation'
+           AND reason = 'account_deletion'
+           AND owner_id IS NULL
+           AND household_id IS NULL
+           AND connection_id IS NULL
+           AND erasure_requested_at IS NOT NULL
+           AND retain_until <= now() + interval '7 days'
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM late_erasure_handoff)
+    ),
+    'a late unknown finalization outcome remains revocable without restoring deleted identity'
 );
 
 SELECT pg_temp.assert_true(
