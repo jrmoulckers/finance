@@ -189,32 +189,24 @@ SELECT pg_temp.assert_true(
 -- Reuse the real grant only to seed additional minimized projection fixtures.
 -- The outbox consumes this table as the sole authority and never reinterprets
 -- provider evidence.
-INSERT INTO current_household_entitlements (
-    household_id, display_tier, is_premium_sponsored,
-    bank_connection_allowance, source_base_grant_id,
-    effective_at, expires_at
-)
-SELECT
-    '44050000-0000-4000-9000-000000000002'::UUID,
-    'family',
-    false,
-    4,
-    source_base_grant_id,
-    effective_at,
-    expires_at
-FROM current_household_entitlements
-WHERE household_id = '44050000-0000-4000-9000-000000000001'
-UNION ALL
-SELECT
-    '44050000-0000-4000-9000-000000000003'::UUID,
-    'premium',
-    true,
-    2,
-    source_base_grant_id,
-    effective_at,
-    expires_at
-FROM current_household_entitlements
-WHERE household_id = '44050000-0000-4000-9000-000000000001';
+UPDATE current_household_entitlements target
+SET display_tier = fixture.display_tier,
+    is_premium_sponsored = fixture.is_premium_sponsored,
+    bank_connection_allowance = fixture.bank_connection_allowance,
+    source_base_grant_id = source.source_base_grant_id,
+    effective_at = source.effective_at,
+    expires_at = source.expires_at
+FROM (
+    VALUES
+        ('44050000-0000-4000-9000-000000000002'::UUID, 'family'::TEXT, false, 4::BIGINT),
+        ('44050000-0000-4000-9000-000000000003'::UUID, 'premium'::TEXT, true, 2::BIGINT)
+) AS fixture(household_id, display_tier, is_premium_sponsored, bank_connection_allowance)
+CROSS JOIN (
+    SELECT source_base_grant_id, effective_at, expires_at
+    FROM current_household_entitlements
+    WHERE household_id = '44050000-0000-4000-9000-000000000001'
+) source
+WHERE target.household_id = fixture.household_id;
 
 INSERT INTO bank_connections (
     id, household_id, owner_id, provider, institution_id, institution_name,
