@@ -640,8 +640,8 @@ SELECT pg_temp.assert_true(
     'the reservation holder consumes exactly the final slot it reserved'
 );
 
--- An expired reservation holds nothing, and a finalize that arrives after both
--- expiry and refill is rejected rather than exceeding the cap.
+-- An expired reservation holds nothing, and a finalize that arrives after
+-- expiry is rejected before it can create a connection, even after refill.
 INSERT INTO bank_connection_reservations (id, household_id, owner_id, provider, created_at, expires_at)
 VALUES (
     '44041000-0000-4000-d000-000000000004',
@@ -659,7 +659,7 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
     (
-        SELECT status = 'at_cap'
+        SELECT status = 'reservation_not_found'
         FROM finalize_bank_connection_reservation(
             '44041000-0000-4000-d000-000000000004',
             '44041000-0000-4000-9000-000000000001',
@@ -668,7 +668,25 @@ SELECT pg_temp.assert_true(
             '44041000-0000-4000-e000-000000000006'
         )
     ),
-    'finalizing an expired reservation whose slot was refilled is rejected as at_cap'
+    'finalizing an expired reservation is rejected as reservation_not_found'
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
+        SELECT 1
+        FROM bank_connection_reservations
+        WHERE id = '44041000-0000-4000-d000-000000000004'
+    ),
+    'the rejected expired reservation is consumed'
+);
+
+SELECT pg_temp.assert_true(
+    NOT EXISTS (
+        SELECT 1
+        FROM bank_connections
+        WHERE id = '44041000-0000-4000-e000-000000000006'
+    ),
+    'the rejected expired reservation cannot create a connection'
 );
 
 -- ---------------------------------------------------------------------------
