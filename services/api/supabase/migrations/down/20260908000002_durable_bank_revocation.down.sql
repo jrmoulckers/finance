@@ -92,6 +92,38 @@ ALTER TABLE bank_connection_orphaned_items
     DROP COLUMN idempotency_key,
     DROP COLUMN operation;
 
+CREATE OR REPLACE FUNCTION public.complete_orphaned_bank_item(
+    p_id UUID,
+    p_status TEXT,
+    p_last_error_code TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    IF p_status IS NULL OR p_status NOT IN ('revoked', 'abandoned') THEN
+        RAISE EXCEPTION 'terminal status must be revoked or abandoned'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    UPDATE bank_connection_orphaned_items
+    SET status = p_status,
+        encrypted_access_token = NULL,
+        revoked_at = now(),
+        attempts = attempts + 1,
+        last_error_code = COALESCE(p_last_error_code, last_error_code)
+    WHERE id = p_id
+      AND status IN ('pending_revocation', 'pending_reconciliation');
+
+    GET DIAGNOSTICS v_updated = ROW_COUNT;
+    RETURN v_updated > 0;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.purge_expired_orphaned_bank_items(
     p_terminal_retention INTERVAL DEFAULT interval '90 days'
 )

@@ -911,7 +911,8 @@ SET retain_until = now() - interval '1 minute'
 WHERE encrypted_access_token = 'enc_orphan_reconcile';
 
 UPDATE bank_connection_orphaned_items
-SET revoked_at = now() - interval '200 days'
+SET revoked_at = now() - interval '200 days',
+    completed_at = now() - interval '200 days'
 WHERE status = 'revoked';
 
 SELECT pg_temp.assert_true(

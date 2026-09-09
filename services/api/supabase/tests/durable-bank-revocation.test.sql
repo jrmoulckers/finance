@@ -319,6 +319,20 @@ SELECT pg_temp.assert_true(
     'credential transfer and sync disablement commit into one durable outbox'
 );
 
+SELECT pg_temp.assert_true(
+    NOT complete_orphaned_bank_item(
+        (
+            SELECT id
+            FROM bank_connection_orphaned_items
+            WHERE operation = 'downgrade'
+            ORDER BY created_at, id
+            LIMIT 1
+        ),
+        'revoked'
+    ),
+    'the Stage 6 helper cannot bypass leased processing for connection-backed jobs'
+);
+
 -- Provider outage -> bounded jittered retry -> confirmed success.
 CREATE TEMP TABLE claimed_revocations AS
 SELECT * FROM claim_bank_connection_revocations(1);

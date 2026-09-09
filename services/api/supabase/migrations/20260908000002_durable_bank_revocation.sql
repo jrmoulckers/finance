@@ -435,6 +435,42 @@ BEGIN
 END;
 $$;
 
+-- Keep the Stage 6 completion API valid for orphan-finalization handoffs while
+-- preventing it from bypassing the leased worker for connection-backed jobs.
+CREATE OR REPLACE FUNCTION public.complete_orphaned_bank_item(
+    p_id UUID,
+    p_status TEXT,
+    p_last_error_code TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    IF p_status IS NULL OR p_status NOT IN ('revoked', 'abandoned') THEN
+        RAISE EXCEPTION 'terminal status must be revoked or abandoned'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    UPDATE bank_connection_orphaned_items
+    SET status = p_status,
+        encrypted_access_token = NULL,
+        revoked_at = now(),
+        completed_at = now(),
+        attempts = LEAST(attempts + 1, max_attempts),
+        last_error_code = COALESCE(p_last_error_code, last_error_code)
+    WHERE id = p_id
+      AND operation = 'orphan_finalization'
+      AND status IN ('pending_revocation', 'pending_reconciliation');
+
+    GET DIAGNOSTICS v_updated = ROW_COUNT;
+    RETURN v_updated > 0;
+END;
+$$;
+
 -- =============================================================================
 -- Authenticated retention selection and projection-driven fallback
 -- =============================================================================
