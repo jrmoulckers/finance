@@ -836,13 +836,13 @@ SELECT pg_temp.assert_true(
     (
         SELECT status = 'abandoned'
            AND encrypted_access_token IS NULL
-           AND household_id IS NULL
-           AND owner_id IS NULL
+           AND household_id = '44050000-0000-4000-9000-000000000001'
+           AND owner_id = '44050000-0000-4000-8000-000000000001'
            AND connection_id IS NULL
         FROM bank_connection_orphaned_items
         WHERE id = (SELECT id FROM exhausted_claim)
     ),
-    'bounded retention purges exhausted credentials and every beneficiary identifier'
+    'bounded retention purges exhausted credentials while retaining normal audit correlation'
 );
 
 SELECT pg_temp.assert_true(
