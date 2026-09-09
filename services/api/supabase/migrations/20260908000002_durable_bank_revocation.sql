@@ -553,7 +553,10 @@ STRICT
 SECURITY DEFINER
 SET search_path = public
 AS $$
-    SELECT encode(digest('bank-revocation:' || p_owner_id::TEXT, 'sha256'), 'hex');
+    SELECT encode(
+        extensions.digest('bank-revocation:' || p_owner_id::TEXT, 'sha256'),
+        'hex'
+    );
 $$;
 
 CREATE FUNCTION public.enforce_bank_connection_erasure_barrier()
