@@ -1091,7 +1091,7 @@ BEGIN
         RETURN NEW;
     END IF;
     IF NEW.import_source_id IS NULL
-       OR NEW.import_source_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+       OR NEW.import_source_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
         RAISE EXCEPTION 'aggregator transaction is missing its connection source'
             USING ERRCODE = 'check_violation';
     END IF;
