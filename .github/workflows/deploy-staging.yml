@@ -64,7 +64,7 @@ jobs:
       gate_reason: ${{ steps.gate.outputs.gate_reason }}
     steps:
       - name: Checkout target commit
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
@@ -247,7 +247,7 @@ jobs:
 
     steps:
       - name: Checkout target commit
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
 
@@ -404,7 +404,7 @@ jobs:
 
     steps:
       - name: Checkout target commit
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
 
