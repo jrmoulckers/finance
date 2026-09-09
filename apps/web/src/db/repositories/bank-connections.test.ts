@@ -93,6 +93,32 @@ describe('listBankConnectionHealth', () => {
     expect(connection.lastSyncedAt).toBe('2026-03-01T00:00:00Z');
   });
 
+  it('presents a pending revocation as disconnecting instead of an unknown error', async () => {
+    mockQuery.mockResolvedValueOnce(
+      result([
+        {
+          id: 'conn-pending',
+          provider: 'plaid',
+          institution_name: 'Pending Bank',
+          connection_status: 'revocation_pending',
+          connection_last_synced_at: '2026-03-01T00:00:00Z',
+          error_code: null,
+          health_status: 'healthy',
+          error_category: null,
+          staleness_minutes: null,
+          last_successful_sync: null,
+          provider_type: 'aggregator',
+        },
+      ]),
+    );
+
+    const [connection] = await listBankConnectionHealth(mockDb);
+
+    expect(connection.healthStatus).toBe('revocation_pending');
+    expect(connection.connectionStatus).toBe('revocation_pending');
+    expect(connection.needsReauth).toBe(false);
+  });
+
   it('ignores unknown health/category values', async () => {
     mockQuery.mockResolvedValueOnce(
       result([

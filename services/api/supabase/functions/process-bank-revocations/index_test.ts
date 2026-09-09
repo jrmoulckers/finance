@@ -27,6 +27,21 @@ function fakeClient(options: { resultError?: boolean; disposition?: string } = {
           error: null,
         });
       }
+      if (name === 'recover_exhausted_bank_revocations') {
+        return Promise.resolve({ data: 1, error: null });
+      }
+      if (name === 'purge_expired_orphaned_bank_items') {
+        return Promise.resolve({ data: [{ abandoned: 1, deleted: 1 }], error: null });
+      }
+      if (name === 'bank_revocation_reconciliation_summary') {
+        return Promise.resolve({
+          data: [
+            { status: 'pending_reconciliation', reason: 'finalization_failure', jobs: '3' },
+            { status: 'abandoned', reason: 'finalization_failure', jobs: '4' },
+          ],
+          error: null,
+        });
+      }
       if (name === 'claim_bank_revocation_jobs') {
         return Promise.resolve({
           data: [
@@ -81,10 +96,23 @@ Deno.test('worker treats provider already-invalid as terminal success', async ()
   const result = fake.calls.find((call) => call.name === 'record_bank_revocation_result');
   assertEquals(result?.args.p_succeeded, true);
   assertEquals(result?.args.p_error_code, 'ALREADY_INVALID');
+  assertEquals(
+    fake.calls.slice(0, 3).map((call) => call.name),
+    [
+      'recover_exhausted_bank_revocations',
+      'purge_expired_orphaned_bank_items',
+      'bank_revocation_reconciliation_summary',
+    ],
+  );
   const raw = await response.text();
   assertEquals(raw.includes('enc::credential'), false);
   assertEquals(raw.includes('job-1'), false);
   assertEquals(raw.includes('plaid'), false);
+  const body = JSON.parse(raw) as Record<string, unknown>;
+  assertEquals(body.recovered, 1);
+  assertEquals(body.purged, 2);
+  assertEquals(body.pendingReconciliation, 3);
+  assertEquals(body.abandonedReconciliation, 4);
 });
 
 Deno.test('missing provider configuration remains a retry failure', async () => {

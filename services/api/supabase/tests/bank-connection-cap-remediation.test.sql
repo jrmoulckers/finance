@@ -84,15 +84,11 @@ SELECT pg_temp.assert_true(
     AND NOT has_function_privilege(
         'anon', 'bank_connection_finalization_state(uuid,uuid)', 'EXECUTE'
     )
-    AND NOT has_function_privilege(
-        'authenticated', 'complete_orphaned_bank_item(uuid,text,text)', 'EXECUTE'
-    )
-    AND NOT has_function_privilege(
-        'authenticated', 'record_orphaned_bank_item_attempt(uuid,text)', 'EXECUTE'
-    )
-    AND NOT has_function_privilege(
-        'authenticated', 'claim_orphaned_bank_items_for_erasure(uuid,uuid[])', 'EXECUTE'
-    )
+    AND to_regprocedure('public.complete_orphaned_bank_item(uuid,text,text)') IS NULL
+    AND to_regprocedure('public.record_orphaned_bank_item_attempt(uuid,text)') IS NULL
+    AND to_regprocedure(
+        'public.claim_orphaned_bank_items_for_erasure(uuid,uuid[])'
+    ) IS NULL
     AND NOT has_function_privilege(
         'authenticated', 'purge_expired_orphaned_bank_items(interval)', 'EXECUTE'
     )
@@ -114,15 +110,6 @@ SELECT pg_temp.assert_true(
         'service_role', 'bank_connection_finalization_state(uuid,uuid)', 'EXECUTE'
     )
     AND has_function_privilege(
-        'service_role', 'complete_orphaned_bank_item(uuid,text,text)', 'EXECUTE'
-    )
-    AND has_function_privilege(
-        'service_role', 'record_orphaned_bank_item_attempt(uuid,text)', 'EXECUTE'
-    )
-    AND has_function_privilege(
-        'service_role', 'claim_orphaned_bank_items_for_erasure(uuid,uuid[])', 'EXECUTE'
-    )
-    AND has_function_privilege(
         'service_role', 'purge_expired_orphaned_bank_items(interval)', 'EXECUTE'
     )
     AND has_function_privilege(
@@ -141,9 +128,6 @@ SELECT pg_temp.assert_true(
         WHERE n.nspname = 'public'
           AND p.proname IN (
               'bank_connection_finalization_state',
-              'complete_orphaned_bank_item',
-              'record_orphaned_bank_item_attempt',
-              'claim_orphaned_bank_items_for_erasure',
               'purge_expired_orphaned_bank_items',
               'record_orphaned_bank_item',
               'finalize_bank_connection_reservation',
@@ -504,11 +488,12 @@ SELECT pg_temp.assert_true(
 -- Soft-delete, reconnect/undelete, and the direct-writer boundary
 -- ---------------------------------------------------------------------------
 
--- `encrypted_access_token` is NOT NULL on this table, so a soft delete marks the
--- row rather than clearing the credential; credential destruction happens
--- through the crypto-shred path, not here.
+-- Stage 7 terminal disconnection purges the credential after provider
+-- revocation has been confirmed.
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected'
+SET deleted_at = now(),
+    status = 'disconnected',
+    encrypted_access_token = NULL
 WHERE id = '44041000-0000-4000-e000-000000000002';
 
 SELECT pg_temp.assert_true(
@@ -543,9 +528,12 @@ SELECT pg_temp.assert_true(
     'the confirming read distinguishes disconnected from absent'
 );
 
--- Reconnect (undelete) is a NEW live row for allowance purposes and is checked
--- against the same one rule.
-UPDATE bank_connections SET deleted_at = NULL, status = 'active'
+-- A fresh provider credential can reconnect the historical row. It is a NEW
+-- live row for allowance purposes and is checked against the same one rule.
+UPDATE bank_connections
+SET deleted_at = NULL,
+    status = 'active',
+    encrypted_access_token = 'enc_reconnected'
 WHERE id = '44041000-0000-4000-e000-000000000002';
 
 SELECT pg_temp.assert_true(
@@ -573,12 +561,15 @@ VALUES (
     '44041000-0000-4000-e000-000000000004',
     '44041000-0000-4000-9000-000000000001',
     '44041000-0000-4000-8000-000000000001',
-    'plaid', 'ins_third', 'Third Institution', 'enc_third', 'disconnected', now()
+    'plaid', 'ins_third', 'Third Institution', NULL, 'disconnected', now()
 );
 
 SELECT pg_temp.expect_error(
     $sql$
-        UPDATE bank_connections SET deleted_at = NULL, status = 'active'
+        UPDATE bank_connections
+        SET deleted_at = NULL,
+            status = 'active',
+            encrypted_access_token = 'enc_third_reconnected'
         WHERE id = '44041000-0000-4000-e000-000000000004'
     $sql$,
     '23514',
@@ -593,7 +584,9 @@ SELECT pg_temp.expect_error(
 -- protects — a held reservation is consumed capacity for EVERY other writer.
 
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected'
+SET deleted_at = now(),
+    status = 'disconnected',
+    encrypted_access_token = NULL
 WHERE id = '44041000-0000-4000-e000-000000000003';
 
 INSERT INTO bank_connection_reservations (id, household_id, owner_id, provider, expires_at)
@@ -748,24 +741,22 @@ SELECT pg_temp.expect_error(
     'recording a handoff without a credential is rejected so revocation is never lost'
 );
 
--- A failed attempt must NOT discard the credential — it is the only way to
--- revoke — but it must be recorded.
+CREATE TEMP TABLE remediation_claimed_job AS
+SELECT * FROM claim_bank_revocation_jobs(1, 60);
+
 SELECT pg_temp.assert_true(
-    record_orphaned_bank_item_attempt(
-        (
-            SELECT id FROM bank_connection_orphaned_items
-            WHERE encrypted_access_token = 'enc_orphan_revoke'
-        ),
-        'PROVIDER_DOWN'
-    ),
-    'a failed revocation attempt is recorded against the open handoff'
+    (
+        SELECT record_bank_revocation_result(id, lease_token, false, 'PROVIDER_DOWN')
+        FROM remediation_claimed_job
+    ) = 'retry_wait',
+    'a failed leased revocation attempt is recorded against the open handoff'
 );
 
 SELECT pg_temp.assert_true(
     (
         SELECT attempts = 2 AND last_error_code = 'PROVIDER_DOWN'
            AND encrypted_access_token = 'enc_orphan_revoke'
-           AND status = 'pending_revocation'
+           AND status = 'retry_wait'
         FROM bank_connection_orphaned_items
         WHERE encrypted_access_token = 'enc_orphan_revoke'
     ),
@@ -773,14 +764,16 @@ SELECT pg_temp.assert_true(
 );
 
 -- Terminal disposition destroys the credential in the same statement.
+UPDATE bank_connection_orphaned_items
+SET next_attempt_at = now()
+WHERE encrypted_access_token = 'enc_orphan_revoke';
+DELETE FROM remediation_claimed_job WHERE true;
+INSERT INTO remediation_claimed_job SELECT * FROM claim_bank_revocation_jobs(1, 60);
 SELECT pg_temp.assert_true(
-    complete_orphaned_bank_item(
-        (
-            SELECT id FROM bank_connection_orphaned_items
-            WHERE encrypted_access_token = 'enc_orphan_revoke'
-        ),
-        'revoked'
-    ),
+    (
+        SELECT record_bank_revocation_result(id, lease_token, true, NULL)
+        FROM remediation_claimed_job
+    ) = 'revoked',
     'an open handoff can be moved to a terminal revoked state'
 );
 
@@ -797,29 +790,18 @@ SELECT pg_temp.assert_true(
     (
         SELECT status = 'revoked' AND revoked_at IS NOT NULL
         FROM bank_connection_orphaned_items
-        WHERE last_error_code = 'PROVIDER_DOWN'
+        WHERE id = (SELECT id FROM remediation_claimed_job)
     ),
     'terminal disposition records when it happened'
 );
 
 -- Terminal disposition is idempotent: a second call changes nothing.
 SELECT pg_temp.assert_true(
-    NOT complete_orphaned_bank_item(
-        (
-            SELECT id FROM bank_connection_orphaned_items
-            WHERE last_error_code = 'PROVIDER_DOWN'
-        ),
-        'revoked'
-    ),
+    (
+        SELECT record_bank_revocation_result(id, lease_token, true, NULL)
+        FROM remediation_claimed_job
+    ) = 'stale',
     'completing an already-terminal handoff is a no-op'
-);
-
-SELECT pg_temp.expect_error(
-    $sql$
-        SELECT complete_orphaned_bank_item(gen_random_uuid(), 'pending_revocation')
-    $sql$,
-    '23514',
-    'complete_orphaned_bank_item only accepts a terminal status'
 );
 
 -- The constraint, not just the RPC, forbids an open row without a credential.
@@ -831,43 +813,6 @@ SELECT pg_temp.expect_error(
     $sql$,
     '23514',
     'an open handoff cannot be stripped of its credential while it stays open'
-);
-
--- ---------------------------------------------------------------------------
--- Account-deletion erasure claim
--- ---------------------------------------------------------------------------
-
-SELECT pg_temp.assert_true(
-    (
-        SELECT count(*) = 1
-        FROM claim_orphaned_bank_items_for_erasure(
-            '44041000-0000-4000-8000-000000000001',
-            ARRAY['44041000-0000-4000-9000-000000000001']::UUID[]
-        )
-    ),
-    'account deletion claims the account''s open handoffs and returns them for revocation'
-);
-
-SELECT pg_temp.assert_true(
-    (
-        SELECT erasure_requested_at IS NOT NULL
-           AND retain_until <= now() + interval '7 days'
-           AND encrypted_access_token = 'enc_orphan_reconcile'
-        FROM bank_connection_orphaned_items
-        WHERE encrypted_access_token = 'enc_orphan_reconcile'
-    ),
-    'the erasure claim shortens retention without discarding the retry credential'
-);
-
-SELECT pg_temp.assert_true(
-    (
-        SELECT count(*) = 0
-        FROM claim_orphaned_bank_items_for_erasure(
-            '44041000-0000-4000-8000-0000000000ff',
-            ARRAY['44041000-0000-4000-9000-0000000000ff']::UUID[]
-        )
-    ),
-    'the erasure claim is scoped to the deleting account'
 );
 
 -- Erasure must survive the account rows it points at: the FKs are

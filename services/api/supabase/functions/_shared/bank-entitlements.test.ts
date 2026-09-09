@@ -17,15 +17,12 @@ import {
 } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 
 import {
-  claimOrphanedItemsForErasure,
-  completeOrphanedItem,
   confirmConnectionFinalization,
   connectionCapMessage,
   finalizeConnectionReservation,
   premiumRequiredMessage,
   readConnectionCapacity,
   recordOrphanedItem,
-  recordOrphanedItemAttempt,
   releaseConnectionReservation,
   reserveConnectionSlot,
   RESERVATION_TTL_SECONDS,
@@ -461,116 +458,6 @@ Deno.test('recordOrphanedItem returns null when the handoff cannot be written', 
     encryptedAccessToken: 'enc',
   });
   assertEquals(id, null);
-});
-
-// ---------------------------------------------------------------------------
-// Orphan terminal disposition and erasure claim
-// ---------------------------------------------------------------------------
-
-Deno.test('completeOrphanedItem reports the terminal transition and never throws', async () => {
-  const ok = clientReturning({ data: true, error: null });
-  assertEquals(await completeOrphanedItem(ok.client, { id: 'handoff-1', status: 'revoked' }), true);
-  assertEquals(ok.captured[0].fn, 'complete_orphaned_bank_item');
-  assertEquals(ok.captured[0].params, {
-    p_id: 'handoff-1',
-    p_status: 'revoked',
-    p_last_error_code: null,
-  });
-
-  const alreadyTerminal = clientReturning({ data: false, error: null });
-  assertEquals(
-    await completeOrphanedItem(alreadyTerminal.client, { id: 'handoff-1', status: 'abandoned' }),
-    false,
-  );
-
-  const failed = clientReturning({ data: null, error: { message: 'boom' } });
-  assertEquals(
-    await completeOrphanedItem(failed.client, { id: 'handoff-1', status: 'revoked' }),
-    false,
-  );
-
-  const throwing = {
-    rpc() {
-      throw new Error('transport');
-    },
-  } as unknown as SupabaseClient;
-  assertEquals(await completeOrphanedItem(throwing, { id: 'x', status: 'revoked' }), false);
-});
-
-Deno.test('recordOrphanedItemAttempt records the failure without discarding anything', async () => {
-  const { client, captured } = clientReturning({ data: true, error: null });
-  await recordOrphanedItemAttempt(client, { id: 'handoff-1', lastErrorCode: 'PROVIDER_DOWN' });
-  assertEquals(captured[0].fn, 'record_orphaned_bank_item_attempt');
-  assertEquals(captured[0].params, { p_id: 'handoff-1', p_last_error_code: 'PROVIDER_DOWN' });
-
-  const throwing = {
-    rpc() {
-      throw new Error('transport');
-    },
-  } as unknown as SupabaseClient;
-  await recordOrphanedItemAttempt(throwing, { id: 'x' });
-});
-
-Deno.test('claimOrphanedItemsForErasure maps claimed handoffs for revocation', async () => {
-  const { client, captured } = clientReturning({
-    data: [
-      {
-        id: 'handoff-1',
-        provider: 'plaid',
-        encrypted_access_token: 'enc-1',
-        status: 'pending_revocation',
-        connection_id: null,
-      },
-      {
-        id: 'handoff-2',
-        provider: 'mx',
-        encrypted_access_token: 'enc-2',
-        status: 'pending_reconciliation',
-        connection_id: 'conn-2',
-      },
-      // Defensive: a malformed row must not become an un-revocable entry.
-      { id: null, provider: null, encrypted_access_token: null, status: null, connection_id: null },
-    ],
-    error: null,
-  });
-
-  const claimed = await claimOrphanedItemsForErasure(client, {
-    ownerId: 'user-1',
-    householdIds: ['hh-1', 'hh-2'],
-  });
-
-  assertEquals(claimed.length, 2);
-  assertEquals(claimed[0], {
-    id: 'handoff-1',
-    provider: 'plaid',
-    encryptedAccessToken: 'enc-1',
-    status: 'pending_revocation',
-    connectionId: null,
-  });
-  assertEquals(claimed[1].status, 'pending_reconciliation');
-  assertEquals(claimed[1].connectionId, 'conn-2');
-  assertEquals(captured[0].fn, 'claim_orphaned_bank_items_for_erasure');
-  assertEquals(captured[0].params, {
-    p_owner_id: 'user-1',
-    p_household_ids: ['hh-1', 'hh-2'],
-  });
-});
-
-Deno.test('claimOrphanedItemsForErasure never blocks account deletion', async () => {
-  const failed = clientReturning({ data: null, error: { message: 'unavailable' } });
-  assertEquals(await claimOrphanedItemsForErasure(failed.client, { ownerId: 'user-1' }), []);
-
-  const throwing = {
-    rpc() {
-      throw new Error('transport');
-    },
-  } as unknown as SupabaseClient;
-  assertEquals(await claimOrphanedItemsForErasure(throwing, { ownerId: 'user-1' }), []);
-
-  // No households means "match on owner only", not "match every household".
-  const empty = clientReturning({ data: [], error: null });
-  await claimOrphanedItemsForErasure(empty.client, { ownerId: 'user-1', householdIds: [] });
-  assertEquals(empty.captured[0].params.p_household_ids, null);
 });
 
 Deno.test('readConnectionCapacity normalizes bigints and fails closed', async () => {

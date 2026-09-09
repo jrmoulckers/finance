@@ -17,6 +17,7 @@ import {
   claimBankRevocationJobs,
   enforceDueBankConnectionDowngrades,
   recordBankRevocationResult,
+  runBankRevocationMaintenance,
 } from '../_shared/bank-revocation-outbox.ts';
 import { revokeProviderToken, type TokenRevocationResult } from '../_shared/bank-revocation.ts';
 import {
@@ -77,6 +78,7 @@ export function createBankRevocationWorker(deps: BankRevocationWorkerDeps = {}) 
 
     try {
       const supabase = createClient();
+      const maintenance = await runBankRevocationMaintenance(supabase);
       await enforceDueBankConnectionDowngrades(supabase, 50);
       const jobs = await claimBankRevocationJobs(supabase, {
         limit: DEFAULT_BATCH_SIZE,
@@ -98,8 +100,9 @@ export function createBankRevocationWorker(deps: BankRevocationWorkerDeps = {}) 
         counts[disposition]++;
       }
 
-      logger.info('Bank revocation batch processed', counts);
-      return jsonResponse(req, counts);
+      const summary = { ...counts, ...maintenance };
+      logger.info('Bank revocation batch processed', summary);
+      return jsonResponse(req, summary);
     } catch {
       logger.error('Bank revocation batch failed');
       return internalErrorResponse(req);

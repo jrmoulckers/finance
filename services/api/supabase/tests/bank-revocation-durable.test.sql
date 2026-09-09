@@ -73,8 +73,13 @@ SELECT pg_temp.assert_true(
     )
     AND NOT has_function_privilege(
         'anon', 'bank_revocation_reconciliation_summary()', 'EXECUTE'
-    ),
-    'no durable revocation RPC may be client executable'
+    )
+    AND to_regprocedure('public.complete_orphaned_bank_item(uuid,text,text)') IS NULL
+    AND to_regprocedure('public.record_orphaned_bank_item_attempt(uuid,text)') IS NULL
+    AND to_regprocedure(
+        'public.claim_orphaned_bank_items_for_erasure(uuid,uuid[])'
+    ) IS NULL,
+    'no durable revocation RPC may be client executable or bypass the lease state machine'
 );
 
 SELECT pg_temp.assert_true(
@@ -262,6 +267,21 @@ VALUES (
     'Imported history'
 );
 
+SELECT pg_temp.expect_error(
+    $sql$
+        UPDATE bank_connections
+        SET status = 'revocation_pending',
+            encrypted_access_token = NULL
+        WHERE id = '44050000-0000-4000-d000-000000000004'
+    $sql$,
+    '23514',
+    'a pending state without the server-authored durable handoff marker is rejected'
+);
+
+UPDATE bank_connections
+SET status = 'needs_reauth'
+WHERE id = '44050000-0000-4000-d000-000000000001';
+
 -- ---------------------------------------------------------------------------
 -- Explicit retained selection and Family -> Premium
 -- ---------------------------------------------------------------------------
@@ -293,8 +313,9 @@ SELECT pg_temp.assert_true(
     'a selection containing a non-live or cross-household id is rejected'
 );
 
--- Restore the valid selection after the invalid request (the invalid request
--- does not overwrite it) and make its server-resolved boundary due.
+-- The invalid request does not overwrite the valid selection. Move its
+-- server-resolved boundary into the past to model the scheduled transition,
+-- then advance the same grant by two projection versions.
 UPDATE bank_connection_retention_selections
 SET entitlement_expires_at = now() - interval '1 second'
 WHERE household_id = '44050000-0000-4000-9000-000000000001';
@@ -302,7 +323,8 @@ WHERE household_id = '44050000-0000-4000-9000-000000000001';
 UPDATE current_household_entitlements
 SET display_tier = 'premium',
     is_premium_sponsored = true,
-    bank_connection_allowance = 2
+    bank_connection_allowance = 2,
+    projection_version = projection_version + 2
 WHERE household_id = '44050000-0000-4000-9000-000000000001';
 
 SELECT pg_temp.assert_true(
@@ -339,6 +361,46 @@ SELECT pg_temp.assert_true(
           AND encrypted_access_token IS NOT NULL
     ),
     'excess connections are disabled and credential-handoff is atomic'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT count(*) = 1 AND min(used) = 2
+        FROM bank_connection_capacity(
+            '44050000-0000-4000-9000-000000000001'
+        )
+    ),
+    'revocation_pending history releases Stage 6 capacity immediately'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT connection_previous_status = 'needs_reauth'
+        FROM bank_connection_orphaned_items
+        WHERE connection_id = '44050000-0000-4000-d000-000000000001'
+    ),
+    'enqueue preserves the exact live status for a reversible rollback'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT revocation_enqueued_at IS NOT NULL
+        FROM bank_connections
+        WHERE id = '44050000-0000-4000-d000-000000000001'
+    ),
+    'the connection keeps a server-authored marker after outbox identity severance'
+);
+
+SELECT pg_temp.expect_error(
+    $sql$
+        UPDATE bank_connections
+        SET status = 'active',
+            encrypted_access_token = 'enc_reactivated',
+            revocation_enqueued_at = NULL
+        WHERE id = '44050000-0000-4000-d000-000000000001'
+    $sql$,
+    '23514',
+    'status-only reactivation cannot bypass the household cap'
 );
 
 SELECT pg_temp.assert_true(
@@ -423,6 +485,25 @@ WHERE id = (SELECT id FROM claimed_job);
 SELECT pg_temp.assert_true(
     recover_exhausted_bank_revocations(1) = 0,
     'exhausted recovery cannot be repeated without bound'
+);
+
+SELECT enqueue_bank_connection_revocation_internal(
+    (SELECT connection_id FROM bank_connection_orphaned_items WHERE id = (SELECT id FROM claimed_job)),
+    'account_deletion',
+    false
+);
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'pending_revocation'
+           AND attempts = 0
+           AND recovery_attempts = 2
+           AND reason = 'account_deletion'
+           AND next_attempt_at <= now()
+           AND last_error_code IS NULL
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM claimed_job)
+    ),
+    'a new account-deletion reason makes an exhausted job immediately claimable'
 );
 
 -- Finish the recovered job, then prove a duplicate result cannot transition it
@@ -530,6 +611,31 @@ SELECT pg_temp.assert_true(
     'authenticated disconnect is durably queued'
 );
 
+CREATE TEMP TABLE released_capacity AS
+SELECT * FROM reserve_bank_connection_slot(
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'plaid',
+    60
+);
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'reserved' AND used = 2
+        FROM released_capacity
+    ),
+    'disconnect releases capacity before provider revocation completes'
+);
+SELECT pg_temp.assert_true(
+    (
+        SELECT release_bank_connection_reservation(
+            reservation_id,
+            '44050000-0000-4000-9000-000000000001'
+        )
+        FROM released_capacity
+    ),
+    'the capacity proof releases its temporary reservation'
+);
+
 UPDATE current_household_entitlements
 SET display_tier = 'free',
     is_premium_sponsored = false,
@@ -555,6 +661,33 @@ SELECT pg_temp.assert_true(
 SELECT sever_bank_revocation_identities_for_account(
     '44050000-0000-4000-8000-000000000001',
     ARRAY['44050000-0000-4000-9000-000000000001']::UUID[]
+);
+
+SELECT pg_temp.assert_true(
+    sever_bank_revocation_identities_for_account(
+        '44050000-0000-4000-8000-000000000001',
+        ARRAY['44050000-0000-4000-9000-000000000001']::UUID[]
+    ) = 0,
+    'account-deletion identity severance is idempotent after the first durable handoff'
+);
+
+UPDATE bank_connection_orphaned_items
+SET retain_until = now() - interval '1 second'
+WHERE id = (
+    SELECT id
+    FROM bank_connection_orphaned_items
+    WHERE reason = 'account_deletion'
+      AND status IN ('pending_revocation', 'retry_wait', 'exhausted')
+    ORDER BY created_at, id
+    LIMIT 1
+);
+SELECT * FROM purge_expired_orphaned_bank_items();
+SELECT pg_temp.assert_true(
+    sever_bank_revocation_identities_for_account(
+        '44050000-0000-4000-8000-000000000001',
+        ARRAY['44050000-0000-4000-9000-000000000001']::UUID[]
+    ) = 0,
+    'account deletion remains retryable after a severed outbox row is terminally abandoned'
 );
 
 SELECT pg_temp.assert_true(

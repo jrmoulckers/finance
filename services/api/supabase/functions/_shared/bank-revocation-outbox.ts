@@ -18,6 +18,13 @@ export interface ClaimedBankRevocationJob {
   leaseToken: string;
 }
 
+export interface BankRevocationMaintenanceResult {
+  recovered: number;
+  purged: number;
+  pendingReconciliation: number;
+  abandonedReconciliation: number;
+}
+
 interface SelectionRow {
   status: RetentionSelectionStatus;
   effective_at: string | null;
@@ -153,4 +160,43 @@ export async function recordBankRevocationResult(
     throw new Error('bank revocation result response was invalid');
   }
   return String(data) as 'revoked' | 'retry_wait' | 'exhausted' | 'stale';
+}
+
+function countValue(data: unknown): number {
+  const value = Array.isArray(data) ? data[0] : data;
+  return typeof value === 'number' ? value : Number(value ?? 0);
+}
+
+export async function runBankRevocationMaintenance(
+  supabase: SupabaseClient,
+): Promise<BankRevocationMaintenanceResult> {
+  const recoveredResult = await supabase.rpc('recover_exhausted_bank_revocations');
+  if (recoveredResult.error) throw new Error('bank revocation recovery failed');
+
+  const purgeResult = await supabase.rpc('purge_expired_orphaned_bank_items');
+  if (purgeResult.error) throw new Error('bank revocation retention purge failed');
+  const purge = firstRow<{
+    abandoned?: number | string | null;
+    deleted?: number | string | null;
+  }>(purgeResult.data);
+
+  const summaryResult = await supabase.rpc('bank_revocation_reconciliation_summary');
+  if (summaryResult.error) throw new Error('bank revocation reconciliation summary failed');
+  const summaryRows = Array.isArray(summaryResult.data)
+    ? (summaryResult.data as Array<{
+        status?: string | null;
+        jobs?: number | string | null;
+      }>)
+    : [];
+
+  return {
+    recovered: countValue(recoveredResult.data),
+    purged: countValue(purge?.abandoned) + countValue(purge?.deleted),
+    pendingReconciliation: summaryRows
+      .filter((row) => row.status === 'pending_reconciliation')
+      .reduce((total, row) => total + countValue(row.jobs), 0),
+    abandonedReconciliation: summaryRows
+      .filter((row) => row.status === 'abandoned')
+      .reduce((total, row) => total + countValue(row.jobs), 0),
+  };
 }

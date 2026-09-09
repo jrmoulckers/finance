@@ -19,6 +19,7 @@
 -- can no longer synchronize because its credential has moved server-side.
 ALTER TABLE bank_connections
     ALTER COLUMN encrypted_access_token DROP NOT NULL,
+    ADD COLUMN revocation_enqueued_at TIMESTAMPTZ,
     DROP CONSTRAINT bank_connections_status_valid,
     ADD CONSTRAINT bank_connections_status_valid CHECK (
         status IN ('active', 'needs_reauth', 'revocation_pending', 'disconnected', 'error')
@@ -28,11 +29,13 @@ ALTER TABLE bank_connections
             status IN ('active', 'needs_reauth', 'error')
             AND deleted_at IS NULL
             AND encrypted_access_token IS NOT NULL
+            AND revocation_enqueued_at IS NULL
         )
         OR (
             status = 'revocation_pending'
             AND deleted_at IS NULL
             AND encrypted_access_token IS NULL
+            AND revocation_enqueued_at IS NOT NULL
         )
         OR (
             status = 'disconnected'
@@ -76,15 +79,348 @@ SET encrypted_access_token = NULL
 WHERE status = 'disconnected';
 ALTER TABLE bank_connections VALIDATE CONSTRAINT bank_connections_credential_state_check;
 
+CREATE FUNCTION public.protect_bank_connection_revocation_state()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+    IF current_user IN ('anon', 'authenticated') THEN
+        IF (
+            TG_OP = 'INSERT'
+            AND (
+                NEW.status IN ('revocation_pending', 'disconnected')
+                OR NEW.revocation_enqueued_at IS NOT NULL
+            )
+        ) OR (
+            TG_OP = 'UPDATE'
+            AND (
+                NEW.revocation_enqueued_at IS DISTINCT FROM OLD.revocation_enqueued_at
+                OR (
+                    OLD.status IS DISTINCT FROM NEW.status
+                    AND (
+                        OLD.status IN ('revocation_pending', 'disconnected')
+                        OR NEW.status IN ('revocation_pending', 'disconnected')
+                    )
+                )
+                OR (
+                    OLD.encrypted_access_token IS NOT NULL
+                    AND NEW.encrypted_access_token IS NULL
+                )
+            )
+        ) THEN
+            RAISE EXCEPTION 'revocation state is server-managed'
+                USING ERRCODE = 'insufficient_privilege';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_protect_bank_connection_revocation_state
+    BEFORE INSERT OR UPDATE OF status, encrypted_access_token, revocation_enqueued_at
+    ON bank_connections
+    FOR EACH ROW
+    EXECUTE FUNCTION public.protect_bank_connection_revocation_state();
+
 COMMENT ON COLUMN bank_connections.status IS
     'active/needs_reauth/error may synchronize; revocation_pending is disabled '
     'immediately while the server-only outbox retries provider erasure; '
     'disconnected is terminal after provider revoked/already-invalid.';
 
+CREATE OR REPLACE FUNCTION public.bank_connection_consumes_cap(
+    p_status TEXT,
+    p_deleted_at TIMESTAMPTZ
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+    SELECT p_deleted_at IS NULL
+       AND p_status IN ('active', 'needs_reauth', 'error');
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.bank_connection_consumes_cap(TEXT, TIMESTAMPTZ)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.bank_connection_consumes_cap(TEXT, TIMESTAMPTZ)
+    TO service_role;
+
+-- Every Stage 6 capacity boundary uses the same Stage 7 definition of a
+-- billable live row. A queued revocation releases capacity immediately while
+-- its non-deleted connection history remains available to server workflows.
+CREATE OR REPLACE FUNCTION public.reserve_bank_connection_slot(
+    p_household_id UUID,
+    p_owner_id UUID,
+    p_provider TEXT,
+    p_ttl_seconds INTEGER DEFAULT 900
+)
+RETURNS TABLE (
+    status         TEXT,
+    reservation_id UUID,
+    cap            BIGINT,
+    used           BIGINT,
+    expires_at     TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_authorized BOOLEAN;
+    v_cap        BIGINT;
+    v_live       BIGINT;
+    v_reserved   BIGINT;
+    v_expires    TIMESTAMPTZ;
+    v_id         UUID;
+BEGIN
+    IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
+        RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
+    END IF;
+
+    SELECT
+        EXISTS (
+            SELECT 1 FROM household_members m
+            WHERE m.household_id = p_household_id
+              AND m.user_id = p_owner_id
+              AND m.deleted_at IS NULL
+              AND m.role IN ('owner', 'admin')
+        )
+        OR EXISTS (
+            SELECT 1 FROM households h
+            WHERE h.id = p_household_id
+              AND h.created_by = p_owner_id
+              AND h.deleted_at IS NULL
+        )
+    INTO v_authorized;
+
+    IF NOT v_authorized THEN
+        RETURN QUERY SELECT 'forbidden'::TEXT, NULL::UUID, NULL::BIGINT, NULL::BIGINT,
+                            NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(p_household_id));
+
+    DELETE FROM bank_connection_reservations
+    WHERE household_id = p_household_id
+      AND bank_connection_reservations.expires_at <= now();
+
+    v_cap := bank_connection_cap_for_household(p_household_id);
+
+    SELECT count(*) INTO v_live
+    FROM bank_connections c
+    WHERE c.household_id = p_household_id
+      AND bank_connection_consumes_cap(c.status, c.deleted_at);
+
+    SELECT count(*) INTO v_reserved
+    FROM bank_connection_reservations
+    WHERE household_id = p_household_id
+      AND bank_connection_reservations.expires_at > now();
+
+    IF v_cap <= 0 THEN
+        RETURN QUERY SELECT 'premium_required'::TEXT, NULL::UUID, v_cap, (v_live + v_reserved),
+                            NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    IF (v_live + v_reserved) >= v_cap THEN
+        RETURN QUERY SELECT 'at_cap'::TEXT, NULL::UUID, v_cap, (v_live + v_reserved),
+                            NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    v_expires := now() + make_interval(secs => GREATEST(COALESCE(p_ttl_seconds, 900), 1));
+
+    INSERT INTO bank_connection_reservations (household_id, owner_id, provider, expires_at)
+    VALUES (p_household_id, p_owner_id, p_provider, v_expires)
+    RETURNING id INTO v_id;
+
+    RETURN QUERY SELECT 'reserved'::TEXT, v_id, v_cap, (v_live + v_reserved + 1), v_expires;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.bank_connection_capacity(p_household_id UUID)
+RETURNS TABLE (cap BIGINT, used BIGINT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT
+        bank_connection_cap_for_household(p_household_id),
+        (
+            SELECT count(*) FROM bank_connections c
+            WHERE c.household_id = p_household_id
+              AND bank_connection_consumes_cap(c.status, c.deleted_at)
+        )
+        + (
+            SELECT count(*) FROM bank_connection_reservations
+            WHERE household_id = p_household_id AND expires_at > now()
+        );
+$$;
+
+CREATE OR REPLACE FUNCTION public.finalize_bank_connection_reservation(
+    p_reservation_id UUID,
+    p_household_id UUID,
+    p_owner_id UUID,
+    p_provider TEXT,
+    p_institution_id TEXT,
+    p_institution_name TEXT,
+    p_encrypted_access_token TEXT,
+    p_metadata JSONB DEFAULT '{}'::jsonb,
+    p_connection_id UUID DEFAULT NULL
+)
+RETURNS TABLE (
+    status        TEXT,
+    connection_id UUID,
+    created_at    TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_reservation bank_connection_reservations%ROWTYPE;
+    v_existing    bank_connections%ROWTYPE;
+    v_cap         BIGINT;
+    v_live        BIGINT;
+    v_reserved    BIGINT;
+    v_id          UUID;
+    v_created_at  TIMESTAMPTZ;
+BEGIN
+    IF p_provider IS NULL OR p_provider NOT IN ('plaid', 'mx') THEN
+        RAISE EXCEPTION 'invalid provider' USING ERRCODE = 'check_violation';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(p_household_id));
+
+    IF p_connection_id IS NOT NULL THEN
+        SELECT * INTO v_existing
+        FROM bank_connections
+        WHERE id = p_connection_id AND household_id = p_household_id;
+
+        IF FOUND THEN
+            IF bank_connection_consumes_cap(v_existing.status, v_existing.deleted_at) THEN
+                RETURN QUERY SELECT 'finalized'::TEXT, v_existing.id, v_existing.created_at;
+            ELSE
+                RETURN QUERY SELECT 'already_disconnected'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+            END IF;
+            RETURN;
+        END IF;
+    END IF;
+
+    DELETE FROM bank_connection_reservations
+    WHERE household_id = p_household_id
+      AND expires_at <= now()
+      AND id <> p_reservation_id;
+
+    SELECT * INTO v_reservation
+    FROM bank_connection_reservations
+    WHERE id = p_reservation_id AND household_id = p_household_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT 'reservation_not_found'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    DELETE FROM bank_connection_reservations WHERE id = p_reservation_id;
+    v_cap := bank_connection_cap_for_household(p_household_id);
+
+    SELECT count(*) INTO v_live
+    FROM bank_connections c
+    WHERE c.household_id = p_household_id
+      AND bank_connection_consumes_cap(c.status, c.deleted_at);
+
+    SELECT count(*) INTO v_reserved
+    FROM bank_connection_reservations
+    WHERE household_id = p_household_id AND expires_at > now();
+
+    IF v_cap <= 0 THEN
+        RETURN QUERY SELECT 'premium_required'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    IF (v_live + v_reserved) >= v_cap THEN
+        RETURN QUERY SELECT 'at_cap'::TEXT, NULL::UUID, NULL::TIMESTAMPTZ;
+        RETURN;
+    END IF;
+
+    INSERT INTO bank_connections (
+        id, household_id, owner_id, provider, institution_id, institution_name,
+        encrypted_access_token, status, metadata
+    )
+    VALUES (
+        COALESCE(p_connection_id, gen_random_uuid()), p_household_id, p_owner_id,
+        p_provider, p_institution_id, p_institution_name, p_encrypted_access_token,
+        'active', COALESCE(p_metadata, '{}'::jsonb)
+    )
+    RETURNING id, bank_connections.created_at INTO v_id, v_created_at;
+
+    RETURN QUERY SELECT 'finalized'::TEXT, v_id, v_created_at;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.enforce_bank_connection_cap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_cap  BIGINT;
+    v_used BIGINT;
+BEGIN
+    IF NOT bank_connection_consumes_cap(NEW.status, NEW.deleted_at) THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'UPDATE'
+       AND bank_connection_consumes_cap(OLD.status, OLD.deleted_at)
+       AND OLD.household_id = NEW.household_id THEN
+        RETURN NEW;
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(bank_connection_reservation_lock_key(NEW.household_id));
+    v_cap := bank_connection_cap_for_household(NEW.household_id);
+
+    SELECT
+        (
+            SELECT count(*) FROM bank_connections c
+            WHERE c.household_id = NEW.household_id
+              AND bank_connection_consumes_cap(c.status, c.deleted_at)
+              AND c.id <> NEW.id
+        )
+        + (
+            SELECT count(*) FROM bank_connection_reservations
+            WHERE household_id = NEW.household_id AND expires_at > now()
+        )
+    INTO v_used;
+
+    IF v_used >= v_cap THEN
+        RAISE EXCEPTION
+            'Household % has reached its bank connection allowance of %',
+            NEW.household_id, v_cap
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_bank_connections_cap ON bank_connections;
+CREATE TRIGGER trg_bank_connections_cap
+    BEFORE INSERT OR UPDATE OF household_id, deleted_at, status
+    ON bank_connections
+    FOR EACH ROW
+    EXECUTE FUNCTION public.enforce_bank_connection_cap();
+
 -- The Stage 6 table is deliberately retained rather than creating a second
 -- queue. These columns turn it into the unified revocation state machine.
 ALTER TABLE bank_connection_orphaned_items
     ADD COLUMN reason TEXT NOT NULL DEFAULT 'finalization_failure',
+    ADD COLUMN connection_previous_status TEXT,
     ADD COLUMN next_attempt_at TIMESTAMPTZ DEFAULT now(),
     ADD COLUMN lease_token UUID,
     ADD COLUMN lease_expires_at TIMESTAMPTZ,
@@ -111,6 +447,10 @@ ALTER TABLE bank_connection_orphaned_items
             'entitlement_downgrade',
             'account_deletion'
         )
+    ),
+    ADD CONSTRAINT bank_connection_orphaned_items_previous_status_valid CHECK (
+        connection_previous_status IS NULL
+        OR connection_previous_status IN ('active', 'needs_reauth', 'error')
     ),
     ADD CONSTRAINT bank_connection_orphaned_items_attempt_bounds CHECK (
         attempts >= 0
@@ -176,6 +516,12 @@ COMMENT ON TABLE bank_connection_orphaned_items IS
     'safe state/error metadata, and temporary ownership linkage. RLS-protected, '
     'service-role only, excluded from APIs, export, logs, telemetry, and '
     'PowerSync. Terminal rows never retain a credential.';
+
+-- Stage 6's direct mutators bypass leases and bounded retry accounting. Stage 7
+-- owns every transition through the claim/result state machine instead.
+DROP FUNCTION IF EXISTS public.complete_orphaned_bank_item(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.record_orphaned_bank_item_attempt(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.claim_orphaned_bank_items_for_erasure(UUID, UUID[]);
 
 -- A selection is non-credential state, kept server-only and bound to the
 -- server-resolved projection subject that was current when it was submitted.
@@ -265,6 +611,7 @@ BEGIN
         UPDATE bank_connection_orphaned_items
         SET status = CASE
                 WHEN status = 'pending_reconciliation' THEN 'pending_revocation'
+                WHEN status = 'exhausted' THEN 'pending_revocation'
                 ELSE status
             END,
             reason = CASE
@@ -281,6 +628,23 @@ BEGIN
                 THEN LEAST(retain_until, now() + interval '7 days')
                 ELSE retain_until
             END,
+            connection_previous_status = COALESCE(
+                connection_previous_status,
+                CASE
+                    WHEN v_connection.status IN ('active', 'needs_reauth', 'error')
+                    THEN v_connection.status
+                    ELSE NULL
+                END
+            ),
+            attempts = CASE WHEN status = 'exhausted' THEN 0 ELSE attempts END,
+            next_attempt_at = CASE
+                WHEN status = 'exhausted' THEN now()
+                ELSE LEAST(COALESCE(next_attempt_at, now()), now())
+            END,
+            last_error_code = CASE
+                WHEN status = 'exhausted' THEN NULL
+                ELSE last_error_code
+            END,
             owner_id = CASE WHEN p_detach_identity THEN NULL ELSE owner_id END,
             household_id = CASE WHEN p_detach_identity THEN NULL ELSE household_id END,
             connection_id = CASE WHEN p_detach_identity THEN NULL ELSE connection_id END
@@ -289,12 +653,25 @@ BEGIN
         UPDATE bank_connections
         SET status = 'revocation_pending',
             encrypted_access_token = NULL,
+            revocation_enqueued_at = COALESCE(revocation_enqueued_at, now()),
             error_code = NULL,
             error_message = NULL
         WHERE id = v_connection.id
           AND deleted_at IS NULL
           AND status <> 'disconnected';
         RETURN v_existing;
+    END IF;
+
+    -- Repeated account deletion calls arrive after the first call has severed
+    -- the outbox identity. The pending row proves the durable handoff already
+    -- committed, so a missing connection credential is an idempotent no-op.
+    IF v_connection.status = 'revocation_pending'
+       AND v_connection.encrypted_access_token IS NULL THEN
+        IF v_connection.revocation_enqueued_at IS NULL THEN
+            RAISE EXCEPTION 'revocation handoff marker is unavailable'
+                USING ERRCODE = 'not_null_violation';
+        END IF;
+        RETURN NULL;
     END IF;
 
     IF v_connection.deleted_at IS NOT NULL OR v_connection.status = 'disconnected' THEN
@@ -314,6 +691,7 @@ BEGIN
         status,
         attempts,
         reason,
+        connection_previous_status,
         next_attempt_at,
         erasure_requested_at,
         retain_until
@@ -327,6 +705,7 @@ BEGIN
         'pending_revocation',
         0,
         p_reason,
+        v_connection.status,
         now(),
         CASE WHEN p_reason = 'account_deletion' THEN now() ELSE NULL END,
         CASE
@@ -339,6 +718,7 @@ BEGIN
     UPDATE bank_connections
     SET status = 'revocation_pending',
         encrypted_access_token = NULL,
+        revocation_enqueued_at = now(),
         error_code = NULL,
         error_message = NULL
     WHERE id = v_connection.id;
@@ -540,16 +920,9 @@ BEGIN
     v_selection_found := FOUND;
     IF v_selection_found
        AND v_projection.household_id IS NOT NULL
-       AND (
-           (
-               v_projection.projection_version = v_selection.projection_version
-               AND v_projection.source_base_grant_id IS NOT DISTINCT FROM
-                   v_selection.entitlement_grant_id
-               AND v_projection.expires_at IS NOT DISTINCT FROM
-                   v_selection.entitlement_expires_at
-           )
-           OR v_projection.projection_version = v_selection.projection_version + 1
-       )
+       AND v_projection.projection_version >= v_selection.projection_version
+       AND v_projection.source_base_grant_id IS NOT DISTINCT FROM
+           v_selection.entitlement_grant_id
        AND cardinality(v_selection.retained_connection_ids) <= v_cap
        AND NOT EXISTS (
            SELECT 1

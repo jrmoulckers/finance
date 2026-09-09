@@ -24,8 +24,6 @@
     "test:bank-connection-handler": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/bank-connection/index_test.ts supabase/functions/account-delete/index_test.ts",
     "test:bank-revocation-handlers": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/_shared/bank-revocation.test.ts supabase/functions/_shared/bank-revocation-outbox.test.ts supabase/functions/bank-connection/index_test.ts supabase/functions/bank-webhook/index.test.ts supabase/functions/account-delete/index_test.ts supabase/functions/process-bank-revocations/index_test.ts",
     "test:bank-revocation-concurrency": "pwsh -File supabase/tests/bank-revocation-concurrency.test.ps1",
-    "test:bank-orphaned-items-sql": "docker exec -i supabase_db_finance-local psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/bank-orphaned-items.test.sql",
-    "test:bank-orphaned-items-reconciliation-sql": "docker exec -i supabase_db_finance-local psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/bank-orphaned-items-reconciliation.test.sql",
     "test:bank-revocation-durable-sql": "docker exec -i supabase_db_finance-local psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/bank-revocation-durable.test.sql",
     "test:entitlement-api": "psql -v ON_ERROR_STOP=1 -f supabase/tests/entitlement-api-contract.test.sql",
     "test:entitlement-gateway": "node --test supabase/tests/entitlement-gateway.integration.test.mjs",
