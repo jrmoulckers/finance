@@ -492,6 +492,11 @@ INSERT INTO bank_connection_accounts (
     'external-1', 'Imported Account', true
 );
 
+CREATE TEMP TABLE imported_history_snapshot AS
+SELECT balance_cents
+FROM accounts
+WHERE id = '44050000-0000-4000-8100-000000000001';
+
 CREATE TEMP TABLE first_claim AS
 SELECT *
 FROM claim_bank_revocation_jobs(
@@ -584,7 +589,7 @@ SELECT pg_temp.assert_true(
     EXISTS (
         SELECT 1 FROM accounts
         WHERE id = '44050000-0000-4000-8100-000000000001'
-          AND balance_cents = 12345
+          AND balance_cents = (SELECT balance_cents FROM imported_history_snapshot)
           AND deleted_at IS NULL
     )
     AND EXISTS (
