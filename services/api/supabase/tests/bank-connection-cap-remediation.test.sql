@@ -695,7 +695,7 @@ SELECT pg_temp.assert_true(
             '44041000-0000-4000-8000-000000000001',
             'plaid', 'enc_orphan_reconcile', 'FINALIZE_OUTCOME_UNKNOWN',
             'pending_reconciliation',
-            '44041000-0000-4000-e000-000000000007'
+            '44041000-0000-4000-e000-000000000002'
         )
     ),
     'an unknown finalization records a pending_reconciliation handoff carrying the connection id'
@@ -704,7 +704,7 @@ SELECT pg_temp.assert_true(
 SELECT pg_temp.assert_true(
     (
         SELECT status = 'pending_reconciliation'
-           AND connection_id = '44041000-0000-4000-e000-000000000007'
+           AND connection_id = '44041000-0000-4000-e000-000000000002'
            AND encrypted_access_token = 'enc_orphan_reconcile'
            AND revoked_at IS NULL
            AND retain_until > now()
@@ -751,7 +751,7 @@ SELECT pg_temp.assert_true(
            AND revoked_at IS NOT NULL
            AND last_error_code = 'CONNECTION_FINALIZED'
         FROM bank_connection_orphaned_items
-        WHERE connection_id = '44041000-0000-4000-e000-000000000007'
+        WHERE connection_id = '44041000-0000-4000-e000-000000000002'
     ),
     'a reconciliation handoff for an existing connection is terminally purged'
 );
