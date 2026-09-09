@@ -237,7 +237,8 @@ if (@($claimedOne | Where-Object { $claimedTwo -contains $_ }).Count -ne 0) {
     throw 'concurrent workers claimed the same revocation row'
 }
 
-# Explicit cleanup of this uniquely named disposable fixture.
+# Clean mutable fixture rows. Append-only provider evidence and its identity
+# parents remain only until the disposable Supabase container is torn down.
 Invoke-LocalPsql @"
 DELETE FROM bank_connection_orphaned_items
 WHERE connection_id = ANY(ARRAY[
@@ -248,10 +249,7 @@ DELETE FROM bank_connections WHERE household_id = '$household';
 DELETE FROM current_household_entitlements WHERE household_id = '$household';
 DELETE FROM current_user_entitlements WHERE user_id = '$owner';
 DELETE FROM entitlement_grants WHERE billing_account_id = '$account';
-DELETE FROM billing_provider_events WHERE billing_account_id = '$account';
 DELETE FROM billing_subscriptions WHERE billing_account_id = '$account';
-DELETE FROM billing_provider_identities WHERE id = '$identity';
-DELETE FROM billing_accounts WHERE id = '$account';
 DELETE FROM household_members WHERE id = '$membership';
 DELETE FROM households WHERE id = '$household';
 DELETE FROM users WHERE id = '$owner';
