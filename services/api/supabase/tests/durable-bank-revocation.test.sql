@@ -424,14 +424,18 @@ SELECT pg_temp.assert_true(
         WHERE id = '44050000-0000-4000-f000-000000000001'
           AND balance_cents = 12345
           AND deleted_at IS NULL
-    )
-    AND EXISTS (
+    ),
+    'terminal revocation preserves imported account history'
+);
+
+SELECT pg_temp.assert_true(
+    EXISTS (
         SELECT 1 FROM transactions
         WHERE id = '44050000-0000-4000-f100-000000000001'
           AND amount_cents = 1234
           AND deleted_at IS NULL
     ),
-    'terminal revocation preserves imported account and transaction history'
+    'terminal revocation preserves imported transaction history'
 );
 
 -- Restart recovery reclaims an expired lease, while unknown finalization for a
