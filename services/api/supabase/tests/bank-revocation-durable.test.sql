@@ -1160,29 +1160,38 @@ WHERE id = '44050000-0000-4000-9000-000000000004';
 DELETE FROM users WHERE id = '44050000-0000-4000-8000-000000000005';
 DELETE FROM auth.users WHERE id = '44050000-0000-4000-8000-000000000005';
 
+SELECT count(*) AS post_delete_barrier_count
+FROM bank_connection_erasure_barriers
+WHERE owner_fingerprint = bank_connection_owner_fingerprint(
+    '44050000-0000-4000-8000-000000000005'
+);
+CREATE TEMP TABLE post_delete_finalize_result AS
+SELECT *
+FROM finalize_or_enqueue_bank_connection(
+    gen_random_uuid(),
+    '44050000-0000-4000-9000-000000000004',
+    '44050000-0000-4000-8000-000000000005',
+    'plaid',
+    'delete-race-after-auth',
+    'Synthetic post-delete race',
+    'enc-delete-race-after-auth',
+    '{}'::JSONB,
+    '44050000-0000-4000-d000-000000000497'
+);
+SELECT status FROM post_delete_finalize_result;
+SELECT pg_temp.assert_true(
+    (SELECT status = 'account_deleting' FROM post_delete_finalize_result),
+    'an exchange resuming after identity deletion is rejected by the barrier'
+);
 SELECT pg_temp.assert_true(
     (
-        SELECT status = 'account_deleting'
-        FROM finalize_or_enqueue_bank_connection(
-            gen_random_uuid(),
-            '44050000-0000-4000-9000-000000000004',
-            '44050000-0000-4000-8000-000000000005',
-            'plaid',
-            'delete-race-after-auth',
-            'Synthetic post-delete race',
-            'enc-delete-race-after-auth',
-            '{}'::JSONB,
-            '44050000-0000-4000-d000-000000000497'
-        )
-    )
-    AND (
         SELECT owner_id IS NULL
            AND household_id IS NULL
            AND encrypted_access_token = 'enc-delete-race-after-auth'
         FROM bank_connection_orphaned_items
         WHERE connection_id = '44050000-0000-4000-d000-000000000497'
     ),
-    'an exchange resuming after identity deletion still creates an anonymous durable handoff'
+    'an exchange resuming after identity deletion creates an anonymous durable handoff'
 );
 
 SELECT pg_temp.assert_true(
