@@ -399,8 +399,12 @@ SELECT pg_temp.assert_true(
             '44050000-0000-4000-e000-000000000001',
             '44050000-0000-4000-e000-000000000002'
         )
-    )
-    AND (
+    ),
+    'terminal revocation soft-deletes both excess connections'
+);
+
+SELECT pg_temp.assert_true(
+    (
         SELECT count(*) = 2
            AND bool_and(status IN ('revoked', 'already_invalid'))
            AND bool_and(encrypted_access_token IS NULL)
@@ -410,8 +414,12 @@ SELECT pg_temp.assert_true(
             '44050000-0000-4000-e000-000000000001',
             '44050000-0000-4000-e000-000000000002'
         )
-    )
-    AND EXISTS (
+    ),
+    'terminal revocation purges both outbox credentials'
+);
+
+SELECT pg_temp.assert_true(
+    EXISTS (
         SELECT 1 FROM accounts
         WHERE id = '44050000-0000-4000-f000-000000000001'
           AND balance_cents = 12345
@@ -423,7 +431,7 @@ SELECT pg_temp.assert_true(
           AND amount_cents = 1234
           AND deleted_at IS NULL
     ),
-    'terminal revocation soft-deletes only the connection and preserves history'
+    'terminal revocation preserves imported account and transaction history'
 );
 
 -- Restart recovery reclaims an expired lease, while unknown finalization for a
