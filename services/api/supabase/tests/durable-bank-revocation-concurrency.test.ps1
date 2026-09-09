@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 function Invoke-LocalPsql {
     param([Parameter(Mandatory = $true)][string]$Sql)
 
-    $output = $Sql | docker exec -i $Container psql -U supabase_admin -d postgres `
+    $output = $Sql | docker exec -e PGPASSWORD -i $Container psql -U supabase_admin -d postgres `
         -v ON_ERROR_STOP=1 -q -A -t
     if ($LASTEXITCODE -ne 0) {
         throw 'psql failed in the isolated durable-revocation database'
@@ -88,7 +88,7 @@ INSERT INTO bank_connections (
 
 $actionScript = {
     param($ContainerName, $Sql)
-    $Sql | docker exec -i $ContainerName psql -U supabase_admin -d postgres `
+    $Sql | docker exec -e PGPASSWORD -i $ContainerName psql -U supabase_admin -d postgres `
         -v ON_ERROR_STOP=1 -q
     if ($LASTEXITCODE -ne 0) {
         throw 'concurrent revocation action failed'
@@ -197,7 +197,7 @@ SELECT id FROM claim_bank_connection_revocations(2) ORDER BY id;
 $sleepSql
 COMMIT;
 "@
-    $result = $sql | docker exec -i $ContainerName psql -U supabase_admin -d postgres `
+    $result = $sql | docker exec -e PGPASSWORD -i $ContainerName psql -U supabase_admin -d postgres `
         -v ON_ERROR_STOP=1 -q -A -t
     if ($LASTEXITCODE -ne 0) {
         throw "worker claim failed: $ApplicationName"
@@ -210,7 +210,7 @@ $workerOne = Start-Job -ScriptBlock $workerScript `
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 do {
-    $wait = docker exec $Container psql -U supabase_admin -d postgres -q -A -t -c `
+    $wait = docker exec -e PGPASSWORD $Container psql -U supabase_admin -d postgres -q -A -t -c `
         "SELECT wait_event FROM pg_stat_activity WHERE application_name = 'revocation_worker_one_$run';"
     if ($LASTEXITCODE -ne 0) {
         throw 'could not inspect first worker state'
