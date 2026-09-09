@@ -67,6 +67,7 @@ import {
   type BankConnectionRow,
   type IngestionSummary,
 } from '../_shared/bank-ingest.ts';
+import { queueProviderPermissionRevocation } from '../_shared/bank-revocation-outbox.ts';
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -208,6 +209,7 @@ async function processPlaidEvent(
     .eq('provider', 'plaid')
     .contains('metadata', { item_id })
     .is('deleted_at', null)
+    .in('status', ['active', 'needs_reauth', 'error'])
     .single();
 
   if (!connection) {
@@ -232,7 +234,7 @@ async function processPlaidEvent(
         errorDetail: event.error?.error_code ?? webhook_code,
       });
     } else if (webhook_code === 'USER_PERMISSION_REVOKED') {
-      await supabase.from('bank_connections').update({ status: 'disconnected' }).eq('id', conn.id);
+      await queueProviderPermissionRevocation(supabase, conn.id);
       await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
         errorCategory: 'auth',
         errorDetail: webhook_code,
@@ -309,6 +311,7 @@ async function processMxEvent(
     .eq('provider', 'mx')
     .contains('metadata', { item_id: event.member_guid })
     .is('deleted_at', null)
+    .in('status', ['active', 'needs_reauth', 'error'])
     .single();
 
   if (!connection) {

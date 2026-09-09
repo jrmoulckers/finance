@@ -110,18 +110,6 @@ export type FinalizationConfirmation =
 /** Open (credential-bearing) states of a durable orphan handoff. */
 export type OrphanOpenStatus = 'pending_revocation' | 'pending_reconciliation';
 
-/** Terminal (credential-free) states of a durable orphan handoff. */
-export type OrphanTerminalStatus = 'revoked' | 'abandoned';
-
-/** One open orphan handoff claimed for account-deletion erasure. */
-export interface ClaimedOrphanedItem {
-  id: string;
-  provider: string;
-  encryptedAccessToken: string | null;
-  status: OrphanOpenStatus;
-  connectionId: string | null;
-}
-
 interface ReserveRow {
   status: string;
   reservation_id: string | null;
@@ -139,14 +127,6 @@ interface FinalizeRow {
 interface FinalizationStateRow {
   state: string | null;
   created_at: string | null;
-}
-
-interface ClaimedOrphanRow {
-  id: string | null;
-  provider: string | null;
-  encrypted_access_token: string | null;
-  status: string | null;
-  connection_id: string | null;
 }
 
 interface CapacityRow {
@@ -375,80 +355,6 @@ export async function recordOrphanedItem(
   if (typeof data === 'string') return data;
   const row = firstRow<string>(data);
   return typeof row === 'string' ? row : null;
-}
-
-/**
- * Move an open orphan handoff to a terminal state, destroying its stored
- * credential in the same database statement. Best-effort — never throws.
- */
-export async function completeOrphanedItem(
-  supabase: SupabaseClient,
-  params: { id: string; status: OrphanTerminalStatus; lastErrorCode?: string | null },
-): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.rpc('complete_orphaned_bank_item', {
-      p_id: params.id,
-      p_status: params.status,
-      p_last_error_code: params.lastErrorCode ?? null,
-    });
-    if (error) return false;
-    return firstRow<boolean>(data) === true || data === true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Record a failed revocation attempt WITHOUT discarding the credential, which
- * is the only remaining way to revoke. Best-effort — never throws.
- */
-export async function recordOrphanedItemAttempt(
-  supabase: SupabaseClient,
-  params: { id: string; lastErrorCode?: string | null },
-): Promise<void> {
-  try {
-    await supabase.rpc('record_orphaned_bank_item_attempt', {
-      p_id: params.id,
-      p_last_error_code: params.lastErrorCode ?? null,
-    });
-  } catch {
-    // Retention is still bounded by retain_until; the attempt count is advisory.
-  }
-}
-
-/**
- * Claim a deleting account's open orphan handoffs so their provider Items can
- * be revoked before the account's own rows are removed (GDPR Art. 17 processor
- * propagation). Also shortens their retention window.
- *
- * Best-effort — resolves to an empty list rather than throwing, because account
- * deletion must never be blocked by the handoff table.
- */
-export async function claimOrphanedItemsForErasure(
-  supabase: SupabaseClient,
-  params: { ownerId: string | null; householdIds?: readonly string[] },
-): Promise<ClaimedOrphanedItem[]> {
-  try {
-    const householdIds = params.householdIds ?? [];
-    const { data, error } = await supabase.rpc('claim_orphaned_bank_items_for_erasure', {
-      p_owner_id: params.ownerId,
-      p_household_ids: householdIds.length > 0 ? householdIds : null,
-    });
-    if (error || !Array.isArray(data)) return [];
-
-    return (data as ClaimedOrphanRow[])
-      .filter((row): row is ClaimedOrphanRow & { id: string } => typeof row?.id === 'string')
-      .map((row) => ({
-        id: row.id,
-        provider: row.provider ?? '',
-        encryptedAccessToken: row.encrypted_access_token,
-        status:
-          row.status === 'pending_reconciliation' ? 'pending_reconciliation' : 'pending_revocation',
-        connectionId: row.connection_id,
-      }));
-  } catch {
-    return [];
-  }
 }
 
 /**

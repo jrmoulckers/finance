@@ -59,6 +59,6 @@ describe('ThirdPartyPermissionReview', () => {
 
     await user.click(screen.getByRole('button', { name: /Acknowledge scam-resistant/i }));
 
-    expect(screen.getByText(/Safety guidance acknowledged/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Safety guidance acknowledged/i)).toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@ export type ConnectionHealthStatus =
   | 'healthy'
   | 'stale'
   | 'auth_expired'
+  | 'revocation_pending'
   | 'provider_down'
   | 'rate_limited'
   | 'institution_error'
@@ -115,6 +116,7 @@ const VALID_HEALTH_STATUSES: ReadonlySet<string> = new Set([
   'healthy',
   'stale',
   'auth_expired',
+  'revocation_pending',
   'provider_down',
   'rate_limited',
   'institution_error',
@@ -165,6 +167,8 @@ function fallbackHealthStatus(connectionStatus: string): ConnectionHealthStatus 
       return 'healthy';
     case 'needs_reauth':
       return 'auth_expired';
+    case 'revocation_pending':
+      return 'revocation_pending';
     case 'disconnected':
       return 'provider_down';
     default:
@@ -241,7 +245,10 @@ const CONNECTION_HEALTH_QUERY = `
 
 function mapConnectionHealth(row: Row): BankConnectionHealth {
   const connectionStatus = requireString(row.connection_status, 'connection_status');
-  const healthStatus = toHealthStatus(row.health_status) ?? fallbackHealthStatus(connectionStatus);
+  const healthStatus =
+    connectionStatus === 'revocation_pending'
+      ? 'revocation_pending'
+      : (toHealthStatus(row.health_status) ?? fallbackHealthStatus(connectionStatus));
   const providerType = optionalString(row.provider_type) ?? 'aggregator';
 
   return {

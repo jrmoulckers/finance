@@ -539,7 +539,9 @@ SELECT pg_temp.expect_error(
 
 -- Free one live slot first so there is room to reserve again.
 UPDATE bank_connections
-SET deleted_at = now()
+SET deleted_at = now(),
+    status = 'disconnected',
+    encrypted_access_token = NULL
 WHERE household_id = '44040000-0000-4000-9000-000000000001'
   AND institution_id = 'ins_final';
 
