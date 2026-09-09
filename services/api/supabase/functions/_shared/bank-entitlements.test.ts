@@ -203,7 +203,7 @@ Deno.test('finalizeConnectionReservation maps a finalized row', async () => {
     connectionId: 'conn-1',
     createdAt: '2026-09-06T00:01:00Z',
   });
-  assertEquals(captured[0].fn, 'finalize_bank_connection_reservation');
+  assertEquals(captured[0].fn, 'finalize_or_enqueue_bank_connection');
   assertEquals(captured[0].params.p_encrypted_access_token, 'enc');
   assertEquals(captured[0].params.p_metadata, { item_id: 'item-1' });
   // The caller-generated id is what makes a replay idempotent.
@@ -226,6 +226,24 @@ Deno.test('finalizeConnectionReservation maps a reclaimed slot to at_cap', async
     connectionId: 'conn-1',
   });
   assertEquals(result, { status: 'at_cap' });
+});
+
+Deno.test('finalizeConnectionReservation maps an account-deletion barrier', async () => {
+  const { client } = clientReturning({
+    data: [{ status: 'account_deleting', connection_id: null, created_at: null }],
+    error: null,
+  });
+  const result = await finalizeConnectionReservation(client, {
+    reservationId: 'res-1',
+    householdId: 'hh-1',
+    ownerId: 'user-1',
+    provider: 'plaid',
+    institutionId: 'ins_1',
+    institutionName: 'Synthetic bank',
+    encryptedAccessToken: 'enc',
+    connectionId: 'conn-1',
+  });
+  assertEquals(result, { status: 'account_deleting' });
 });
 
 Deno.test('finalizeConnectionReservation maps a missing reservation', async () => {

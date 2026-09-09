@@ -98,6 +98,7 @@ export type FinalizeOutcome =
   | { status: 'at_cap' }
   | { status: 'reservation_not_found' }
   | { status: 'already_disconnected' }
+  | { status: 'account_deleting' }
   | { status: 'unknown'; message: string };
 
 /** Definitive answer to "did this connection id commit?". */
@@ -241,7 +242,7 @@ export async function finalizeConnectionReservation(
     metadata?: Record<string, unknown>;
   },
 ): Promise<FinalizeOutcome> {
-  const { data, error } = await supabase.rpc('finalize_bank_connection_reservation', {
+  const { data, error } = await supabase.rpc('finalize_or_enqueue_bank_connection', {
     p_reservation_id: params.reservationId,
     p_household_id: params.householdId,
     p_owner_id: params.ownerId,
@@ -278,6 +279,8 @@ export async function finalizeConnectionReservation(
       return { status: 'reservation_not_found' };
     case 'already_disconnected':
       return { status: 'already_disconnected' };
+    case 'account_deleting':
+      return { status: 'account_deleting' };
     default:
       // An unrecognized status is not a rejection we can act on destructively.
       return { status: 'unknown', message: `unexpected finalization status: ${row.status}` };

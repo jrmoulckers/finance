@@ -173,6 +173,24 @@ async function recordHealthEvent(
   }
 }
 
+async function transitionConnectionState(
+  supabase: AdminClient,
+  params: {
+    connectionId: string;
+    status: 'needs_reauth' | 'disconnected' | 'error';
+    errorCode?: string | null;
+    errorMessage?: string | null;
+  },
+): Promise<void> {
+  const { error } = await supabase.rpc('transition_bank_connection_sync_state', {
+    p_connection_id: params.connectionId,
+    p_new_status: params.status,
+    p_error_code: params.errorCode ?? null,
+    p_error_message: params.errorMessage ?? null,
+  });
+  if (error) throw new Error('Bank connection state transition failed');
+}
+
 // ---------------------------------------------------------------------------
 // Event processors
 // ---------------------------------------------------------------------------
@@ -207,6 +225,7 @@ async function processPlaidEvent(
     .select('id, household_id, encrypted_access_token, metadata')
     .eq('provider', 'plaid')
     .contains('metadata', { item_id })
+    .eq('status', 'active')
     .is('deleted_at', null)
     .single();
 
@@ -219,20 +238,22 @@ async function processPlaidEvent(
 
   if (webhook_type === 'ITEM') {
     if (webhook_code === 'ERROR' || webhook_code === 'PENDING_EXPIRATION') {
-      await supabase
-        .from('bank_connections')
-        .update({
-          status: 'needs_reauth',
-          error_code: event.error?.error_code ?? webhook_code,
-          error_message: event.error?.error_message ?? 'Reconnection required',
-        })
-        .eq('id', conn.id);
+      await transitionConnectionState(supabase, {
+        connectionId: conn.id,
+        status: 'needs_reauth',
+        errorCode: event.error?.error_code ?? webhook_code,
+        errorMessage: 'Reconnection required',
+      });
       await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
         errorCategory: 'auth',
         errorDetail: event.error?.error_code ?? webhook_code,
       });
     } else if (webhook_code === 'USER_PERMISSION_REVOKED') {
-      await supabase.from('bank_connections').update({ status: 'disconnected' }).eq('id', conn.id);
+      await transitionConnectionState(supabase, {
+        connectionId: conn.id,
+        status: 'disconnected',
+        errorCode: webhook_code,
+      });
       await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
         errorCategory: 'auth',
         errorDetail: webhook_code,
@@ -308,6 +329,7 @@ async function processMxEvent(
     .select('id, household_id, encrypted_access_token, metadata')
     .eq('provider', 'mx')
     .contains('metadata', { item_id: event.member_guid })
+    .eq('status', 'active')
     .is('deleted_at', null)
     .single();
 
@@ -325,7 +347,11 @@ async function processMxEvent(
   // `connection_status_message` is deliberately not logged: it embeds the
   // institution name.
   if (disposition === 'needs_reauth') {
-    await supabase.from('bank_connections').update({ status: 'needs_reauth' }).eq('id', conn.id);
+    await transitionConnectionState(supabase, {
+      connectionId: conn.id,
+      status: 'needs_reauth',
+      errorCode: event.connection_status ?? 'unknown',
+    });
     await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
       errorCategory: 'auth',
       errorDetail: event.connection_status ?? 'unknown',

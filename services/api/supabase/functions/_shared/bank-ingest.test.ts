@@ -34,6 +34,7 @@ const linkedAccount = {
   household_id: 'household-id',
   currency_code: 'USD',
 };
+const connectionId = '44050000-0000-4000-8000-000000000001';
 
 Deno.test('loadLinkedAccounts propagates database failures', async () => {
   const result = Promise.resolve({ data: null, error: { message: 'database unavailable' } });
@@ -61,7 +62,7 @@ Deno.test('upsertPlaidTransaction propagates existing-transaction lookup failure
   const client = { from: () => query } as unknown as UpsertClient;
 
   await assertRejects(
-    () => upsertPlaidTransaction(client, transaction, linkedAccount),
+    () => upsertPlaidTransaction(client, transaction, linkedAccount, connectionId),
     Error,
     'Plaid ingestion failed while checking for an existing transaction',
   );
@@ -83,7 +84,10 @@ Deno.test(
       }),
     } as unknown as UpsertClient;
 
-    assertEquals(await upsertPlaidTransaction(client, transaction, linkedAccount), true);
+    assertEquals(
+      await upsertPlaidTransaction(client, transaction, linkedAccount, connectionId),
+      true,
+    );
   },
 );
 
@@ -102,10 +106,45 @@ Deno.test('upsertPlaidTransaction propagates insert failures', async () => {
   } as unknown as UpsertClient;
 
   await assertRejects(
-    () => upsertPlaidTransaction(client, transaction, linkedAccount),
+    () => upsertPlaidTransaction(client, transaction, linkedAccount, connectionId),
     Error,
     'Plaid ingestion failed while inserting a transaction',
   );
+});
+
+Deno.test('upsertPlaidTransaction recovers an atomic concurrent duplicate', async () => {
+  const lookup = {
+    select: () => lookup,
+    eq: () => lookup,
+    is: () => lookup,
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  };
+  let writes = 0;
+  const client = {
+    from: () => ({
+      ...lookup,
+      insert: () => {
+        writes++;
+        return Promise.resolve({ error: { code: '23505', message: 'duplicate' } });
+      },
+      update: () => {
+        writes++;
+        return {
+          eq: () => ({
+            eq: () => ({
+              is: () => Promise.resolve({ error: null }),
+            }),
+          }),
+        };
+      },
+    }),
+  } as unknown as UpsertClient;
+
+  assertEquals(
+    await upsertPlaidTransaction(client, transaction, linkedAccount, connectionId),
+    false,
+  );
+  assertEquals(writes, 2);
 });
 
 Deno.test('upsertPlaidTransaction propagates update failures', async () => {
@@ -127,7 +166,7 @@ Deno.test('upsertPlaidTransaction propagates update failures', async () => {
   } as unknown as UpsertClient;
 
   await assertRejects(
-    () => upsertPlaidTransaction(client, transaction, linkedAccount),
+    () => upsertPlaidTransaction(client, transaction, linkedAccount, connectionId),
     Error,
     'Plaid ingestion failed while updating a transaction',
   );
@@ -143,7 +182,7 @@ Deno.test('removePlaidTransaction propagates update failures', async () => {
   const client = { from: () => query } as unknown as Parameters<typeof removePlaidTransaction>[0];
 
   await assertRejects(
-    () => removePlaidTransaction(client, 'provider-transaction-id'),
+    () => removePlaidTransaction(client, 'provider-transaction-id', connectionId),
     Error,
     'Plaid ingestion failed while removing a transaction',
   );
@@ -152,7 +191,10 @@ Deno.test('removePlaidTransaction propagates update failures', async () => {
 Deno.test('persistPlaidSyncMetadata propagates cursor persistence failures', async () => {
   const query = {
     update: () => query,
-    eq: () => Promise.resolve({ error: { message: 'update failed' } }),
+    eq: () => query,
+    is: () => query,
+    select: () => query,
+    maybeSingle: () => Promise.resolve({ data: null, error: { message: 'update failed' } }),
   };
   const client = { from: () => query } as unknown as Parameters<typeof persistPlaidSyncMetadata>[0];
 
@@ -172,6 +214,38 @@ Deno.test('persistPlaidSyncMetadata propagates cursor persistence failures', asy
     'Plaid ingestion failed while persisting the connection sync cursor',
   );
 });
+
+Deno.test(
+  'persistPlaidSyncMetadata rejects a connection disabled during provider fetch',
+  async () => {
+    const query = {
+      update: () => query,
+      eq: () => query,
+      is: () => query,
+      select: () => query,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    };
+    const client = { from: () => query } as unknown as Parameters<
+      typeof persistPlaidSyncMetadata
+    >[0];
+
+    await assertRejects(
+      () =>
+        persistPlaidSyncMetadata(
+          client,
+          {
+            id: connectionId,
+            household_id: 'household-id',
+            encrypted_access_token: 'encrypted-test-token',
+            metadata: null,
+          },
+          'next-cursor',
+        ),
+      Error,
+      'Plaid ingestion failed while persisting the connection sync cursor',
+    );
+  },
+);
 
 // ---------------------------------------------------------------------------
 // MX sync window (#4371)
@@ -203,8 +277,12 @@ Deno.test('persistMxSyncMetadata merges the window into existing metadata', asyn
   const query = {
     update: (values: Record<string, unknown>) => {
       updated = values;
-      return { eq: () => Promise.resolve({ error: null }) };
+      return query;
     },
+    eq: () => query,
+    is: () => query,
+    select: () => query,
+    maybeSingle: () => Promise.resolve({ data: { id: connectionId }, error: null }),
   };
   const client = { from: () => query } as unknown as Parameters<typeof persistMxSyncMetadata>[0];
 
@@ -224,7 +302,11 @@ Deno.test('persistMxSyncMetadata merges the window into existing metadata', asyn
 
 Deno.test('persistMxSyncMetadata propagates window persistence failures', async () => {
   const query = {
-    update: () => ({ eq: () => Promise.resolve({ error: { message: 'boom' } }) }),
+    update: () => query,
+    eq: () => query,
+    is: () => query,
+    select: () => query,
+    maybeSingle: () => Promise.resolve({ data: null, error: { message: 'boom' } }),
   };
   const client = { from: () => query } as unknown as Parameters<typeof persistMxSyncMetadata>[0];
 

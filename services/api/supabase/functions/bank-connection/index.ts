@@ -66,6 +66,10 @@ import {
   type FinalizeOutcome,
 } from '../_shared/bank-entitlements.ts';
 import {
+  enqueueBankConnectionRevocation,
+  saveBankRetentionSelection,
+} from '../_shared/bank-revocation-queue.ts';
+import {
   createLinkToken as plaidCreateLinkToken,
   exchangePublicToken as plaidExchangePublicToken,
   getAccounts as plaidGetAccounts,
@@ -91,7 +95,6 @@ import {
   type BankConnectionRow,
   type IngestionSummary,
 } from '../_shared/bank-ingest.ts';
-import { revokeProviderToken } from '../_shared/bank-revocation.ts';
 import {
   createdResponse,
   errorResponse,
@@ -124,6 +127,12 @@ interface ExchangeTokenRequest {
   institution_name: string;
 }
 
+interface RetentionSelectionRequest {
+  household_id: string;
+  target_allowance: number;
+  retained_connection_ids: string[];
+}
+
 /**
  * Injectable collaborators. Production uses the real implementations; the
  * handler tests substitute them so the reserve → exchange → finalize
@@ -138,7 +147,6 @@ export interface BankConnectionDeps {
     publicToken: string,
     userId: string,
   ) => Promise<{ access_token: string; item_id: string }>;
-  revokeToken?: typeof revokeProviderToken;
   encrypt?: (plaintext: string) => Promise<string>;
   linkAccounts?: typeof provisionAndLinkAccounts;
   /** Generates the caller-owned connection id that makes finalization idempotent. */
@@ -375,10 +383,7 @@ async function provisionAndLinkAccounts(
       .single();
 
     if (accountError || !account) {
-      logger.warn('Failed to provision internal account', {
-        connectionId: params.connectionId,
-        errorMessage: accountError?.message,
-      });
+      logger.warn('Failed to provision internal account');
       continue;
     }
 
@@ -396,10 +401,7 @@ async function provisionAndLinkAccounts(
     });
 
     if (linkError) {
-      logger.warn('Failed to link external account', {
-        connectionId: params.connectionId,
-        errorMessage: linkError.message,
-      });
+      logger.warn('Failed to link external account');
       continue;
     }
 
@@ -548,10 +550,7 @@ async function resolveFinalization(
 
     if (confirmation.state === 'finalized') {
       // The lost response hid a successful commit. Report the persisted row.
-      logger.warn('Recovered a bank connection finalization whose response was lost', {
-        connectionId: params.connectionId,
-        provider: params.provider,
-      });
+      logger.warn('Recovered a bank connection finalization whose response was lost');
       return {
         status: 'finalized',
         connectionId: params.connectionId,
@@ -569,10 +568,7 @@ async function resolveFinalization(
       return outcome;
     }
 
-    logger.warn('Replaying an unobserved bank connection finalization', {
-      connectionId: params.connectionId,
-      provider: params.provider,
-    });
+    logger.warn('Replaying an unobserved bank connection finalization');
     outcome = await finalizeConnectionReservation(supabase, params);
     attempts++;
   }
@@ -595,7 +591,6 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
   const createClient = deps.createClient ?? createAdminClient;
   const authenticate = deps.requireAuthFn ?? requireAuth;
   const exchangeToken = deps.exchangeToken ?? exchangeProviderToken;
-  const revokeToken = deps.revokeToken ?? revokeProviderToken;
   const encrypt = deps.encrypt ?? encryptAccessToken;
   const linkAccounts = deps.linkAccounts ?? provisionAndLinkAccounts;
   const newConnectionId = deps.newConnectionId ?? (() => crypto.randomUUID());
@@ -635,6 +630,74 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
 
       const url = new URL(req.url);
       const action = url.searchParams.get('action');
+
+      // -----------------------------------------------------------------------
+      // POST ?action=select_retained_connections
+      // -----------------------------------------------------------------------
+      if (req.method === 'POST' && action === 'select_retained_connections') {
+        const body = (await req.json()) as RetentionSelectionRequest;
+        const ids = body.retained_connection_ids;
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        if (!body.household_id || !uuidPattern.test(body.household_id)) {
+          return errorResponse(req, 'household_id must be a UUID');
+        }
+        if (
+          !Number.isSafeInteger(body.target_allowance) ||
+          body.target_allowance < 0 ||
+          body.target_allowance > 32
+        ) {
+          return errorResponse(req, 'target_allowance must be an integer from 0 to 32');
+        }
+        if (
+          !Array.isArray(ids) ||
+          ids.length > 32 ||
+          ids.some((id) => typeof id !== 'string' || !uuidPattern.test(id)) ||
+          new Set(ids).size !== ids.length
+        ) {
+          return errorResponse(req, 'retained_connection_ids must contain unique UUIDs');
+        }
+
+        if (!(await ensureCanManageHousehold(supabase, body.household_id, user.id))) {
+          return errorResponse(
+            req,
+            'Only household owners and admins can select retained connections',
+            403,
+          );
+        }
+
+        const status = await saveBankRetentionSelection(supabase, {
+          householdId: body.household_id,
+          actorId: user.id,
+          targetAllowance: body.target_allowance,
+          retainedConnectionIds: ids,
+        });
+        if (status === 'forbidden') {
+          return errorResponse(
+            req,
+            'Only household owners and admins can select retained connections',
+            403,
+          );
+        }
+        if (status === 'invalid_target') {
+          return errorResponse(req, 'The requested downgrade target is not currently valid', 409);
+        }
+        if (status === 'invalid_selection') {
+          return errorResponse(req, 'One or more retained connections are not eligible', 400);
+        }
+        if (status === 'error') {
+          logger.error('Failed to save bank connection retention selection');
+          return entitlementErrorResponse(
+            req,
+            'ENTITLEMENT_UNAVAILABLE',
+            'Bank connection availability is temporarily unavailable. Try again shortly.',
+            503,
+          );
+        }
+
+        return jsonResponse(req, { status: 'accepted' }, 202);
+      }
 
       // -----------------------------------------------------------------------
       // POST ?action=create_link_token
@@ -752,9 +815,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
         }
         if (reservation.status === 'error') {
           // Fail closed — never fall back to a client tier, flag, or cached cap.
-          logger.error('Failed to reserve a bank connection slot', {
-            errorMessage: reservation.message,
-          });
+          logger.error('Failed to reserve a bank connection slot');
           return entitlementErrorResponse(
             req,
             'ENTITLEMENT_UNAVAILABLE',
@@ -831,8 +892,6 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
             connectionId,
           });
           logger.error('Bank connection finalization outcome unknown; revocation withheld', {
-            provider: body.provider,
-            connectionId,
             handoffRecorded: handoffId !== null,
           });
           return entitlementErrorResponse(
@@ -844,38 +903,23 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
         }
 
         if (finalize.status !== 'finalized') {
-          // A DEFINITE rejection: a confirming read or the RPC itself proved no
-          // row is in place, so the Item is billable and orphaned. Revoke it
-          // immediately and idempotently; if that cannot be confirmed, durably
-          // hand the encrypted credential to Stage 7 so revocation is retried and
-          // never lost. NEVER report a success-shaped result here.
-          const revocation = await revokeToken({
+          // A DEFINITE rejection leaves a billable provider Item without a live
+          // connection row. Persist it BEFORE any provider call; the Stage 7
+          // worker owns every destructive side effect and can replay safely
+          // after a crash or lost response.
+          const handoffId = await recordOrphanedItem(supabase, {
+            householdId: body.household_id,
+            ownerId: user.id,
             provider: body.provider,
             encryptedAccessToken: encryptedToken,
+            lastErrorCode: `FINALIZE_${finalize.status.toUpperCase()}`,
+            status: 'pending_revocation',
+            connectionId,
           });
-
-          if (revocation.outcome === 'revoked') {
-            logger.warn('Provider Item revoked after finalization failure', {
-              provider: body.provider,
-              finalizeStatus: finalize.status,
-            });
-          } else {
-            const handoffId = await recordOrphanedItem(supabase, {
-              householdId: body.household_id,
-              ownerId: user.id,
-              provider: body.provider,
-              encryptedAccessToken: encryptedToken,
-              lastErrorCode: revocation.detail,
-              status: 'pending_revocation',
-              connectionId,
-            });
-            logger.error('Orphaned provider Item retained for revocation retry', {
-              provider: body.provider,
-              revocationOutcome: revocation.outcome,
-              handoffRecorded: handoffId !== null,
-              finalizeStatus: finalize.status,
-            });
-          }
+          logger.error('Orphaned provider Item handed off for durable revocation', {
+            handoffRecorded: handoffId !== null,
+            finalizeStatus: finalize.status,
+          });
 
           if (finalize.status === 'premium_required') {
             return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
@@ -907,11 +951,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           created_at: finalize.createdAt,
         };
 
-        logger.info('Bank connection created', {
-          connectionId: connection.id,
-          provider: body.provider,
-          httpStatus: 201,
-        });
+        logger.info('Bank connection created', { httpStatus: 201 });
 
         // Discover + link the institution's accounts, then run an initial
         // backfill so transactions appear immediately (webhooks only deliver
@@ -942,21 +982,15 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
               logger,
             );
             logger.info('Initial account link + sync complete', {
-              connectionId: connection.id,
               linkedAccounts: linkedCount,
               added: initialSync.added,
               modified: initialSync.modified,
             });
           } else {
-            logger.warn('No external accounts linked for connection', {
-              connectionId: connection.id,
-            });
+            logger.warn('No external accounts linked for connection');
           }
-        } catch (err) {
-          logger.error('Account linking / initial sync failed (connection retained)', {
-            connectionId: connection.id,
-            errorMessage: (err as Error).message,
-          });
+        } catch {
+          logger.error('Account linking / initial sync failed (connection retained)');
         }
 
         // NEVER return the access token
@@ -1001,7 +1035,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           .order('created_at', { ascending: false });
 
         if (listError) {
-          logger.error('Failed to list bank connections', { errorMessage: listError.message });
+          logger.error('Failed to list bank connections');
           return internalErrorResponse(req);
         }
 
@@ -1009,7 +1043,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
       }
 
       // -----------------------------------------------------------------------
-      // DELETE — Disconnect: revoke the provider token, purge it, soft-delete.
+      // DELETE — Disconnect: durable enqueue and immediate sync disable.
       // -----------------------------------------------------------------------
       if (req.method === 'DELETE') {
         const connectionId = url.searchParams.get('id');
@@ -1019,7 +1053,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
 
         const { data: existing, error: fetchError } = await supabase
           .from('bank_connections')
-          .select('id, household_id, provider, encrypted_access_token')
+          .select('id, household_id, provider')
           .eq('id', connectionId)
           .is('deleted_at', null)
           .single();
@@ -1036,64 +1070,49 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           );
         }
 
-        // Best-effort revoke the token at the aggregator so the processor no
-        // longer retains access on the user's behalf (#3867). NEVER throws —
-        // a processor outage must not block the user's disconnect.
-        const revocation = await revokeToken({
-          provider: existing.provider,
-          encryptedAccessToken: existing.encrypted_access_token,
+        // The RPC moves the encrypted credential into the server-only outbox
+        // and disables sync in one transaction. Provider availability is not on
+        // this request path, and normal soft-delete waits for worker confirmation.
+        const enqueueStatus = await enqueueBankConnectionRevocation(supabase, {
+          connectionId,
+          reason: 'user_disconnect',
+          actorId: user.id,
         });
-
-        // Soft-delete AND purge the stored credential — even if revocation was
-        // skipped/failed at the provider, we must not keep the token at rest.
-        const { error: deleteError } = await supabase
-          .from('bank_connections')
-          .update({
-            deleted_at: new Date().toISOString(),
-            status: 'disconnected',
-            encrypted_access_token: null,
-          })
-          .eq('id', connectionId);
-
-        if (deleteError) {
-          logger.error('Failed to soft-delete bank connection', {
-            errorMessage: deleteError.message,
-          });
+        if (enqueueStatus === 'forbidden') {
+          return errorResponse(
+            req,
+            'Only household owners and admins can manage bank connections',
+            403,
+          );
+        }
+        if (enqueueStatus === 'not_found') {
+          return errorResponse(req, 'Bank connection not found', 404);
+        }
+        if (enqueueStatus === 'error') {
+          logger.error('Failed to enqueue bank connection revocation');
           return internalErrorResponse(req);
         }
 
-        // Audit the revocation attempt (best-effort — never block the response).
-        const auditStatus =
-          revocation.outcome === 'revoked'
-            ? 'success'
-            : revocation.outcome === 'skipped'
-              ? 'partial'
-              : 'failure';
+        // Audit the durable handoff, not an unconfirmed provider result.
         const { error: auditError } = await supabase.from('connector_access_log').insert({
           bank_connection_id: connectionId,
           household_id: existing.household_id,
           access_type: 'revoke_access',
           provider_name: existing.provider,
-          status: auditStatus,
-          error_message: revocation.detail ?? null,
+          status: 'partial',
+          error_message: null,
         });
         if (auditError) {
-          logger.warn('Failed to write revocation audit log', {
-            errorMessage: auditError.message,
-          });
+          logger.warn('Failed to write revocation audit log');
         }
 
-        logger.info('Bank connection disconnected', {
-          connectionId,
-          revocationOutcome: revocation.outcome,
-          httpStatus: 204,
-        });
+        logger.info('Bank connection revocation queued', { httpStatus: 204 });
         return noContentResponse(req);
       }
 
       return methodNotAllowedResponse(req);
-    } catch (err) {
-      logger.error('Bank connection error', { errorMessage: (err as Error).message });
+    } catch {
+      logger.error('Bank connection request failed');
       return internalErrorResponse(req);
     }
   };

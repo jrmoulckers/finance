@@ -65,6 +65,22 @@ export interface IngestionSummary {
   removed: number;
 }
 
+async function assertConnectionSyncEnabled(
+  supabase: AdminClient,
+  connectionId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('bank_connections')
+    .select('id')
+    .eq('id', connectionId)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error || !data) {
+    throw new Error('Bank connection synchronization is disabled');
+  }
+}
+
 /** Create a stable, data-safe error for a failed ingestion database operation. */
 function ingestionDatabaseError(operation: string, provider = 'Plaid'): Error {
   return new Error(`${provider} ingestion failed while ${operation}`);
@@ -124,6 +140,7 @@ async function upsertTransactionRecord(
   supabase: AdminClient,
   record: TransactionRecord,
   provider: string,
+  connectionId: string,
 ): Promise<boolean> {
   // Deduplicate on the provider transaction id — provider webhooks may retry.
   const { data: existing, error: lookupError } = await supabase
@@ -137,7 +154,11 @@ async function upsertTransactionRecord(
     throw ingestionDatabaseError('checking for an existing transaction', provider);
   }
 
-  const row = { ...record, imported_at: new Date().toISOString() };
+  const row = {
+    ...record,
+    import_source_id: connectionId,
+    imported_at: new Date().toISOString(),
+  };
 
   if (existing) {
     const { error } = await supabase.from('transactions').update(row).eq('id', existing.id);
@@ -148,6 +169,18 @@ async function upsertTransactionRecord(
   }
 
   const { error } = await supabase.from('transactions').insert(row);
+  if (error?.code === '23505') {
+    const { error: replayError } = await supabase
+      .from('transactions')
+      .update(row)
+      .eq('import_source_id', connectionId)
+      .eq('provider_transaction_id', record.provider_transaction_id)
+      .is('deleted_at', null);
+    if (replayError) {
+      throw ingestionDatabaseError('replaying a concurrent transaction', provider);
+    }
+    return false;
+  }
   if (error) {
     throw ingestionDatabaseError('inserting a transaction', provider);
   }
@@ -164,6 +197,7 @@ export async function upsertPlaidTransaction(
   supabase: AdminClient,
   txn: PlaidTransaction,
   account: LinkedAccount,
+  connectionId: string,
 ): Promise<boolean> {
   return upsertTransactionRecord(
     supabase,
@@ -173,6 +207,7 @@ export async function upsertPlaidTransaction(
       currencyFallback: account.currency_code,
     }),
     'Plaid',
+    connectionId,
   );
 }
 
@@ -186,6 +221,7 @@ export async function upsertMxTransaction(
   supabase: AdminClient,
   txn: MxTransaction,
   account: LinkedAccount,
+  connectionId: string,
 ): Promise<boolean> {
   return upsertTransactionRecord(
     supabase,
@@ -195,6 +231,7 @@ export async function upsertMxTransaction(
       currencyFallback: account.currency_code,
     }),
     'MX',
+    connectionId,
   );
 }
 
@@ -204,10 +241,14 @@ export async function upsertMxTransaction(
 export async function removePlaidTransaction(
   supabase: AdminClient,
   providerTransactionId: string,
+  connectionId: string,
 ): Promise<number> {
   const { data: rows, error } = await supabase
     .from('transactions')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({
+      deleted_at: new Date().toISOString(),
+      import_source_id: connectionId,
+    })
     .eq('provider_transaction_id', providerTransactionId)
     .is('deleted_at', null)
     .select('id');
@@ -225,12 +266,16 @@ export async function persistPlaidSyncMetadata(
   cursor: string | null,
 ): Promise<void> {
   const mergedMetadata = { ...(connection.metadata ?? {}), cursor };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('bank_connections')
     .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
+    .eq('id', connection.id)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .select('id')
+    .maybeSingle();
 
-  if (error) {
+  if (error || !data) {
     throw ingestionDatabaseError('persisting the connection sync cursor');
   }
 }
@@ -248,6 +293,7 @@ export async function ingestPlaidTransactions(
   _logger: FunctionLogger,
 ): Promise<IngestionSummary> {
   const summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
+  await assertConnectionSyncEnabled(supabase, connection.id);
 
   const config = plaidConfigFromEnv();
   const encryptionKey = Deno.env.get('BANK_ENCRYPTION_KEY');
@@ -270,7 +316,7 @@ export async function ingestPlaidTransactions(
     for (const txn of page.added) {
       const account = linkedAccounts.get(txn.account_id);
       if (!account) continue;
-      const inserted = await upsertPlaidTransaction(supabase, txn, account);
+      const inserted = await upsertPlaidTransaction(supabase, txn, account, connection.id);
       if (inserted) summary.added++;
       else summary.modified++;
     }
@@ -278,13 +324,17 @@ export async function ingestPlaidTransactions(
     for (const txn of page.modified) {
       const account = linkedAccounts.get(txn.account_id);
       if (!account) continue;
-      const inserted = await upsertPlaidTransaction(supabase, txn, account);
+      const inserted = await upsertPlaidTransaction(supabase, txn, account, connection.id);
       if (inserted) summary.added++;
       else summary.modified++;
     }
 
     for (const removed of page.removed) {
-      summary.removed += await removePlaidTransaction(supabase, removed.transaction_id);
+      summary.removed += await removePlaidTransaction(
+        supabase,
+        removed.transaction_id,
+        connection.id,
+      );
     }
 
     cursor = page.next_cursor;
@@ -351,12 +401,16 @@ export async function persistMxSyncMetadata(
   nextFromDate: string,
 ): Promise<void> {
   const mergedMetadata = { ...(connection.metadata ?? {}), mx_from_date: nextFromDate };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('bank_connections')
     .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
+    .eq('id', connection.id)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .select('id')
+    .maybeSingle();
 
-  if (error) {
+  if (error || !data) {
     throw ingestionDatabaseError('persisting the connection sync window', 'MX');
   }
 }
@@ -378,6 +432,7 @@ export async function ingestMxTransactions(
   _logger: FunctionLogger,
 ): Promise<IngestionSummary> {
   const summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
+  await assertConnectionSyncEnabled(supabase, connection.id);
 
   const config = mxConfigFromEnv();
   const encryptionKey = Deno.env.get('BANK_ENCRYPTION_KEY');
@@ -404,7 +459,7 @@ export async function ingestMxTransactions(
     for (const txn of result.transactions) {
       const account = linkedAccounts.get(txn.account_guid);
       if (!account) continue;
-      const inserted = await upsertMxTransaction(supabase, txn, account);
+      const inserted = await upsertMxTransaction(supabase, txn, account, connection.id);
       if (inserted) summary.added++;
       else summary.modified++;
     }

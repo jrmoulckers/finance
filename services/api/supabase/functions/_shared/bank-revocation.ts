@@ -27,13 +27,13 @@ import { removeItem, PlaidApiError, type PlaidConfig } from './plaid.ts';
 import { decodeMxCredential, deleteMember, MxApiError, type MxConfig } from './mx.ts';
 
 /** Outcome of a best-effort revocation attempt. */
-export type TokenRevocationOutcome = 'revoked' | 'skipped' | 'failed';
+export type TokenRevocationOutcome = 'revoked' | 'already_invalid' | 'skipped' | 'failed';
 
 /** Result of a revocation attempt — safe to persist in an audit log. */
 export interface TokenRevocationResult {
   /** The aggregator provider the token belonged to. */
   provider: string;
-  /** Whether the token was revoked, skipped, or the attempt failed. */
+  /** Whether the token was revoked/already invalid, skipped, or failed. */
   outcome: TokenRevocationOutcome;
   /**
    * Safe, non-sensitive detail for skipped/failed outcomes (e.g. a Plaid
@@ -145,7 +145,7 @@ export async function revokeProviderToken(
         return { provider, outcome: 'revoked' };
       } catch (err) {
         if (err instanceof MxApiError && ALREADY_INVALID_MX_CODES.has(err.errorCode)) {
-          return { provider, outcome: 'revoked', detail: 'already invalid at provider' };
+          return { provider, outcome: 'already_invalid', detail: 'already invalid at provider' };
         }
         // MxApiError only carries a safe status code; never the raw body.
         const detail = err instanceof MxApiError ? err.errorCode : 'revocation request failed';
@@ -164,7 +164,7 @@ export async function revokeProviderToken(
       return { provider, outcome: 'revoked' };
     } catch (err) {
       if (err instanceof PlaidApiError && ALREADY_INVALID_PLAID_CODES.has(err.errorCode)) {
-        return { provider, outcome: 'revoked', detail: 'already invalid at provider' };
+        return { provider, outcome: 'already_invalid', detail: 'already invalid at provider' };
       }
       // PlaidApiError only carries a safe error_code; never the raw body.
       const detail = err instanceof PlaidApiError ? err.errorCode : 'revocation request failed';

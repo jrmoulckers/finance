@@ -20,8 +20,11 @@
     "test:billing-entitlements": "psql -v ON_ERROR_STOP=1 -f supabase/tests/billing-entitlements-integration.test.sql",
     "test:bank-connection-cap": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap.test.sql",
     "test:bank-connection-cap-remediation": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap-remediation.test.sql",
+    "test:bank-revocation-durable": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-revocation-durable.test.sql",
     "test:bank-entitlements": "deno test --config supabase/functions/deno.json --allow-env supabase/functions/_shared/bank-entitlements.test.ts",
     "test:bank-connection-handler": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/bank-connection/index_test.ts supabase/functions/account-delete/index_test.ts",
+    "test:bank-revocation-worker": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/_shared/bank-revocation.test.ts supabase/functions/bank-revocation-worker/index.test.ts",
+    "test:bank-sync-handlers": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/_shared/bank-ingest.test.ts supabase/functions/bank-webhook/index.test.ts",
     "test:entitlement-api": "psql -v ON_ERROR_STOP=1 -f supabase/tests/entitlement-api-contract.test.sql",
     "test:entitlement-gateway": "node --test supabase/tests/entitlement-gateway.integration.test.mjs",
     "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"

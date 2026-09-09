@@ -233,6 +233,8 @@ Deno.test(
       'family_plan_subscriptions',
       'bank_connection_reservations',
       'bank_connection_orphaned_items',
+      'bank_connection_retention_selections',
+      'bank_connection_erasure_barriers',
     ]);
     const prohibitedReferences: string[] = [];
 

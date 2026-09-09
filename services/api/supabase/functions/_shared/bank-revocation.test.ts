@@ -77,7 +77,7 @@ Deno.test('revokeProviderToken — revokes an MX member with the decoded guid pa
   assertEquals(seen, { userGuid: 'USR-1', memberGuid: 'MBR-2' });
 });
 
-Deno.test('revokeProviderToken — MX 404 counts as revoked (nothing left to revoke)', async () => {
+Deno.test('revokeProviderToken — MX 404 is explicit already-invalid success', async () => {
   const result = await revokeProviderToken(
     { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
     depsWith(FULL_ENV, {
@@ -85,7 +85,7 @@ Deno.test('revokeProviderToken — MX 404 counts as revoked (nothing left to rev
       revokeMx: () => Promise.reject(new MxApiError(404, 'HTTP_404')),
     }),
   );
-  assertEquals(result.outcome, 'revoked');
+  assertEquals(result.outcome, 'already_invalid');
   assertEquals(result.detail, 'already invalid at provider');
 });
 
@@ -166,14 +166,14 @@ Deno.test('revokeProviderToken — revoked on success with decrypted token', asy
   assertEquals(revokedWith!.config.environment, 'sandbox');
 });
 
-Deno.test('revokeProviderToken — treats already-invalid item as revoked', async () => {
+Deno.test('revokeProviderToken — treats already-invalid item as terminal success', async () => {
   const result = await revokeProviderToken(
     { provider: 'plaid', encryptedAccessToken: 'aes256gcm:iv:ct' },
     depsWith(FULL_ENV, {
       revokePlaid: () => Promise.reject(new PlaidApiError(400, 'ITEM_NOT_FOUND')),
     }),
   );
-  assertEquals(result.outcome, 'revoked');
+  assertEquals(result.outcome, 'already_invalid');
   assertEquals(result.detail, 'already invalid at provider');
 });
 

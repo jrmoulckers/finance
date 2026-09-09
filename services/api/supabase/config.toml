@@ -137,3 +137,9 @@ verify_jwt = false
 # membership.
 [functions.entitlements-v1]
 verify_jwt = false
+
+# Server-to-server Stage 7 worker (#4405). The gateway cannot validate the
+# dedicated cron credential, so the function performs a constant-time
+# CRON_SECRET check before creating its service-role database client.
+[functions.bank-revocation-worker]
+verify_jwt = false

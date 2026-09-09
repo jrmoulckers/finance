@@ -35,6 +35,7 @@ import type { BankConnectionDeps } from './index.ts';
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 const CONNECTION_ID = '44041000-0000-4000-e000-0000000000aa';
+const RETAINED_CONNECTION_ID = '44050000-0000-4000-8000-0000000000aa';
 const ENCRYPTED = 'enc::access-token';
 
 // ---------------------------------------------------------------------------
@@ -66,8 +67,10 @@ function createFakeSupabase(script: RpcScript): FakeSupabase {
 
   const client = {
     rpc(fn: string, args: Record<string, unknown>) {
-      calls.push({ fn, args });
-      const queue = queues[fn];
+      const scriptFn =
+        fn === 'finalize_or_enqueue_bank_connection' ? 'finalize_bank_connection_reservation' : fn;
+      calls.push({ fn: scriptFn, args });
+      const queue = queues[scriptFn];
       if (!queue || queue.length === 0) {
         // Unscripted RPCs (rate limiting, reservation release) resolve as
         // no-ops; the entitlement RPCs are always scripted explicitly.
@@ -75,8 +78,8 @@ function createFakeSupabase(script: RpcScript): FakeSupabase {
       }
       return Promise.resolve(queue.length > 1 ? queue.shift()! : queue[0]);
     },
-    from(_table: string) {
-      return new FakeQuery();
+    from(table: string) {
+      return new FakeQuery(table);
     },
   };
 
@@ -85,6 +88,8 @@ function createFakeSupabase(script: RpcScript): FakeSupabase {
 
 /** Membership lookup stub — the authenticated user is always a household owner. */
 class FakeQuery {
+  constructor(private readonly table: string) {}
+
   select(_columns?: string): this {
     return this;
   }
@@ -99,6 +104,24 @@ class FakeQuery {
   }
   maybeSingle(): Promise<{ data: { id: string } | null; error: null }> {
     return Promise.resolve({ data: { id: 'member-1' }, error: null });
+  }
+
+  single(): Promise<{ data: Record<string, string> | null; error: null }> {
+    if (this.table === 'bank_connections') {
+      return Promise.resolve({
+        data: {
+          id: CONNECTION_ID,
+          household_id: '44050000-0000-4000-9000-000000000001',
+          provider: 'plaid',
+        },
+        error: null,
+      });
+    }
+    return Promise.resolve({ data: { id: 'member-1' }, error: null });
+  }
+
+  insert(_value: Record<string, unknown>): Promise<{ error: null }> {
+    return Promise.resolve({ error: null });
   }
 }
 
@@ -118,7 +141,6 @@ interface HarnessOptions {
   script: RpcScript;
   /** `null` makes the provider exchange fail without creating an Item. */
   exchange?: { access_token: string; item_id: string } | null;
-  revokeOutcome?: 'revoked' | 'failed' | 'skipped';
 }
 
 function harness(options: HarnessOptions): Harness {
@@ -142,13 +164,6 @@ function harness(options: HarnessOptions): Harness {
       if (result === null) return Promise.reject(new PlaidApiError(400, 'INVALID_PUBLIC_TOKEN'));
       return Promise.resolve(result);
     },
-    revokeToken: ((params: RevokeCall) => {
-      revokes.push(params);
-      return Promise.resolve({
-        outcome: options.revokeOutcome ?? 'revoked',
-        detail: options.revokeOutcome === 'failed' ? 'PROVIDER_DOWN' : null,
-      });
-    }) as unknown as BankConnectionDeps['revokeToken'],
     encrypt: () => Promise.resolve(ENCRYPTED),
     linkAccounts: (() => Promise.resolve(0)) as unknown as BankConnectionDeps['linkAccounts'],
     newConnectionId: () => CONNECTION_ID,
@@ -190,6 +205,38 @@ function exchangeRequest(): Request {
   });
 }
 
+function retentionRequest(
+  retainedConnectionIds = [RETAINED_CONNECTION_ID],
+  targetAllowance = 2,
+): Request {
+  return new Request(
+    'http://localhost/functions/v1/bank-connection?action=select_retained_connections',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-token',
+        Origin: 'http://localhost',
+      },
+      body: JSON.stringify({
+        household_id: '44050000-0000-4000-9000-000000000001',
+        target_allowance: targetAllowance,
+        retained_connection_ids: retainedConnectionIds,
+      }),
+    },
+  );
+}
+
+function disconnectRequest(): Request {
+  return new Request(`http://localhost/functions/v1/bank-connection?id=${CONNECTION_ID}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: 'Bearer test-token',
+      Origin: 'http://localhost',
+    },
+  });
+}
+
 function ok(data: unknown): RpcResult {
   return { data, error: null };
 }
@@ -219,6 +266,72 @@ function countCalls(supabase: FakeSupabase, fn: string): number {
 function lastCall(supabase: FakeSupabase, fn: string): RpcCall | undefined {
   return supabase.calls.filter((call) => call.fn === fn).at(-1);
 }
+
+// ---------------------------------------------------------------------------
+// Authenticated retained selection and durable disconnect
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  'retained selection is validated by the server RPC for its authenticated subject',
+  async () => {
+    withEnv();
+    const h = harness({
+      script: { prepare_bank_connection_retention_selection: [ok('accepted')] },
+    });
+
+    const response = await createBankConnectionHandler(h.deps)(retentionRequest());
+    const body = await response.json();
+    const call = lastCall(h.supabase, 'prepare_bank_connection_retention_selection');
+
+    assertEquals(response.status, 202);
+    assertEquals(body, { status: 'accepted' });
+    assertEquals(call?.args.p_actor_id, 'user-1');
+    assertEquals(call?.args.p_target_allowance, 2);
+    assertEquals(call?.args.p_retained_connection_ids, [RETAINED_CONNECTION_ID]);
+  },
+);
+
+Deno.test('retained selection rejects duplicates and cross-subject server denial', async () => {
+  withEnv();
+  const invalid = harness({ script: {} });
+  const invalidResponse = await createBankConnectionHandler(invalid.deps)(
+    retentionRequest([RETAINED_CONNECTION_ID, RETAINED_CONNECTION_ID]),
+  );
+  assertEquals(invalidResponse.status, 400);
+  assertEquals(countCalls(invalid.supabase, 'prepare_bank_connection_retention_selection'), 0);
+
+  const denied = harness({
+    script: { prepare_bank_connection_retention_selection: [ok('forbidden')] },
+  });
+  const deniedResponse = await createBankConnectionHandler(denied.deps)(retentionRequest());
+  assertEquals(deniedResponse.status, 403);
+});
+
+Deno.test(
+  'disconnect transactionally enqueues before provider work and returns no secret',
+  async () => {
+    withEnv();
+    const h = harness({
+      script: {
+        enqueue_bank_connection_revocation: [
+          ok([{ result_status: 'enqueued', outbox_id: 'outbox-1' }]),
+        ],
+      },
+    });
+
+    const response = await createBankConnectionHandler(h.deps)(disconnectRequest());
+    const raw = await response.text();
+    const call = lastCall(h.supabase, 'enqueue_bank_connection_revocation');
+
+    assertEquals(response.status, 204);
+    assertEquals(call?.args.p_connection_id, CONNECTION_ID);
+    assertEquals(call?.args.p_reason, 'user_disconnect');
+    assertEquals(call?.args.p_actor_id, 'user-1');
+    assertEquals(h.revokes.length, 0);
+    assertEquals(raw.includes(ENCRYPTED), false);
+    assertEquals(raw.includes('outbox-1'), false);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Reservation gate — nothing billable is created before capacity is claimed
@@ -356,13 +469,14 @@ Deno.test('a finalized connection is returned without any credential material', 
 // ---------------------------------------------------------------------------
 
 Deno.test(
-  'a definite at-cap finalization revokes the Item and returns the stable error',
+  'a definite at-cap finalization durably queues the Item and returns the stable error',
   async () => {
     withEnv();
     const h = harness({
       script: {
         reserve_bank_connection_slot: [RESERVED],
         finalize_bank_connection_reservation: [finalizeRow('at_cap')],
+        record_orphaned_bank_item: [ok('handoff-at-cap')],
       },
     });
 
@@ -371,21 +485,24 @@ Deno.test(
 
     assertEquals(response.status, 409);
     assertEquals(body.code, 'CONNECTION_CAP_REACHED');
-    assertEquals(h.revokes.length, 1, 'a definitely-orphaned Item must be revoked immediately');
-    assertEquals(h.revokes[0].encryptedAccessToken, ENCRYPTED);
-    // Revocation succeeded, so there is nothing left to hand off.
-    assertEquals(countCalls(h.supabase, 'record_orphaned_bank_item'), 0);
+    assertEquals(h.revokes.length, 0, 'provider calls belong to the durable worker');
+    assertEquals(countCalls(h.supabase, 'record_orphaned_bank_item'), 1);
+    assertEquals(
+      lastCall(h.supabase, 'record_orphaned_bank_item')?.args.p_encrypted_access_token,
+      ENCRYPTED,
+    );
   },
 );
 
 Deno.test(
-  'a definite premium_required finalization revokes and returns PREMIUM_REQUIRED',
+  'a definite premium_required finalization queues and returns PREMIUM_REQUIRED',
   async () => {
     withEnv();
     const h = harness({
       script: {
         reserve_bank_connection_slot: [RESERVED],
         finalize_bank_connection_reservation: [finalizeRow('premium_required')],
+        record_orphaned_bank_item: [ok('handoff-premium')],
       },
     });
 
@@ -394,11 +511,12 @@ Deno.test(
 
     assertEquals(response.status, 403);
     assertEquals(body.code, 'PREMIUM_REQUIRED');
-    assertEquals(h.revokes.length, 1);
+    assertEquals(h.revokes.length, 0);
+    assertEquals(countCalls(h.supabase, 'record_orphaned_bank_item'), 1);
   },
 );
 
-Deno.test('a failed revocation writes a durable pending_revocation handoff', async () => {
+Deno.test('a definite rejection writes a durable pending_revocation handoff first', async () => {
   withEnv();
   const h = harness({
     script: {
@@ -406,13 +524,12 @@ Deno.test('a failed revocation writes a durable pending_revocation handoff', asy
       finalize_bank_connection_reservation: [finalizeRow('at_cap')],
       record_orphaned_bank_item: [ok('handoff-1')],
     },
-    revokeOutcome: 'failed',
   });
 
   const response = await createBankConnectionHandler(h.deps)(exchangeRequest());
 
   assertEquals(response.status, 409);
-  assertEquals(h.revokes.length, 1);
+  assertEquals(h.revokes.length, 0);
   const handoff = lastCall(h.supabase, 'record_orphaned_bank_item');
   assert(handoff, 'a failed revocation must be durably handed off');
   assertEquals(handoff.args.p_status, 'pending_revocation');
@@ -595,7 +712,8 @@ Deno.test(
 
     assertEquals(response.status, 503);
     assertEquals(body.code, 'ENTITLEMENT_UNAVAILABLE');
-    assertEquals(h.revokes.length, 1);
+    assertEquals(h.revokes.length, 0);
+    assertEquals(countCalls(h.supabase, 'record_orphaned_bank_item'), 1);
     assertEquals(countCalls(h.supabase, 'bank_connection_finalization_state'), 0);
   },
 );
