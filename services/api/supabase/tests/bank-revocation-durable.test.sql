@@ -376,6 +376,10 @@ VALUES (
     'provider-before-disable'
 );
 RESET ROLE;
+CREATE TEMP TABLE history_before_downgrade AS
+SELECT balance_cents
+FROM accounts
+WHERE id = '44050000-0000-4000-e000-000000000001';
 
 -- ---------------------------------------------------------------------------
 -- Selection authorization/rejection and retained safety.
@@ -492,7 +496,12 @@ SELECT pg_temp.assert_true(
     'downgrade moves each encrypted retry credential into the unified outbox'
 );
 SELECT pg_temp.assert_true(
-    (SELECT balance_cents = 12345 FROM accounts WHERE id = '44050000-0000-4000-e000-000000000001')
+    (
+        SELECT a.balance_cents = before.balance_cents
+        FROM accounts a
+        CROSS JOIN history_before_downgrade before
+        WHERE a.id = '44050000-0000-4000-e000-000000000001'
+    )
     AND (SELECT amount_cents = -321 FROM transactions WHERE id = '44050000-0000-4000-f000-000000000001')
     AND EXISTS (
         SELECT 1 FROM bank_connection_accounts
