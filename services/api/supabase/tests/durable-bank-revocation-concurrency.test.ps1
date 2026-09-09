@@ -245,11 +245,11 @@ WHERE connection_id = ANY(ARRAY[
     '$($connections[2])', '$($connections[3])'
 ]::uuid[]);
 DELETE FROM bank_connections WHERE household_id = '$household';
+DELETE FROM current_household_entitlements WHERE household_id = '$household';
+DELETE FROM current_user_entitlements WHERE user_id = '$owner';
 DELETE FROM entitlement_grants WHERE billing_account_id = '$account';
 DELETE FROM billing_provider_events WHERE billing_account_id = '$account';
 DELETE FROM billing_subscriptions WHERE billing_account_id = '$account';
-DELETE FROM current_household_entitlements WHERE household_id = '$household';
-DELETE FROM current_user_entitlements WHERE user_id = '$owner';
 DELETE FROM billing_provider_identities WHERE id = '$identity';
 DELETE FROM billing_accounts WHERE id = '$account';
 DELETE FROM household_members WHERE id = '$membership';
