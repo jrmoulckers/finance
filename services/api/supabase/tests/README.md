@@ -208,7 +208,8 @@ preservation, RLS, terminal purge, and bounded exhausted retries.
 `bank-revocation-concurrency.test.ps1` drives independent PostgreSQL sessions
 through concurrent downgrade, disconnect, account deletion, and worker claims.
 It commits uniquely named fixtures and must run only against a disposable local
-container.
+container. The harness forwards `PGPASSWORD` from the caller to the container's
+local `postgres` role.
 
 ```powershell
 npm run test:bank-revocation-db

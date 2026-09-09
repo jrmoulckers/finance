@@ -12,7 +12,8 @@ $ErrorActionPreference = 'Stop'
 
 function Invoke-LocalPsql {
     param([Parameter(Mandatory = $true)][string]$Sql)
-    $Sql | docker exec -i $Container psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q
+    $Sql | docker exec -i -e PGPASSWORD $Container `
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q
     if ($LASTEXITCODE -ne 0) {
         throw 'psql failed in the isolated revocation concurrency database'
     }
@@ -23,7 +24,7 @@ function Start-Gate {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = 'docker'
     foreach ($argument in @(
-            'exec', '-i', $Container, 'psql', '-U', 'supabase_admin',
+            'exec', '-i', '-e', 'PGPASSWORD', $Container, 'psql', '-U', 'postgres',
             '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-A', '-t'
         )) {
         [void]$startInfo.ArgumentList.Add($argument)
@@ -66,7 +67,8 @@ function Wait-ForWaiters {
     )
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     do {
-        $waiting = docker exec $Container psql -U supabase_admin -d postgres -q -A -t -c @"
+        $waiting = docker exec -e PGPASSWORD $Container `
+            psql -U postgres -d postgres -q -A -t -c @"
 SELECT count(*)
 FROM pg_stat_activity
 WHERE application_name LIKE '$Prefix%'
@@ -146,13 +148,15 @@ INSERT INTO bank_connections (
 $operationScript = {
     param($ContainerName, $ApplicationName, $Sql)
     $command = "SET application_name = '$ApplicationName'; $Sql"
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $command
+    docker exec -e PGPASSWORD $ContainerName `
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $command
     if ($LASTEXITCODE -ne 0) {
         throw "operation failed for $ApplicationName"
     }
 }
 
-$householdLock = docker exec $Container psql -U supabase_admin -d postgres -q -A -t -c `
+$householdLock = docker exec -e PGPASSWORD $Container `
+    psql -U postgres -d postgres -q -A -t -c `
     "SELECT bank_connection_reservation_lock_key('$household');"
 if ($LASTEXITCODE -ne 0) {
     throw 'could not resolve the household lock key'
@@ -227,7 +231,8 @@ SELECT id FROM claim_bank_revocation_jobs('$WorkerId', 1, 120);
 SELECT pg_advisory_xact_lock($Gate);
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $sql
+    docker exec -e PGPASSWORD $ContainerName `
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "worker claim failed for $ApplicationName"
     }
