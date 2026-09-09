@@ -310,7 +310,7 @@ jobs:
           npm run test:bank-connection-cap
           npm run test:bank-connection-cap-remediation
           npm run test:bank-revocation-durable-sql
-          npm run test:bank-revocation-concurrency -- -Container supabase_db_finance-local
+          npm run test:bank-revocation-concurrency
 
       - name: Serve the Edge Functions
         working-directory: services/api

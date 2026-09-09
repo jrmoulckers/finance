@@ -677,6 +677,29 @@ DELETE FROM claimed_job WHERE true;
 INSERT INTO claimed_job SELECT * FROM claim_bank_revocation_jobs(1, 60);
 SELECT pg_temp.assert_true(
     (
+        SELECT record_bank_revocation_result(
+            id,
+            '44050000-0000-4000-f000-000000000001',
+            true,
+            NULL
+        )
+        FROM claimed_job
+    ) = 'stale',
+    'a stale lease cannot record a terminal revocation result'
+);
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = 'processing'
+           AND job.lease_token = claimed.lease_token
+           AND job.encrypted_access_token IS NOT NULL
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN claimed_job claimed
+        WHERE job.id = claimed.id
+    ),
+    'a stale result leaves the active lease and credential unchanged'
+);
+SELECT pg_temp.assert_true(
+    (
         SELECT record_bank_revocation_result(id, lease_token, true, 'ALREADY_INVALID')
         FROM claimed_job
     ) = 'revoked',
@@ -817,9 +840,111 @@ SELECT pg_temp.assert_true(
 -- Account deletion: durable processor erasure plus identity severance
 -- ---------------------------------------------------------------------------
 
+INSERT INTO bank_connection_orphaned_items (
+    id, household_id, owner_id, provider, encrypted_access_token, status,
+    attempts, max_attempts, recovery_attempts, reason, next_attempt_at,
+    last_error_code, retain_until
+)
+VALUES
+    (
+        '44050000-0000-4000-e000-000000000001',
+        '44050000-0000-4000-9000-000000000001',
+        '44050000-0000-4000-8000-000000000001',
+        'plaid', 'enc_orphan_exhausted', 'exhausted',
+        8, 8, 2, 'finalization_failure', NULL,
+        'RECOVERY_EXHAUSTED', now() + interval '30 days'
+    ),
+    (
+        '44050000-0000-4000-e000-000000000002',
+        '44050000-0000-4000-9000-000000000001',
+        '44050000-0000-4000-8000-000000000001',
+        'mx', 'enc_orphan_repeated_deletion', 'exhausted',
+        8, 8, 2, 'account_deletion', NULL,
+        'RECOVERY_EXHAUSTED', now() + interval '7 days'
+    ),
+    (
+        '44050000-0000-4000-e000-000000000003',
+        '44050000-0000-4000-9000-000000000001',
+        '44050000-0000-4000-8000-000000000001',
+        'plaid', 'enc_orphan_retry', 'retry_wait',
+        3, 8, 0, 'user_disconnect', now() + interval '30 minutes',
+        'PROVIDER_DOWN', now() + interval '30 days'
+    ),
+    (
+        '44050000-0000-4000-e000-000000000004',
+        '44050000-0000-4000-9000-000000000001',
+        '44050000-0000-4000-8000-000000000001',
+        'mx', 'enc_orphan_reconciliation', 'pending_reconciliation',
+        0, 8, 0, 'finalization_failure', now() + interval '30 minutes',
+        'FINALIZATION_UNKNOWN', now() + interval '30 days'
+    );
+
+CREATE TEMP TABLE repeated_deletion_orphan_before_sever AS
+SELECT status, attempts, recovery_attempts, next_attempt_at, last_error_code
+FROM bank_connection_orphaned_items
+WHERE id = '44050000-0000-4000-e000-000000000002';
+
 SELECT sever_bank_revocation_identities_for_account(
     '44050000-0000-4000-8000-000000000001',
     ARRAY['44050000-0000-4000-9000-000000000001']::UUID[]
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'pending_revocation'
+           AND attempts = 0
+           AND recovery_attempts = 2
+           AND reason = 'account_deletion'
+           AND next_attempt_at <= now()
+           AND last_error_code IS NULL
+           AND owner_id IS NULL
+           AND household_id IS NULL
+           AND connection_id IS NULL
+        FROM bank_connection_orphaned_items
+        WHERE id = '44050000-0000-4000-e000-000000000001'
+    ),
+    'first account-deletion escalation revives an orphan-only exhausted job after bounded recovery'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.recovery_attempts = previous.recovery_attempts
+           AND job.next_attempt_at IS NOT DISTINCT FROM previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+           AND job.owner_id IS NULL
+           AND job.household_id IS NULL
+           AND job.connection_id IS NULL
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN repeated_deletion_orphan_before_sever previous
+        WHERE job.id = '44050000-0000-4000-e000-000000000002'
+    ),
+    'repeated orphan-only account deletion preserves exhaustion and recovery budgets'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'retry_wait'
+           AND attempts = 3
+           AND reason = 'account_deletion'
+           AND next_attempt_at <= now()
+           AND last_error_code = 'PROVIDER_DOWN'
+        FROM bank_connection_orphaned_items
+        WHERE id = '44050000-0000-4000-e000-000000000003'
+    ),
+    'first orphan-only account deletion makes retry-wait work immediately due without resetting attempts'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'pending_revocation'
+           AND reason = 'account_deletion'
+           AND next_attempt_at <= now()
+        FROM bank_connection_orphaned_items
+        WHERE id = '44050000-0000-4000-e000-000000000004'
+    ),
+    'first orphan-only account deletion converts pending reconciliation into claimable revocation'
 );
 
 SELECT pg_temp.assert_true(

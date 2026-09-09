@@ -1178,11 +1178,26 @@ SET search_path = public
 AS $$
 DECLARE
     v_job bank_connection_orphaned_items%ROWTYPE;
+    v_candidate_connection_id UUID;
     v_delay_seconds INTEGER;
     v_status TEXT;
 BEGIN
     IF p_error_code IS NOT NULL AND length(p_error_code) > 128 THEN
         RAISE EXCEPTION 'error code exceeds safe bound' USING ERRCODE = 'check_violation';
+    END IF;
+
+    -- Match every path that touches both tables: connection first, outbox
+    -- second. This non-locking read may race with identity severance, so the
+    -- locked outbox row is revalidated below before any mutation.
+    SELECT connection_id INTO v_candidate_connection_id
+    FROM bank_connection_orphaned_items
+    WHERE id = p_id;
+
+    IF v_candidate_connection_id IS NOT NULL THEN
+        PERFORM 1
+        FROM bank_connections
+        WHERE id = v_candidate_connection_id
+        FOR UPDATE;
     END IF;
 
     SELECT * INTO v_job
@@ -1194,6 +1209,12 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN 'stale';
+    END IF;
+
+    IF v_job.connection_id IS NOT NULL
+       AND v_job.connection_id IS DISTINCT FROM v_candidate_connection_id THEN
+        RAISE EXCEPTION 'revocation identity changed while acquiring locks'
+            USING ERRCODE = 'serialization_failure';
     END IF;
 
     IF p_succeeded THEN
@@ -1347,7 +1368,13 @@ BEGIN
     END LOOP;
 
     UPDATE bank_connection_orphaned_items
-    SET reason = CASE
+    SET status = CASE
+            WHEN reason <> 'account_deletion'
+                 AND status IN ('pending_reconciliation', 'exhausted')
+            THEN 'pending_revocation'
+            ELSE status
+        END,
+        reason = CASE
             WHEN status IN (
                 'pending_revocation',
                 'pending_reconciliation',
@@ -1379,6 +1406,30 @@ BEGIN
             )
             THEN LEAST(retain_until, now() + interval '7 days')
             ELSE retain_until
+        END,
+        attempts = CASE
+            WHEN reason <> 'account_deletion'
+                 AND status = 'exhausted'
+            THEN 0
+            ELSE attempts
+        END,
+        next_attempt_at = CASE
+            WHEN reason <> 'account_deletion'
+                 AND status IN (
+                     'pending_revocation',
+                     'pending_reconciliation',
+                     'processing',
+                     'retry_wait',
+                     'exhausted'
+                 )
+            THEN now()
+            ELSE next_attempt_at
+        END,
+        last_error_code = CASE
+            WHEN reason <> 'account_deletion'
+                 AND status = 'exhausted'
+            THEN NULL
+            ELSE last_error_code
         END,
         owner_id = NULL,
         household_id = NULL,
