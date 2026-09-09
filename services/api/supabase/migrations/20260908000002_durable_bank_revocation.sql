@@ -962,7 +962,7 @@ BEGIN
     claimed AS (
         UPDATE bank_connection_orphaned_items o
         SET status = 'processing',
-            attempts = attempts + 1,
+            attempts = o.attempts + 1,
             last_attempt_at = now(),
             claim_token = gen_random_uuid(),
             claim_expires_at = now() + p_lease
@@ -1059,10 +1059,10 @@ BEGIN
     END IF;
 
     SELECT * INTO v_row
-    FROM bank_connection_orphaned_items
-    WHERE id = p_id
-      AND status = 'processing'
-      AND claim_token = p_claim_token
+    FROM bank_connection_orphaned_items o
+    WHERE o.id = p_id
+      AND o.status = 'processing'
+      AND o.claim_token = p_claim_token
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -1070,14 +1070,13 @@ BEGIN
     END IF;
 
     IF v_row.attempts >= v_row.max_attempts THEN
-        UPDATE bank_connection_orphaned_items
+        UPDATE bank_connection_orphaned_items o
         SET status = 'exhausted',
             claim_token = NULL,
             claim_expires_at = NULL,
             last_error_code = p_error_code
-        WHERE id = p_id
-        RETURNING bank_connection_orphaned_items.status,
-                  bank_connection_orphaned_items.next_attempt_at
+        WHERE o.id = p_id
+        RETURNING o.status, o.next_attempt_at
         INTO status, next_attempt_at;
     ELSE
         v_base_seconds := LEAST(
@@ -1088,15 +1087,14 @@ BEGIN
             secs => v_base_seconds + (random() * v_base_seconds * 0.25)
         );
 
-        UPDATE bank_connection_orphaned_items
+        UPDATE bank_connection_orphaned_items o
         SET status = 'pending_revocation',
             claim_token = NULL,
             claim_expires_at = NULL,
             next_attempt_at = now() + v_delay,
             last_error_code = p_error_code
-        WHERE id = p_id
-        RETURNING bank_connection_orphaned_items.status,
-                  bank_connection_orphaned_items.next_attempt_at
+        WHERE o.id = p_id
+        RETURNING o.status, o.next_attempt_at
         INTO status, next_attempt_at;
     END IF;
 
