@@ -19,7 +19,7 @@ $lockProcess = $null
 function Invoke-LocalPsql {
     param([Parameter(Mandatory = $true)][string]$Sql)
 
-    $output = $Sql | docker exec -i $Container psql -U supabase_admin -d postgres `
+    $output = $Sql | docker exec -e PGPASSWORD=postgres -i $Container psql -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -q -A -t
     if ($LASTEXITCODE -ne 0) {
         throw 'psql failed in the isolated Stage 7 concurrency database'
@@ -48,7 +48,7 @@ INSERT INTO bank_connection_orphaned_items (
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = 'docker'
     foreach ($argument in @(
-            'exec', '-i', $Container, 'psql', '-U', 'supabase_admin',
+            'exec', '-e', 'PGPASSWORD=postgres', '-i', $Container, 'psql', '-U', 'postgres',
             '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-A', '-t'
         )) {
         [void]$startInfo.ArgumentList.Add($argument)
