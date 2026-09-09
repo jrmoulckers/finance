@@ -894,23 +894,27 @@ SELECT pg_temp.assert_true(
     'reconciliation purges only the duplicate outbox envelope'
 );
 
+CREATE TEMP TABLE reconciled_disconnect_result AS
+SELECT *
+FROM enqueue_bank_connection_revocation(
+    '44050000-0000-4000-d000-000000000201',
+    'user_disconnect',
+    '44050000-0000-4000-8000-000000000001',
+    false
+);
+SELECT result_status FROM reconciled_disconnect_result;
+SELECT pg_temp.assert_true(
+    (SELECT result_status = 'enqueued' FROM reconciled_disconnect_result),
+    'a reconciled finalization permits a later legitimate disconnect'
+);
 SELECT pg_temp.assert_true(
     (
-        SELECT result_status = 'enqueued'
-        FROM enqueue_bank_connection_revocation(
-            '44050000-0000-4000-d000-000000000201',
-            'user_disconnect',
-            '44050000-0000-4000-8000-000000000001',
-            false
-        )
-    )
-    AND (
         SELECT count(*) = 1
         FROM bank_connection_orphaned_items
         WHERE connection_id = '44050000-0000-4000-d000-000000000201'
           AND status = 'pending_revocation'
     ),
-    'a reconciled finalization releases its key for a later legitimate disconnect'
+    'a reconciled finalization releases its idempotency key for new durable work'
 );
 
 INSERT INTO bank_connection_orphaned_items (
