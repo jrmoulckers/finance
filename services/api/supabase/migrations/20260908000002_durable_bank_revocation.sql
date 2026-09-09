@@ -229,9 +229,9 @@ BEGIN
       AND bank_connection_consumes_cap(c.status, c.deleted_at);
 
     SELECT count(*) INTO v_reserved
-    FROM bank_connection_reservations
-    WHERE household_id = p_household_id
-      AND bank_connection_reservations.expires_at > now();
+    FROM bank_connection_reservations r
+    WHERE r.household_id = p_household_id
+      AND r.expires_at > now();
 
     IF v_cap <= 0 THEN
         RETURN QUERY SELECT 'premium_required'::TEXT, NULL::UUID, v_cap, (v_live + v_reserved),
@@ -356,10 +356,10 @@ BEGIN
         -- A reconciliation handoff is a durable tombstone created under this
         -- same household lock. Once it wins, this provider Item belongs to the
         -- revocation worker and finalization must never recreate a live row.
-        SELECT id INTO v_handoff_id
-        FROM bank_connection_orphaned_items
-        WHERE connection_id = p_connection_id
-        ORDER BY created_at, id
+        SELECT o.id INTO v_handoff_id
+        FROM bank_connection_orphaned_items o
+        WHERE o.connection_id = p_connection_id
+        ORDER BY o.created_at, o.id
         LIMIT 1
         FOR UPDATE;
 
@@ -428,7 +428,7 @@ BEGIN
         p_provider, p_institution_id, p_institution_name, p_encrypted_access_token,
         'active', COALESCE(p_metadata, '{}'::jsonb)
     )
-    RETURNING id, bank_connections.created_at INTO v_id, v_created_at;
+    RETURNING bank_connections.id, bank_connections.created_at INTO v_id, v_created_at;
 
     RETURN QUERY SELECT 'finalized'::TEXT, v_id, v_created_at;
 END;
@@ -1357,18 +1357,18 @@ BEGIN
         END IF;
 
         IF v_connection_is_live THEN
-            UPDATE bank_connection_orphaned_items
+            UPDATE bank_connection_orphaned_items AS o
             SET status = 'reconciled',
                 encrypted_access_token = NULL,
                 revoked_at = now(),
                 next_attempt_at = NULL,
                 last_error_code = 'CONNECTION_FINALIZED'
-            WHERE id = v_reconciliation.id;
+            WHERE o.id = v_reconciliation.id;
         ELSE
-            UPDATE bank_connection_orphaned_items
+            UPDATE bank_connection_orphaned_items AS o
             SET status = 'pending_revocation',
                 next_attempt_at = now()
-            WHERE id = v_reconciliation.id;
+            WHERE o.id = v_reconciliation.id;
         END IF;
     END LOOP;
 
