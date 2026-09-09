@@ -718,28 +718,31 @@ SELECT pg_temp.assert_true(
     'disconnect replay cannot duplicate durable work'
 );
 
+CREATE TEMP TABLE atomic_rejection_result AS
+SELECT *
+FROM finalize_or_enqueue_bank_connection(
+    '44050000-0000-4000-d100-000000000001',
+    '44050000-0000-4000-9000-000000000001',
+    '44050000-0000-4000-8000-000000000001',
+    'plaid',
+    'atomic-rejection',
+    'Synthetic rejection',
+    'enc-atomic-rejection',
+    '{}'::JSONB,
+    '44050000-0000-4000-d000-000000000601'
+);
+SELECT pg_temp.assert_true(
+    (SELECT status = 'reservation_not_found' FROM atomic_rejection_result),
+    'definite finalization rejection returns its reason'
+);
 SELECT pg_temp.assert_true(
     (
-        SELECT status = 'reservation_not_found'
-        FROM finalize_or_enqueue_bank_connection(
-            '44050000-0000-4000-d100-000000000001',
-            '44050000-0000-4000-9000-000000000001',
-            '44050000-0000-4000-8000-000000000001',
-            'plaid',
-            'atomic-rejection',
-            'Synthetic rejection',
-            'enc-atomic-rejection',
-            '{}'::JSONB,
-            '44050000-0000-4000-d000-000000000601'
-        )
-    )
-    AND (
         SELECT status = 'pending_revocation'
            AND encrypted_access_token = 'enc-atomic-rejection'
         FROM bank_connection_orphaned_items
         WHERE connection_id = '44050000-0000-4000-d000-000000000601'
     ),
-    'definite finalization rejection atomically persists its retry credential'
+    'definite finalization rejection atomically persists the retry credential'
 );
 SELECT pg_temp.assert_true(
     (
