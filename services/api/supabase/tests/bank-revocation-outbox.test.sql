@@ -664,11 +664,14 @@ FROM claim_bank_revocation_jobs(
 )
 WHERE connection_id = '44050000-0000-4000-e000-000000000003';
 
+CREATE TEMP TABLE reconciliation_result AS
+SELECT resolve_bank_revocation_reconciliation(
+    (SELECT id FROM reconcile_claim),
+    '44050000-0000-4000-8400-000000000004'
+) AS disposition;
+
 SELECT pg_temp.assert_true(
-    resolve_bank_revocation_reconciliation(
-        (SELECT id FROM reconcile_claim),
-        '44050000-0000-4000-8400-000000000004'
-    ) = 'retained'
+    (SELECT disposition = 'retained' FROM reconciliation_result)
     AND (
         SELECT status = 'reconciled' AND encrypted_access_token IS NULL
         FROM bank_connection_orphaned_items
