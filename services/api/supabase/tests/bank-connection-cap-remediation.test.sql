@@ -746,6 +746,18 @@ SELECT * FROM claim_bank_revocation_jobs(1, 60);
 
 SELECT pg_temp.assert_true(
     (
+        SELECT status = 'reconciled'
+           AND encrypted_access_token IS NULL
+           AND revoked_at IS NOT NULL
+           AND last_error_code = 'CONNECTION_FINALIZED'
+        FROM bank_connection_orphaned_items
+        WHERE connection_id = '44041000-0000-4000-e000-000000000007'
+    ),
+    'a reconciliation handoff for an existing connection is terminally purged'
+);
+
+SELECT pg_temp.assert_true(
+    (
         SELECT record_bank_revocation_result(id, lease_token, false, 'PROVIDER_DOWN')
         FROM remediation_claimed_job
     ) = 'retry_wait',
@@ -804,30 +816,58 @@ SELECT pg_temp.assert_true(
     'completing an already-terminal handoff is a no-op'
 );
 
+CREATE TEMP TABLE retention_open_item AS
+SELECT record_orphaned_bank_item(
+    '44041000-0000-4000-9000-000000000001',
+    '44041000-0000-4000-8000-000000000001',
+    'plaid', 'enc_orphan_retention_open', 'FINALIZE_OUTCOME_UNKNOWN',
+    'pending_reconciliation',
+    '44041000-0000-4000-e000-000000000008'
+) AS id;
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'pending_reconciliation'
+           AND encrypted_access_token = 'enc_orphan_retention_open'
+           AND revoked_at IS NULL
+           AND retain_until > now()
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM retention_open_item)
+    ),
+    'retention assertions use a dedicated open credential-bearing fixture'
+);
+
 -- The constraint, not just the RPC, forbids an open row without a credential.
 SELECT pg_temp.expect_error(
     $sql$
         UPDATE bank_connection_orphaned_items
         SET encrypted_access_token = NULL
-        WHERE status = 'pending_reconciliation'
+        WHERE id = (SELECT id FROM retention_open_item)
     $sql$,
     '23514',
     'an open handoff cannot be stripped of its credential while it stays open'
 );
 
--- Erasure must survive the account rows it points at: the FKs are
--- ON DELETE SET NULL, so the handoff (and its bounded retention) outlives them.
+-- Identity severance must preserve the encrypted capability and its bounded
+-- retention window until processor erasure succeeds or retention expires.
 UPDATE bank_connection_orphaned_items
-SET household_id = NULL, owner_id = NULL
-WHERE encrypted_access_token = 'enc_orphan_reconcile';
+SET household_id = NULL,
+    owner_id = NULL,
+    connection_id = NULL
+WHERE id = (SELECT id FROM retention_open_item);
 
 SELECT pg_temp.assert_true(
     (
-        SELECT retain_until IS NOT NULL AND status = 'pending_reconciliation'
+        SELECT retain_until IS NOT NULL
+           AND status = 'pending_reconciliation'
+           AND household_id IS NULL
+           AND owner_id IS NULL
+           AND connection_id IS NULL
+           AND encrypted_access_token = 'enc_orphan_retention_open'
         FROM bank_connection_orphaned_items
-        WHERE encrypted_access_token = 'enc_orphan_reconcile'
+        WHERE id = (SELECT id FROM retention_open_item)
     ),
-    'a detached handoff keeps a bounded retention window'
+    'a detached open handoff keeps its credential and bounded retention window'
 );
 
 -- ---------------------------------------------------------------------------
@@ -836,7 +876,7 @@ SELECT pg_temp.assert_true(
 
 UPDATE bank_connection_orphaned_items
 SET retain_until = now() - interval '1 minute'
-WHERE encrypted_access_token = 'enc_orphan_reconcile';
+WHERE id = (SELECT id FROM retention_open_item);
 
 UPDATE bank_connection_orphaned_items
 SET revoked_at = now() - interval '200 days'
@@ -863,7 +903,7 @@ SELECT pg_temp.assert_true(
         SELECT status = 'abandoned' AND revoked_at IS NOT NULL
            AND last_error_code = 'FINALIZE_OUTCOME_UNKNOWN'
         FROM bank_connection_orphaned_items
-        WHERE connection_id = '44041000-0000-4000-e000-000000000007'
+        WHERE id = (SELECT id FROM retention_open_item)
     ),
     'a force-abandoned row is dispositioned and keeps its non-sensitive error detail'
 );
