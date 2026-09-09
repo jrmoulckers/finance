@@ -2,7 +2,7 @@
 
 /**
  * Handler-level orchestration tests for the bank connection Edge Function
- * (Refs #4404).
+ * (Refs #4404, #4405).
  *
  * These drive the whole reserve → exchange → finalize sequence with fake
  * collaborators, because the defects this suite guards are not visible from
@@ -330,6 +330,35 @@ Deno.test('disconnect queues durable revocation without calling the provider', a
   const call = lastCall(h.supabase, 'request_bank_connection_revocation');
   assertEquals(call?.args.p_connection_id, CONNECTION_ID);
   assertEquals(call?.args.p_actor_user_id, 'user-1');
+});
+
+Deno.test('repeated disconnect remains an idempotent API request', async () => {
+  withEnv();
+  const h = harness({
+    script: {
+      request_bank_connection_revocation: [
+        ok([{ status: 'queued', outbox_id: 'outbox-1' }]),
+        ok([{ status: 'queued', outbox_id: 'outbox-1' }]),
+      ],
+    },
+  });
+  const handler = createBankConnectionHandler(h.deps);
+
+  const firstResponse = await handler(deleteRequest());
+  const secondResponse = await handler(deleteRequest());
+
+  assertEquals(firstResponse.status, 204);
+  assertEquals(secondResponse.status, 204);
+  assertEquals(h.revokes.length, 0);
+  assertEquals(countCalls(h.supabase, 'request_bank_connection_revocation'), 2);
+  for (const call of h.supabase.calls.filter(
+    ({ fn }) => fn === 'request_bank_connection_revocation',
+  )) {
+    assertEquals(call.args, {
+      p_connection_id: CONNECTION_ID,
+      p_actor_user_id: 'user-1',
+    });
+  }
 });
 
 Deno.test('exchange_token refuses a zero allowance before touching the provider', async () => {

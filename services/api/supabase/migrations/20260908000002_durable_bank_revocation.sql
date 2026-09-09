@@ -608,14 +608,20 @@ BEGIN
     FOR UPDATE;
 
     IF v_existing IS NOT NULL THEN
+        -- Only a first transition into account deletion may override retry
+        -- scheduling. Duplicate requests must not bypass backoff or exhaustion.
         UPDATE bank_connection_orphaned_items
         SET status = CASE
-                WHEN status = 'pending_reconciliation' THEN 'pending_revocation'
-                WHEN status = 'exhausted' THEN 'pending_revocation'
+                WHEN p_reason = 'account_deletion'
+                     AND reason <> 'account_deletion'
+                     AND status IN ('pending_reconciliation', 'exhausted')
+                THEN 'pending_revocation'
                 ELSE status
             END,
             reason = CASE
-                WHEN p_reason = 'account_deletion' THEN 'account_deletion'
+                WHEN p_reason = 'account_deletion'
+                     AND reason <> 'account_deletion'
+                THEN 'account_deletion'
                 ELSE reason
             END,
             erasure_requested_at = CASE
@@ -636,13 +642,24 @@ BEGIN
                     ELSE NULL
                 END
             ),
-            attempts = CASE WHEN status = 'exhausted' THEN 0 ELSE attempts END,
+            attempts = CASE
+                WHEN p_reason = 'account_deletion'
+                     AND reason <> 'account_deletion'
+                     AND status = 'exhausted'
+                THEN 0
+                ELSE attempts
+            END,
             next_attempt_at = CASE
-                WHEN status = 'exhausted' THEN now()
-                ELSE LEAST(COALESCE(next_attempt_at, now()), now())
+                WHEN p_reason = 'account_deletion'
+                     AND reason <> 'account_deletion'
+                THEN now()
+                ELSE next_attempt_at
             END,
             last_error_code = CASE
-                WHEN status = 'exhausted' THEN NULL
+                WHEN p_reason = 'account_deletion'
+                     AND reason <> 'account_deletion'
+                     AND status = 'exhausted'
+                THEN NULL
                 ELSE last_error_code
             END,
             owner_id = CASE WHEN p_detach_identity THEN NULL ELSE owner_id END,

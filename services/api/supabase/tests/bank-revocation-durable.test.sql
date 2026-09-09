@@ -452,6 +452,62 @@ SELECT pg_temp.assert_true(
     'retry is bounded, jittered, and retains the only revocation credential'
 );
 
+CREATE TEMP TABLE retry_wait_before_repeat AS
+SELECT status, attempts, next_attempt_at, last_error_code
+FROM bank_connection_orphaned_items
+WHERE id = (SELECT id FROM claimed_job);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'queued'
+        FROM request_bank_connection_revocation(
+            (
+                SELECT connection_id
+                FROM bank_connection_orphaned_items
+                WHERE id = (SELECT id FROM claimed_job)
+            ),
+            '44050000-0000-4000-8000-000000000001'
+        )
+    ),
+    'a repeated authenticated disconnect remains idempotently queued'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.next_attempt_at = previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN retry_wait_before_repeat previous
+        WHERE job.id = (SELECT id FROM claimed_job)
+    ),
+    'a repeated disconnect cannot accelerate jittered retry work'
+);
+
+SELECT enqueue_bank_connection_revocation_internal(
+    (
+        SELECT connection_id
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM claimed_job)
+    ),
+    'entitlement_downgrade',
+    false
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.next_attempt_at = previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN retry_wait_before_repeat previous
+        WHERE job.id = (SELECT id FROM claimed_job)
+    ),
+    'repeated downgrade enforcement cannot accelerate jittered retry work'
+);
+
 UPDATE bank_connection_orphaned_items
 SET attempts = max_attempts - 1,
     next_attempt_at = now()
@@ -466,6 +522,39 @@ SELECT pg_temp.assert_true(
         FROM claimed_job
     ) = 'exhausted',
     'the final bounded failure reaches operator-visible exhaustion'
+);
+
+CREATE TEMP TABLE exhausted_before_repeat AS
+SELECT status, attempts, next_attempt_at, last_error_code
+FROM bank_connection_orphaned_items
+WHERE id = (SELECT id FROM claimed_job);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT status = 'queued'
+        FROM request_bank_connection_revocation(
+            (
+                SELECT connection_id
+                FROM bank_connection_orphaned_items
+                WHERE id = (SELECT id FROM claimed_job)
+            ),
+            '44050000-0000-4000-8000-000000000001'
+        )
+    ),
+    'a repeated disconnect remains a successful no-op after exhaustion'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.next_attempt_at IS NOT DISTINCT FROM previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN exhausted_before_repeat previous
+        WHERE job.id = (SELECT id FROM claimed_job)
+    ),
+    'a repeated disconnect cannot revive exhausted work or reset its retry budget'
 );
 
 SELECT pg_temp.assert_true(
@@ -504,6 +593,76 @@ SELECT pg_temp.assert_true(
         WHERE id = (SELECT id FROM claimed_job)
     ),
     'a new account-deletion reason makes an exhausted job immediately claimable'
+);
+
+UPDATE bank_connection_orphaned_items
+SET status = 'retry_wait',
+    attempts = 3,
+    next_attempt_at = now() + interval '30 minutes',
+    last_error_code = 'PROVIDER_DOWN'
+WHERE id = (SELECT id FROM claimed_job);
+
+CREATE TEMP TABLE account_deletion_retry_before_repeat AS
+SELECT status, attempts, next_attempt_at, last_error_code
+FROM bank_connection_orphaned_items
+WHERE id = (SELECT id FROM claimed_job);
+
+SELECT enqueue_bank_connection_revocation_internal(
+    (
+        SELECT connection_id
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM claimed_job)
+    ),
+    'account_deletion',
+    false
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.next_attempt_at = previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN account_deletion_retry_before_repeat previous
+        WHERE job.id = (SELECT id FROM claimed_job)
+    ),
+    'a repeated account-deletion enqueue cannot accelerate an existing retry'
+);
+
+UPDATE bank_connection_orphaned_items
+SET status = 'exhausted',
+    attempts = max_attempts,
+    next_attempt_at = NULL,
+    last_error_code = 'PROVIDER_DOWN'
+WHERE id = (SELECT id FROM claimed_job);
+
+CREATE TEMP TABLE account_deletion_exhausted_before_repeat AS
+SELECT status, attempts, next_attempt_at, last_error_code
+FROM bank_connection_orphaned_items
+WHERE id = (SELECT id FROM claimed_job);
+
+SELECT enqueue_bank_connection_revocation_internal(
+    (
+        SELECT connection_id
+        FROM bank_connection_orphaned_items
+        WHERE id = (SELECT id FROM claimed_job)
+    ),
+    'account_deletion',
+    false
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT job.status = previous.status
+           AND job.attempts = previous.attempts
+           AND job.next_attempt_at IS NOT DISTINCT FROM previous.next_attempt_at
+           AND job.last_error_code = previous.last_error_code
+        FROM bank_connection_orphaned_items job
+        CROSS JOIN account_deletion_exhausted_before_repeat previous
+        WHERE job.id = (SELECT id FROM claimed_job)
+    ),
+    'repeated account deletion cannot revive exhausted work or reset its budget'
 );
 
 -- Finish the recovered job, then prove a duplicate result cannot transition it
