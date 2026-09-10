@@ -106,3 +106,15 @@ export {
   // Runner
   runHealthCheck,
 } from './health-check.js';
+
+export {
+  type EntitlementProvider,
+  type EntitlementReliabilityMetricName,
+  type EntitlementReliabilityMetricUnit,
+  type EntitlementProviderReliabilitySample,
+  type EntitlementReliabilitySample,
+  type EntitlementReliabilityMetricPoint,
+  type EntitlementReliabilitySlo,
+  ENTITLEMENT_RELIABILITY_SLOS,
+  createEntitlementReliabilityMetrics,
+} from './entitlement-reliability.js';
