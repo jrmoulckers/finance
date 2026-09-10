@@ -17,7 +17,7 @@ enablement.
 
 The integrated implementation is suitable to proceed to non-production operational validation.
 Provider enablement remains blocked until the open execution-evidence finding, the production gates
-in this document, and the remaining independent #4406 sign-offs are cleared.
+in this document, and coordinator clearance of the integrated #4406 evidence.
 
 The review found two reliability gaps:
 
