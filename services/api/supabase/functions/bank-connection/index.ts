@@ -385,8 +385,7 @@ async function provisionAndLinkAccounts(
 
     if (accountError || !account) {
       logger.warn('Failed to provision internal account', {
-        connectionId: params.connectionId,
-        errorMessage: accountError?.message,
+        errorCode: accountError?.code ?? 'ACCOUNT_PROVISION_FAILED',
       });
       continue;
     }
@@ -406,8 +405,7 @@ async function provisionAndLinkAccounts(
 
     if (linkError) {
       logger.warn('Failed to link external account', {
-        connectionId: params.connectionId,
-        errorMessage: linkError.message,
+        errorCode: linkError.code ?? 'ACCOUNT_LINK_FAILED',
       });
       continue;
     }
@@ -560,7 +558,6 @@ async function resolveFinalization(
     if (confirmation.state === 'finalized') {
       // The lost response hid a successful commit. Report the persisted row.
       logger.warn('Recovered a bank connection finalization whose response was lost', {
-        connectionId: params.connectionId,
         provider: params.provider,
       });
       return {
@@ -581,7 +578,6 @@ async function resolveFinalization(
     }
 
     logger.warn('Replaying an unobserved bank connection finalization', {
-      connectionId: params.connectionId,
       provider: params.provider,
     });
     outcome = await finalizeConnectionReservation(supabase, params);
@@ -734,7 +730,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
             if (err instanceof PlaidApiError || err instanceof MxApiError) {
               logger.warn('Provider link token failed', {
                 provider: body.provider,
-                errorCode: err.errorCode,
+                errorCode: 'PROVIDER_LINK_TOKEN_FAILED',
               });
               return null;
             }
@@ -812,7 +808,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
         if (reservation.status === 'error') {
           // Fail closed — never fall back to a client tier, flag, or cached cap.
           logger.error('Failed to reserve a bank connection slot', {
-            errorMessage: reservation.message,
+            errorCode: 'CAPACITY_RESERVATION_FAILED',
           });
           return entitlementErrorResponse(
             req,
@@ -830,7 +826,7 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
             if (err instanceof PlaidApiError || err instanceof MxApiError) {
               logger.warn('Provider token exchange failed', {
                 provider: body.provider,
-                errorCode: err.errorCode,
+                errorCode: 'PROVIDER_TOKEN_EXCHANGE_FAILED',
               });
               return null;
             }
@@ -891,7 +887,6 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           });
           logger.error('Bank connection finalization outcome unknown; revocation withheld', {
             provider: body.provider,
-            connectionId,
             handoffRecorded: handoffId !== null,
           });
           return entitlementErrorResponse(
@@ -967,7 +962,6 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
         };
 
         logger.info('Bank connection created', {
-          connectionId: connection.id,
           provider: body.provider,
           httpStatus: 201,
         });
@@ -1001,20 +995,16 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
               logger,
             );
             logger.info('Initial account link + sync complete', {
-              connectionId: connection.id,
               linkedAccounts: linkedCount,
               added: initialSync.added,
               modified: initialSync.modified,
             });
           } else {
-            logger.warn('No external accounts linked for connection', {
-              connectionId: connection.id,
-            });
+            logger.warn('No external accounts linked for connection');
           }
-        } catch (err) {
+        } catch {
           logger.error('Account linking / initial sync failed (connection retained)', {
-            connectionId: connection.id,
-            errorMessage: (err as Error).message,
+            errorCode: 'ACCOUNT_LINK_OR_SYNC_FAILED',
           });
         }
 
@@ -1060,7 +1050,9 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
           .order('created_at', { ascending: false });
 
         if (listError) {
-          logger.error('Failed to list bank connections', { errorMessage: listError.message });
+          logger.error('Failed to list bank connections', {
+            errorCode: listError.code ?? 'CONNECTION_LIST_FAILED',
+          });
           return internalErrorResponse(req);
         }
 
@@ -1118,8 +1110,8 @@ export function createBankConnectionHandler(deps: BankConnectionDeps = {}) {
       }
 
       return methodNotAllowedResponse(req);
-    } catch (err) {
-      logger.error('Bank connection error', { errorMessage: (err as Error).message });
+    } catch {
+      logger.error('Bank connection error', { errorCode: 'UNHANDLED_BANK_CONNECTION_ERROR' });
       return internalErrorResponse(req);
     }
   };

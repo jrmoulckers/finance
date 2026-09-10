@@ -256,6 +256,12 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
     keyPrefix: 'revenuecat-reconcile',
     failMode: 'closed',
   },
+  'stripe-webhook': {
+    maxRequests: 120,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-webhook',
+    failMode: 'closed',
+  },
   'stripe-checkout': {
     maxRequests: 10,
     windowSeconds: 60,
