@@ -225,6 +225,7 @@ jobs:
           - 'services/api/supabase/functions/process-bank-revocations/**'
           - 'services/api/supabase/tests/entitlement-gateway.integration.test.mjs'
           - 'services/api/supabase/tests/sync-contract.test.ts'
+          - 'services/api/supabase/tests/billing-entitlements-integration.test.sql'
           - 'services/api/supabase/migrations/**'
           - 'services/api/supabase/tests/bank-connection-cap.test.sql'
           - 'services/api/supabase/tests/bank-connection-cap-remediation.test.sql'
