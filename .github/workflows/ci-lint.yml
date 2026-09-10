@@ -288,7 +288,7 @@ jobs:
           supabase start \
             -x studio,imgproxy,logflare,vector,supavisor,mailpit,realtime,storage-api,inbucket
 
-      - name: Run the bank connection database suites
+      - name: Run the entitlement database suites
         working-directory: services/api
         # `supabase start` has already applied every migration to the local
         # database, so these run against the real schema. The connection is set
@@ -307,6 +307,7 @@ jobs:
           PGPASSWORD: postgres
           PGDATABASE: postgres
         run: |
+          npm run test:billing-entitlements
           npm run test:bank-connection-cap
           npm run test:bank-connection-cap-remediation
           npm run test:bank-revocation-durable-sql
