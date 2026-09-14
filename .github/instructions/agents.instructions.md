@@ -1,5 +1,6 @@
 ---
 applyTo: 'agents/**,.github/agents/**'
+description: 'Authoring and reviewing agent definitions. Use for agent frontmatter, roles, when_to_use, primary_paths, write_scope, risk_level, tools, and canonical or local slug collisions.'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
