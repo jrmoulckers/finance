@@ -15,6 +15,9 @@
 #                   Read-only aggregate counts for the bank-data pipeline. Does
 #                   not output account names, transaction data, or identifiers.
 #   up              `docker compose up -d` (idempotent; data volumes untouched).
+#   restart-edge-functions
+#                   Recreate Edge Functions and its autoheal watchdog, then
+#                   verify both container-local and public API health.
 #   restart-db      `docker compose restart db`, then tail db logs.
 #   restart-docker  `sudo systemctl restart docker` (fixes a hung daemon), then
 #                   `docker compose up -d`. Requires passwordless sudo.
@@ -46,6 +49,7 @@ on:
           - diagnose
           - diagnose-bank-data
           - up
+          - restart-edge-functions
           - restart-db
           - restart-docker
           - repair-household-memberships
@@ -129,6 +133,10 @@ jobs:
                 timeout 25 $DC logs edge-functions --tail=160 --no-color </dev/null 2>&1 \
                   | sed -E 's/(access_token|public_token|client_id|secret|authorization)(["=: ]+)[^", }]+/\1\2<redacted>/Ig' \
                   || echo "(edge-functions logs timed out/failed)"
+                echo "=== autoheal status and logs (timeout 25) ==="
+                timeout 25 $DC ps edge-functions autoheal </dev/null 2>&1 || echo "(status probe timed out/failed)"
+                timeout 25 $DC logs autoheal --tail=80 --no-color </dev/null 2>&1 \
+                  || echo "(autoheal logs timed out/failed)"
                 ;;
               diagnose-bank-data)
                 echo "=== bank-data aggregate counts (no financial data or identifiers) ==="
@@ -172,6 +180,42 @@ jobs:
                 echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
                 sleep 8
                 echo "=== ps after up (timeout 25) ==="; timeout 25 $DC ps </dev/null 2>&1 || true
+                ;;
+              restart-edge-functions)
+                echo "=== recreate edge-functions and autoheal (timeout 180) ==="
+                timeout 180 $DC up -d --no-deps --force-recreate edge-functions autoheal </dev/null 2>&1 \
+                  || { echo "::error::failed to recreate edge-functions and autoheal"; exit 1; }
+
+                edge_healthy=no
+                for attempt in $(seq 1 12); do
+                  if timeout 15 $DC exec -T edge-functions deno eval \
+                    'const r = await fetch("http://localhost:9000/health-check"); Deno.exit(r.ok ? 0 : 1)' \
+                    </dev/null >/dev/null 2>&1; then
+                    edge_healthy=yes
+                    break
+                  fi
+                  echo "edge-functions health attempt ${attempt}/12 failed; retrying in 5s"
+                  sleep 5
+                done
+
+                if [ "$edge_healthy" != yes ]; then
+                  echo "::error::edge-functions did not become healthy after recreation"
+                  timeout 25 $DC ps edge-functions autoheal </dev/null 2>&1 || true
+                  timeout 25 $DC logs edge-functions --tail=160 --no-color </dev/null 2>&1 \
+                    | sed -E 's/(access_token|public_token|client_id|secret|authorization)(["=: ]+)[^", }]+/\1\2<redacted>/Ig' \
+                    || true
+                  exit 1
+                fi
+
+                echo "=== verify public API health ==="
+                if ! curl --fail --silent --show-error --max-time 15 \
+                  https://finance.jrmoulckers.com/health \
+                  | grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"'; then
+                  echo "::error::public /health did not report healthy after edge-functions recreation"
+                  exit 1
+                fi
+                echo "=== edge-functions recovery verified ==="
+                timeout 25 $DC ps edge-functions autoheal </dev/null 2>&1 || true
                 ;;
               restart-db)
                 echo "=== docker compose restart db (timeout 120) ==="; timeout 120 $DC restart db </dev/null 2>&1 || echo "(restart timed out/failed)"

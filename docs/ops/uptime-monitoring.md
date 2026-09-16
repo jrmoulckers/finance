@@ -137,9 +137,13 @@ For each monitor in the tables above:
    docker logs --tail 50 finance-auth
    docker logs --tail 50 finance-db
    ```
-3. **Mitigate** — Restart failed containers:
+3. **Mitigate** — Run **Ops — Production DB recovery** with
+   `restart-edge-functions`. The protected action recreates both Edge Functions
+   and its autoheal watchdog, waits for container-local health, and verifies the
+   public endpoint before succeeding. Use a direct container restart only when
+   that workflow is unavailable:
    ```bash
-   docker compose -f deploy/docker-compose.yml restart <service>
+   docker compose -f deploy/docker-compose.yml restart edge-functions
    ```
 4. **Verify** — Confirm the health endpoint returns 200:
    ```bash
