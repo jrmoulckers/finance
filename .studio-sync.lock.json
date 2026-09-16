@@ -1,7 +1,8 @@
 {
   "version": 1,
   "backbone": "jrmoulckers/.github",
-  "generatedAt": "2026-08-11T04:27:15.519Z",
+  "classifierSha256": "de7337e8bf0b270e6b75a2b1e4bc69b7a91c770dcc1f8bd8f669f02508239d89",
+  "generatedAt": "2026-08-17T07:54:42.900Z",
   "entries": {
     ".gitattributes": {
       "sourceSha256": "4be6041de14159436002446da3193a178a4defa235fe71585c04002d070d80c7",
@@ -119,34 +120,39 @@
       "syncedAt": "2026-08-08T01:14:28.079Z"
     },
     ".github/copilot-instructions.md": {
-      "sourceSha256": "f8f1ed9ad63ac948bf568540bfd3551d269af4d511112771d0818805f3c7e09d",
-      "targetSha256": "7c8a5883a4b81879ac7f0fafe2aeb40b6627387f5beb7934a1c31f2493ac4dd4",
-      "syncedAt": "2026-08-11T04:27:15.510Z"
+      "sourceSha256": "eb12e55218cdec94ecb73e113907a5cefa381560090c8b4fe4b704319681f519",
+      "targetSha256": "7b5e184805767845d0a81dfefc6259530411433ea8d4fc90596f67f902d717c4",
+      "syncedAt": "2026-08-17T07:54:42.872Z"
     },
     ".github/instructions/agents.instructions.md": {
-      "sourceSha256": "70f066ca74342a504f7411fbb21e62012b5b8ce05403ed32e93c3d39d145c8aa",
-      "targetSha256": "a772cb8d4790f9ae3763e6b94013000c16fb9192ab184b8ce20c3a297a10e78a",
-      "syncedAt": "2026-08-08T22:42:12.183Z"
+      "sourceSha256": "ab4641148ed4655e564d0ed5f3e1775d763f099aa69faed98a0cdd39fa62ac65",
+      "targetSha256": "e8b78155a814d2b06bd3d0090bb0fc311c98755fdbdc99e2294114e6a14eac18",
+      "syncedAt": "2026-08-17T07:54:42.893Z"
+    },
+    ".github/instructions/canon-formatting.instructions.md": {
+      "sourceSha256": "ee7e1146dfb546b87f4d7df6415497d7042b6d91391633e082e73405369988e5",
+      "targetSha256": "c7855d63c5ebd3144cfc44a3ed55c3a18191c1307f1333415cea42ef290e6337",
+      "syncedAt": "2026-08-17T07:54:42.893Z"
     },
     ".github/instructions/docs.instructions.md": {
-      "sourceSha256": "bb072694458d15a359bf7797cf081c821b0a91505be5da647a11eaba5c412b39",
-      "targetSha256": "6e0eb456aa7802230c6783dde741278a0f2831bebb90dad6a3aec2256a48a948",
-      "syncedAt": "2026-08-08T22:42:12.187Z"
+      "sourceSha256": "db90e20d33d96a6b079e288e0195a8fcfeb2fc984eda56cc258ca26dc653884a",
+      "targetSha256": "2d10dd1f79465f915f403761a7e57f2ecbac3ea42666334145748e6beae2178d",
+      "syncedAt": "2026-08-17T07:54:42.893Z"
     },
     ".github/instructions/skills.instructions.md": {
-      "sourceSha256": "6271f97c927a53ebe9de2d50d8d2de4b9f6b1904379c5c870498ca7a046e818a",
-      "targetSha256": "849a3c2e360cdd69b3b1f68aaab5b16f46f87268fa3a541e62793a627e45d7aa",
-      "syncedAt": "2026-08-08T22:42:12.189Z"
+      "sourceSha256": "18b2de57bd6ede3ec03d0281555122e507af2d2988df9b6f5a48d9eaa8257b17",
+      "targetSha256": "b75a00c46f43be3a17896606de7021958c945a4e70815c66489b4382f87cf38b",
+      "syncedAt": "2026-08-17T07:54:42.894Z"
     },
     ".github/instructions/tokens.instructions.md": {
-      "sourceSha256": "da5d995cceba6a3f72ed47b771b3ba81658132cdfe3f9a83e13fe7cc5635ee1b",
-      "targetSha256": "492b9cc97e2fe3e05b412ccc4bc72796e7a8f713319f49da1920b8db56f5fe71",
-      "syncedAt": "2026-08-11T04:27:15.515Z"
+      "sourceSha256": "514d378bbc952da122b2e9caa03ca45b0dd2db979939e758afc1f672e3c4b3ea",
+      "targetSha256": "81bd5937e736caf1ab38b3d5d451ce280219ff7d8ce59fdb722f388f1afedf28",
+      "syncedAt": "2026-08-17T07:54:42.894Z"
     },
     ".github/instructions/workflow.instructions.md": {
-      "sourceSha256": "f832c6dfa49f91055a8f5f4a91d0fccf88481fad9dc09dcde08381c67bed5c7c",
-      "targetSha256": "4206060d01da2c70515289c2750a497eff07c3f33c7a51c074b94234a09f279a",
-      "syncedAt": "2026-08-11T04:27:15.515Z"
+      "sourceSha256": "68eb1c69f316267c520319772f60a969250bd64a30d11b1e7ab29dde70db5cea",
+      "targetSha256": "901992802fe799a74ea821609d4c8e1e4c07e9f2e30d56218b9179c3571b5eaa",
+      "syncedAt": "2026-08-17T07:54:42.896Z"
     },
     ".github/prompts/backlog.prompt.md": {
       "sourceSha256": "662578e4e512ac591b86127f50c601283a27b6ce96c9e09b022b833f720fe750",
@@ -284,9 +290,9 @@
       "syncedAt": "2026-08-08T01:14:28.097Z"
     },
     "AGENTS.md": {
-      "sourceSha256": "06c07af49b0234f194414caf3fef7c15fc9e2ee93dde2c23231a16b2070c6275",
-      "targetSha256": "8d8e14c1193b620a04cccc4bcd19ad435e7c93016c5303bc44b1962dc7bf3ef7",
-      "syncedAt": "2026-08-08T22:42:12.136Z"
+      "sourceSha256": "d2cc55e24f581d56c30303987e638ec0896a301798a0d3e75203dbb655c31a72",
+      "targetSha256": "124fb6bf5454b6e1acda7b24277ec843776923a69446eb9e19998b026538921e",
+      "syncedAt": "2026-08-17T07:54:42.871Z"
     },
     "agency.toml": {
       "sourceSha256": "b097fc1ca3d98462ac07d6ba013858773a3c4eee4d98262f8373223709286e1a",
@@ -329,84 +335,84 @@
       "syncedAt": "2026-08-11T04:27:15.516Z"
     },
     "vendor/@jrm/tokens/css/default/tokens.css": {
-      "sourceSha256": "343e10b1ac7914f2a3d1255cfc6ffad1930ac1a17da9eb5aa5551e6e4f67062c",
-      "targetSha256": "9966d8a4156263ab62ca0434039309a9b8c40713dea1a53afb913c6467b05bb6",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "0a191331785157149200acef0cc69e1c7ed1c2e366ca016b073e19cdd27dd220",
+      "targetSha256": "4de3fe61a9a23524172280562e89c9f64fa727bb450cc494d15a3b53393e525c",
+      "syncedAt": "2026-08-17T07:54:42.898Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.dark-oled.d.ts": {
-      "sourceSha256": "7c664068a688ec61e1844ea98e60421c9621296709c0d87a9be8d9d58dc57cb4",
-      "targetSha256": "673eba7f5ba89bc68e1eca4e6defa3c84d6b9bd9b9c4d0477992378a92fd5a02",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "26b8b713f875832e930c2ea6cd8d6870ebc83deb186cc14ed1f4d36a46150e60",
+      "targetSha256": "ceb3d3a9bd255b37c2b98b0cee4dee3fb433fc5c3f125c600dfa295cd0df1dda",
+      "syncedAt": "2026-08-17T07:54:42.898Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.dark-oled.js": {
-      "sourceSha256": "5fb302cb1dee71b6649432ed4876a3af6dfbadcb26db80b590c40e0f079d83d5",
-      "targetSha256": "2a1cdb87edf51afb96ba02d37b9ab4c8e8c9c10a8a6991a3fd9495325fb08df8",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "6b173dba41f76dc9da0798231086ca758f8a22bf6a1a3f60412d2e50569e34bf",
+      "targetSha256": "17211d39326a060c0daf48dc45b70c681b16875dc87fbbfd06013c9d1fe87d65",
+      "syncedAt": "2026-08-17T07:54:42.898Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.dark.d.ts": {
-      "sourceSha256": "b5c69f8738fe2d2aa281e3c00719d54486a87b9ad638e8c4c72434ce8267636f",
-      "targetSha256": "47f4e9c0b15ad7ddd6cebfb66d1614ed0caf50b72ef9a5395a28c8952c7ccaa7",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "25841f10f50d9b26c8a9483299e1511553c45b24f295c9fb1ae90a6153b90713",
+      "targetSha256": "3225442b5689ce5d6a78fa68228a248187829641b2267995f93c96497bade6a4",
+      "syncedAt": "2026-08-17T07:54:42.898Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.dark.js": {
-      "sourceSha256": "4c93c6e4a87fb014f75109b2cf237e7bad00de408cd91254d224cebff24ecbdb",
-      "targetSha256": "552fab49c3c45232492d9acaed3ba41df9060cb00548490d9359fa89cca5e6ed",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "98030579e461383dcbc9eb9fcfab13c4397414786ae5a5d83f50354066ebe214",
+      "targetSha256": "67b2704325d03c7be74fcf99c46ffe93f188f9102944791c682555f64bdd3623",
+      "syncedAt": "2026-08-17T07:54:42.898Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.high-contrast-dark.d.ts": {
-      "sourceSha256": "4b952f4879d8c94208b7d6607e76c4ef25634c62eede500558cca57439be1f5e",
-      "targetSha256": "05a5942e5928b09db773501914d5d7ff6fba9a0f9e7ffa5e2e4dcd6fcb4846d5",
-      "syncedAt": "2026-08-11T04:27:15.517Z"
+      "sourceSha256": "2c38c0b5bc6856e428225e6ccb88ad7d9bb0cd62a76e5b443432a24d8920c17d",
+      "targetSha256": "07e7fcb6c37e84e58f0ea685bc9e69c6ac25f6c90688d040ca993424921427f7",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.high-contrast-dark.js": {
-      "sourceSha256": "84e593b0e6d619db59fcec28bcb78aa9c519ae7b3ee582e96e74ca3cc748ea16",
-      "targetSha256": "43ea2aa6bcd2c643d2a20be9cb08929872a0e3fcd13e02c96f98524ddb2f5548",
-      "syncedAt": "2026-08-11T04:27:15.517Z"
+      "sourceSha256": "91d7cb8257d7da783446af8b8eaed3c68aa8ca649dfa499c1155c25d2cf487a5",
+      "targetSha256": "011d6531c3028e311cadae47563a7f8b88997ad4220c2a56f180718c12fa926b",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.high-contrast.d.ts": {
-      "sourceSha256": "edf1099006f2936abc79328ec1fe90dbde6b8f19d27e5b0f46884a34c7b97ed5",
-      "targetSha256": "432034685862716e39fee39db5ad8127bddec27c434cfbc9fed663f212e02934",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "935a8a208f1a8280b030f44b97a60fbd2610150b61b704aec77b3e724140a52b",
+      "targetSha256": "0d8c35cfd9c369bc72da1eb1372007326cb58f0ffc25bb77603999699f4d2d8a",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.high-contrast.js": {
-      "sourceSha256": "84926f6df84d4a261a43731c8396fc5a4392dbd7f5dd976356db37658dba1c5e",
-      "targetSha256": "d639bba1b5db52811db9fd59b4bdd1d216dddff9a536c6794b6f017a0e6809b3",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "763aa82aff4da61d585f56a4e7c81b126055d30097909a66f87260abd6e536d9",
+      "targetSha256": "c5ad8e27e4ade3952ae0cf1f38ad5155ff4ca1397990f68ebd3abaf9bf8cb64a",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.light.d.ts": {
-      "sourceSha256": "083baa505afb21a328371317f592017c5169de739b1dba4b7cc74ad510089a92",
-      "targetSha256": "6c871828f9f6f915e9cf7c23ea5639e4dd67dcc7497a3e2f8e5f77c6594fe614",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "dfb0b8efd2f359860a89867d5b45ecd1782531d032c85068a68dcd80530949f1",
+      "targetSha256": "caa6bc1168d03fcc4349535da1e73b428d22199e54ae9feba049169f8e673955",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.light.js": {
-      "sourceSha256": "2b99418dd6d78b494bdd365b70dba82dc87d3f0a4fbdb201f072b4c7cba5f132",
-      "targetSha256": "6c327ab3f2c99f361245c6273fc2192647a37c7dc8b26a5ed010f33d16f97f0f",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "a91596f7fde1e3157a608d51542f633ffc8a1d2cbf5ac3c287b322d2c9bf3bbe",
+      "targetSha256": "69c995b4255c87fad8e268e2c8e391952a73a16d5ae76f91446c2a85b7aba863",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/index.d.ts": {
       "sourceSha256": "952c7b53e3f7871261272f06db489267fb56d022f8c5685a7ddeee42ba8d3bdf",
       "targetSha256": "166f50af1083b21703fc007a7a4e83e68c5d6f0779fe3ed9a5c5fff65e6fe434",
-      "syncedAt": "2026-08-11T04:27:15.518Z"
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/js/index.js": {
       "sourceSha256": "ae432e1701348da5d827b33b2bc9d16a8b03d7061f456fd6da2b64bd713c3a09",
       "targetSha256": "e2957d927a874101eb57efcde48ffd4aa408ddb75465676ce1332a6a864a7bc1",
-      "syncedAt": "2026-08-11T04:27:15.518Z"
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/native/compose/JrmTokens.kt": {
-      "sourceSha256": "15682858da1d539d35d99b917a4ea5cfb42de46cccfce54968ae5f059aae458f",
-      "targetSha256": "b6aca311d76719bdbd25a9543b085fe654425f9e119fbea98f3522f8a58890d3",
-      "syncedAt": "2026-08-11T04:27:15.518Z"
+      "sourceSha256": "1131c9b1d47ca8ff957afc09847c2b5d8e83589d247930e4a4e03ae7eede980b",
+      "targetSha256": "b94d1121bb5833a1403d519bbde244d9d766c8bb8cfdf7afc099843851a30910",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/native/swift/JRMTokens.swift": {
-      "sourceSha256": "2616f7f1f5e1d296f334bcc4c40c4ac12b318ab32f11505c0ee24a1fe498f0de",
-      "targetSha256": "f3f4f5b0ca8ffcc0d00fda08a1d8f250775f31e891b1e6c3e84955728dbd0272",
-      "syncedAt": "2026-08-11T04:27:15.519Z"
+      "sourceSha256": "5e7da2b4a9d4b8d760c12ea3b0f7507ae1cf62fff888efaa25d129005089bf13",
+      "targetSha256": "a45ef7c74615b5d08d75913a468f7ae6ade03a4a1b27270b27005f4859a742ba",
+      "syncedAt": "2026-08-17T07:54:42.899Z"
     },
     "vendor/@jrm/tokens/tailwind/default.cjs": {
-      "sourceSha256": "6e7f6486dcdd44e7ce9c3d0cf60827cbae2d75dab216f774cb6e0d32b0a6a8a9",
-      "targetSha256": "708c645a8553135c9bcf76b525891fc9da25d1b35f5044e6dd73057699a1f184",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "e8bb7c7e7bafe49492aa9468edc5fa3b776ce0ceaeb027501e2ee58cb845a976",
+      "targetSha256": "a62b7709bd146eb3430f31401685bb01e0cf6e28ffc465b7b7d7e69e5d47dbb7",
+      "syncedAt": "2026-08-17T07:54:42.900Z"
     }
   }
 }
