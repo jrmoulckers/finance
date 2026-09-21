@@ -30,7 +30,7 @@
     "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"
   },
   "devDependencies": {
-    "@redocly/cli": "^2.31.5",
-    "yaml": "^2.9.0"
+    "@redocly/cli": "^2.53.3",
+    "yaml": "^2.9.1"
   }
 }
