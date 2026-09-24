@@ -109,6 +109,7 @@ jobs:
 
             echo "=== uptime / load ==="; uptime </dev/null 2>&1 || true
             echo "=== disk ==="; df -h </dev/null 2>&1 || true
+            echo "=== inode usage ==="; df -i </dev/null 2>&1 || true
             echo "=== memory (MiB) ==="; free -m </dev/null 2>&1 || true
             echo "=== passwordless sudo: $HAVE_SUDO ==="
             echo "=== dockerd active: $(systemctl is-active docker 2>/dev/null || echo unknown) ==="
@@ -118,9 +119,25 @@ jobs:
             case "$ACTION" in
               diagnose)
                 if [ "$HAVE_SUDO" = yes ]; then
+                  echo "=== journal disk usage ==="; sudo journalctl --disk-usage </dev/null 2>&1 || true
+                  echo "=== top-level root usage (timeout 45) ==="
+                  timeout 45 sudo du -x -h --max-depth=1 / </dev/null 2>&1 \
+                    | sort -h \
+                    | tail -20 \
+                    || echo "(root usage probe timed out/failed)"
+                  echo "=== Docker storage usage (timeout 45) ==="
+                  timeout 45 sudo du -x -h --max-depth=1 /var/lib/docker </dev/null 2>&1 \
+                    | sort -h \
+                    || echo "(Docker usage probe timed out/failed)"
+                  echo "=== log storage usage (timeout 30) ==="
+                  timeout 30 sudo du -x -h --max-depth=1 /var/log </dev/null 2>&1 \
+                    | sort -h \
+                    || echo "(log usage probe timed out/failed)"
                   echo "=== docker journal (last 40) ==="; sudo journalctl -u docker --no-pager -n 40 </dev/null 2>&1 | tail -40 || true
                   echo "=== kernel OOM / killed (last 20) ==="; sudo dmesg </dev/null 2>&1 | grep -iE "oom|killed process|out of memory" | tail -20 || echo "(none)"
                 fi
+                echo "=== Docker reclaimable storage (timeout 30) ==="
+                timeout 30 docker system df </dev/null 2>&1 || echo "(Docker storage summary timed out/failed)"
                 echo "=== db logs (timeout 25, tail 120) ==="; timeout 25 $DC logs db --tail=120 --no-color </dev/null 2>&1 || echo "(db logs timed out/failed)"
                 echo "=== edge-functions bank env presence (values redacted) ==="
                 timeout 20 $DC exec -T edge-functions sh -c '
