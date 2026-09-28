@@ -209,7 +209,7 @@ jobs:
 
                 edge_healthy=no
                 for attempt in $(seq 1 12); do
-                  if timeout 15 $DC exec -T edge-functions deno eval \
+                  if timeout 15 $DC exec -T edge-functions deno eval --allow-net=localhost:9000 \
                     'const r = await fetch("http://localhost:9000/health-check"); Deno.exit(r.ok ? 0 : 1)' \
                     </dev/null >/dev/null 2>&1; then
                     edge_healthy=yes
