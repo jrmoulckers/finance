@@ -18,6 +18,9 @@
 #   restart-edge-functions
 #                   Recreate Edge Functions and its autoheal watchdog, then
 #                   verify both container-local and public API health.
+#   recover-disk-exhaustion
+#                   Prune images unused by any container (never volumes), start
+#                   the Compose stack, and verify public API health.
 #   restart-db      `docker compose restart db`, then tail db logs.
 #   restart-docker  `sudo systemctl restart docker` (fixes a hung daemon), then
 #                   `docker compose up -d`. Requires passwordless sudo.
@@ -50,6 +53,7 @@ on:
           - diagnose-bank-data
           - up
           - restart-edge-functions
+          - recover-disk-exhaustion
           - restart-db
           - restart-docker
           - repair-household-memberships
@@ -233,6 +237,49 @@ jobs:
                 fi
                 echo "=== edge-functions recovery verified ==="
                 timeout 25 $DC ps edge-functions autoheal </dev/null 2>&1 || true
+                ;;
+              recover-disk-exhaustion)
+                echo "=== disk before unused-image cleanup ==="
+                df -h / </dev/null 2>&1
+                echo "=== prune images unused by any container (volumes untouched) ==="
+                timeout 180 docker image prune -a -f </dev/null 2>&1 \
+                  || { echo "::error::unused-image cleanup failed"; exit 1; }
+
+                available_kb=$(df -Pk / | awk 'NR == 2 { print $4 }')
+                echo "=== disk after unused-image cleanup ==="
+                df -h / </dev/null 2>&1
+                if [ "${available_kb:-0}" -lt 2097152 ]; then
+                  echo "::error::cleanup recovered less than the required 2 GiB headroom"
+                  exit 1
+                fi
+
+                echo "=== reconcile production Compose stack (timeout 240) ==="
+                timeout 240 $DC up -d </dev/null 2>&1 \
+                  || { echo "::error::Compose reconciliation failed"; exit 1; }
+
+                public_healthy=no
+                for attempt in $(seq 1 18); do
+                  if curl --fail --silent --show-error --max-time 15 \
+                    https://finance.jrmoulckers.com/health \
+                    | grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"'; then
+                    public_healthy=yes
+                    break
+                  fi
+                  echo "public API health attempt ${attempt}/18 failed; retrying in 10s"
+                  sleep 10
+                done
+
+                if [ "$public_healthy" != yes ]; then
+                  echo "::error::public API health did not recover after cleanup and reconciliation"
+                  timeout 25 $DC ps </dev/null 2>&1 || true
+                  timeout 25 $DC logs edge-functions --tail=160 --no-color </dev/null 2>&1 \
+                    | sed -E 's/(access_token|public_token|client_id|secret|authorization)(["=: ]+)[^", }]+/\1\2<redacted>/Ig' \
+                    || true
+                  exit 1
+                fi
+
+                echo "=== production disk recovery verified ==="
+                timeout 25 $DC ps </dev/null 2>&1 || true
                 ;;
               restart-db)
                 echo "=== docker compose restart db (timeout 120) ==="; timeout 120 $DC restart db </dev/null 2>&1 || echo "(restart timed out/failed)"
