@@ -361,7 +361,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'deno eval "const r = await fetch(\"http://localhost:9000/\"); Deno.exit(r.ok ? 0 : 1);" || exit 1',
+          'deno eval --allow-net=localhost:9000 "const r = await fetch(\"http://localhost:9000/\"); Deno.exit(r.ok ? 0 : 1);" || exit 1',
         ]
       interval: 15s
       timeout: 5s
