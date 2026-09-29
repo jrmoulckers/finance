@@ -84,11 +84,6 @@ services:
   rest:
     image: postgrest/postgrest:v12.2.12
     restart: unless-stopped
-    # Opt in to autoheal: PostgREST going `unhealthy` (admin /ready on :3001
-    # failing) is what blocked edge-functions from starting during the #3066
-    # signup outage. Let the autoheal sidecar (#3074) restart it automatically.
-    labels:
-      autoheal: 'true'
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: public
@@ -100,29 +95,6 @@ services:
       PGRST_ADMIN_SERVER_PORT: 3001
     volumes:
       - /etc/passwd:/etc/passwd:ro
-    healthcheck:
-      # PostgREST admin server exposes /ready (readiness) and /live (liveness);
-      # port 3001 is set by PGRST_ADMIN_SERVER_PORT above.
-      #
-      # The postgrest/postgrest image ships only the PostgREST binary on a
-      # minimal base and has NO wget or curl, so the previous `wget /ready`
-      # probe failed on "command not found" every time — the container was
-      # flagged `unhealthy` even though it was serving /rest/v1/* fine, which
-      # is exactly the "appeared to be serving" symptom in #3083 (and what
-      # gated edge-functions during the #3066 signup outage). The image does
-      # include bash, so probe the admin server over bash's /dev/tcp and
-      # require an HTTP 200 from /ready — no extra tooling needed.
-      test:
-        [
-          'CMD',
-          'bash',
-          '-c',
-          'exec 3<>/dev/tcp/localhost/3001 && printf "GET /ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "200 OK" <&3',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -358,10 +330,14 @@ services:
     healthcheck:
       # edge-runtime main service responds on / with {"status":"ok"}. The pinned
       # image has bash but no deno/curl/wget executable, so use bash /dev/tcp.
+      # Escape $$status so Compose passes $status to Bash instead of interpolating
+      # it from the deployment environment.
       test:
         [
-          'CMD-SHELL',
-          'bash -ec ''exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET / HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; IFS= read -r status <&3; [[ "$status" == *" 200 "* ]]''',
+          'CMD',
+          '/usr/bin/bash',
+          '-ec',
+          'exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET /health-check HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; IFS= read -r status <&3; [[ "$$status" == *" 200 "* ]]',
         ]
       interval: 15s
       timeout: 5s
