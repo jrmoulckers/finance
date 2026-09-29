@@ -356,12 +356,12 @@ services:
     volumes:
       - ${EDGE_FUNCTIONS_PATH:-../services/api/supabase/functions}:/home/deno/functions:ro
     healthcheck:
-      # edge-runtime main service responds on / with {"status":"ok"}.
-      # The image ships with Deno which includes fetch — use it for HTTP check.
+      # edge-runtime main service responds on / with {"status":"ok"}. The pinned
+      # image has bash but no deno/curl/wget executable, so use bash /dev/tcp.
       test:
         [
           'CMD-SHELL',
-          'deno eval --allow-net=localhost:9000 "const r = await fetch(\"http://localhost:9000/\"); Deno.exit(r.ok ? 0 : 1);" || exit 1',
+          'bash -ec ''exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET / HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; IFS= read -r status <&3; [[ "$status" == *" 200 "* ]]''',
         ]
       interval: 15s
       timeout: 5s
