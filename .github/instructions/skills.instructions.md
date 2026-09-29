@@ -1,5 +1,6 @@
 ---
 applyTo: 'skills/**,.github/skills/**'
+description: 'Authoring and reviewing skills. Use for SKILL.md structure, skill frontmatter, skill discovery and invocation, and the read-only status of materialized skills in member repos.'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
