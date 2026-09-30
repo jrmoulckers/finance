@@ -106,3 +106,34 @@ export {
   // Runner
   runHealthCheck,
 } from './health-check.js';
+
+export {
+  type EntitlementProvider,
+  type EntitlementReliabilityMetricName,
+  type EntitlementReliabilityMetricUnit,
+  type EntitlementProviderReliabilitySample,
+  type EntitlementReliabilitySample,
+  type EntitlementReliabilityMetricPoint,
+  type EntitlementReliabilitySlo,
+  ENTITLEMENT_RELIABILITY_SLOS,
+  createEntitlementReliabilityMetrics,
+} from './entitlement-reliability.js';
+
+export {
+  type EntitlementAlertSeverity,
+  type EntitlementReliabilityAlert,
+  type EntitlementReliabilityCollector,
+  type EntitlementReliabilityMetricSink,
+  collectEntitlementReliabilityMetrics,
+  evaluateEntitlementReliabilityAlerts,
+} from './entitlement-alerts.js';
+
+export {
+  type EntitlementMaintenanceTask,
+  type EntitlementMaintenanceSchedule,
+  type EntitlementMaintenanceLease,
+  type EntitlementMaintenanceDependencies,
+  type EntitlementMaintenanceResult,
+  ENTITLEMENT_MAINTENANCE_SCHEDULES,
+  invokeEntitlementMaintenance,
+} from './entitlement-maintenance.js';

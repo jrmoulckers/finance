@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { createAdminClient } from '../_shared/auth.ts';
+import { billingAdapterDisabledResponse } from '../_shared/billing-adapter-control.ts';
 import { timingSafeEqual } from '../_shared/crypto.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
@@ -111,6 +112,8 @@ export function createRevenueCatReconciliationHandler(dependencies: Reconciliati
 
 async function productionHandler(request: Request): Promise<Response> {
   const logger = createLogger('revenuecat-reconcile');
+  const disabled = billingAdapterDisabledResponse('revenuecat');
+  if (disabled) return disabled;
   const envError = validateEnv('revenuecat-reconcile', request);
   if (envError) return envError;
 

@@ -163,6 +163,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   ],
   'stripe-reconcile': [
     { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    { name: 'STRIPE_RECONCILIATION_AUTHORIZATION', type: 'string' },
     ...STRIPE_BASE_ENV_VARS,
     ...STRIPE_PRICE_ENV_VARS,
   ],

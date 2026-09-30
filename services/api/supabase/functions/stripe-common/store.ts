@@ -124,6 +124,7 @@ export async function findOwnedStripeIdentity(input: {
   if (accountError) {
     throw new StripeServiceError('Billing account lookup failed', true);
   }
+
   if (!account) return null;
   const identity = await findPrimaryIdentity(
     input.supabase,
@@ -137,6 +138,29 @@ export async function findOwnedStripeIdentity(input: {
         providerCustomerId: identity.provider_customer_id,
       }
     : null;
+}
+
+export async function listStripeIdentities(input: {
+  supabase: AdminClient;
+  environment: StripeEnvironment;
+  offset: number;
+  limit: number;
+}): Promise<Array<BillingContext & { providerCustomerId: string }>> {
+  const { data, error } = await input.supabase
+    .from('billing_provider_identities')
+    .select('id, billing_account_id, provider_customer_id')
+    .eq('provider', 'stripe')
+    .eq('environment', input.environment)
+    .order('id', { ascending: true })
+    .range(input.offset, input.offset + input.limit - 1);
+  if (error) {
+    throw new StripeServiceError('Billing identity list failed', true);
+  }
+  return (data ?? []).map((identity) => ({
+    billingAccountId: identity.billing_account_id as string,
+    providerIdentityId: identity.id as string,
+    providerCustomerId: identity.provider_customer_id as string,
+  }));
 }
 
 export async function recordAndApplyStripeEvidence(input: {

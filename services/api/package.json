@@ -18,7 +18,9 @@
     "setup:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
     "test:sync-contract": "deno test --allow-read supabase/tests/sync-contract.test.ts",
     "test:billing-entitlements": "psql -v ON_ERROR_STOP=1 -f supabase/tests/billing-entitlements-integration.test.sql",
+    "test:billing-entitlements-concurrency": "pwsh -File supabase/tests/billing-entitlements-concurrency.test.ps1 -Container supabase_db_finance-local",
     "test:bank-connection-cap": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap.test.sql",
+    "test:bank-connection-cap-concurrency": "pwsh -File supabase/tests/bank-connection-cap-concurrency.test.ps1 -Container supabase_db_finance-local",
     "test:bank-connection-cap-remediation": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-connection-cap-remediation.test.sql",
     "test:bank-entitlements": "deno test --config supabase/functions/deno.json --allow-env supabase/functions/_shared/bank-entitlements.test.ts",
     "test:bank-connection-handler": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/bank-connection/index_test.ts supabase/functions/account-delete/index_test.ts",
@@ -27,6 +29,8 @@
     "test:bank-revocation-durable-sql": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bank-revocation-durable.test.sql",
     "test:entitlement-api": "psql -v ON_ERROR_STOP=1 -f supabase/tests/entitlement-api-contract.test.sql",
     "test:entitlement-gateway": "node --test supabase/tests/entitlement-gateway.integration.test.mjs",
+    "test:entitlement-functions": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/entitlements-v1",
+    "test:billing-provider-functions": "deno test --config supabase/functions/deno.json --no-check --allow-env --allow-net supabase/functions/_shared/billing-adapter-control.test.ts supabase/functions/_shared/revenuecat supabase/functions/revenuecat-confirm supabase/functions/revenuecat-reconcile supabase/functions/revenuecat-webhook supabase/functions/stripe-common supabase/functions/stripe-checkout supabase/functions/stripe-portal supabase/functions/stripe-reconcile supabase/functions/stripe-status supabase/functions/stripe-webhook",
     "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"
   },
   "devDependencies": {

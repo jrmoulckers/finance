@@ -2,6 +2,7 @@
 
 import { type AuthenticatedUser, createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { createClient } from '@supabase/supabase-js';
+import { billingAdapterDisabledResponse } from '../_shared/billing-adapter-control.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
@@ -217,6 +218,10 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
 
 async function productionHandler(request: Request): Promise<Response> {
   const logger = createLogger('revenuecat-confirm');
+  if (request.method === 'POST') {
+    const disabled = billingAdapterDisabledResponse('revenuecat');
+    if (disabled) return disabled;
+  }
   const envError = validateEnv('revenuecat-confirm', request);
   if (envError) return envError;
 

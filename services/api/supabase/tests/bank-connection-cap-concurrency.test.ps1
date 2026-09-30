@@ -20,7 +20,8 @@ $ErrorActionPreference = 'Stop'
 function Invoke-LocalPsql {
     param([Parameter(Mandatory = $true)][string]$Sql)
 
-    $Sql | docker exec -i $Container psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q
+    $Sql | docker exec -e PGPASSWORD=postgres -i $Container `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q
     if ($LASTEXITCODE -ne 0) {
         throw 'psql failed in the isolated concurrency database'
     }
@@ -45,7 +46,8 @@ function Start-AdvisoryGate {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = 'docker'
     foreach ($argument in @(
-            'exec', '-i', $Container, 'psql', '-U', 'supabase_admin',
+            'exec', '-e', 'PGPASSWORD=postgres', '-i', $Container,
+            'psql', '-h', '127.0.0.1', '-U', 'postgres',
             '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-A', '-t'
         )) {
         [void]$startInfo.ArgumentList.Add($argument)
@@ -99,7 +101,8 @@ function Wait-ForDatabaseWait {
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     do {
-        $state = docker exec $Container psql -U supabase_admin -d postgres `
+        $state = docker exec -e PGPASSWORD=postgres $Container `
+            psql -h 127.0.0.1 -U postgres -d postgres `
             -q -A -t -c @"
 SELECT concat_ws('|', state, wait_event_type, wait_event)
 FROM pg_stat_activity
@@ -207,7 +210,8 @@ FROM reserve_bank_connection_slot('$HouseholdId', '$OwnerId', '$Provider');
 $gateSql
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $sql
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Concurrent reserve failed for $ApplicationName"
     }
@@ -265,23 +269,8 @@ END;
 `$`$;
 "@
 
-# ---------------------------------------------------------------------------
-# Cleanup. Each object is named explicitly; nothing is deleted by wildcard.
-# ---------------------------------------------------------------------------
-Invoke-LocalPsql @"
-DELETE FROM bank_connection_reservations WHERE household_id = '$household';
-DELETE FROM bank_connections WHERE household_id = '$household';
-DELETE FROM entitlement_grants WHERE billing_account_id = '$account';
-DELETE FROM billing_provider_events WHERE billing_account_id = '$account';
-DELETE FROM billing_subscriptions WHERE billing_account_id = '$account';
-DELETE FROM current_household_entitlements WHERE household_id = '$household';
-DELETE FROM current_user_entitlements WHERE user_id = '$owner';
-DELETE FROM billing_provider_identities WHERE id = '$identity';
-DELETE FROM billing_accounts WHERE id = '$account';
-DELETE FROM household_members WHERE id = '$membership';
-DELETE FROM households WHERE id = '$household';
-DELETE FROM users WHERE id = '$owner';
-DELETE FROM auth.users WHERE id = '$owner';
-"@
+# Fixtures intentionally remain in this disposable database. In particular,
+# immutable billing evidence must never be deleted to make a test clean up.
+# The CI job destroys the entire local Supabase stack after the suite.
 
 Write-Host 'bank-connection-cap-concurrency.test.ps1: final-slot race granted exactly one reservation'
