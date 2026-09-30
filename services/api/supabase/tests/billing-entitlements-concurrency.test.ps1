@@ -10,7 +10,8 @@ $ErrorActionPreference = 'Stop'
 function Invoke-LocalPsql {
     param([Parameter(Mandatory = $true)][string]$Sql)
 
-    $Sql | docker exec -i $Container psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q
+    $Sql | docker exec -e PGPASSWORD=postgres -i $Container `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q
     if ($LASTEXITCODE -ne 0) {
         throw 'psql failed in the isolated concurrency database'
     }
@@ -35,7 +36,8 @@ function Start-AdvisoryGate {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = 'docker'
     foreach ($argument in @(
-            'exec', '-i', $Container, 'psql', '-U', 'supabase_admin',
+            'exec', '-e', 'PGPASSWORD=postgres', '-i', $Container,
+            'psql', '-h', '127.0.0.1', '-U', 'postgres',
             '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-A', '-t'
         )) {
         [void]$startInfo.ArgumentList.Add($argument)
@@ -89,7 +91,8 @@ function Wait-ForDatabaseWait {
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     do {
-        $state = docker exec $Container psql -U supabase_admin -d postgres `
+        $state = docker exec -e PGPASSWORD=postgres $Container `
+            psql -h 127.0.0.1 -U postgres -d postgres `
             -q -A -t -c @"
 SELECT concat_ws('|', state, wait_event_type, wait_event)
 FROM pg_stat_activity
@@ -178,7 +181,8 @@ SELECT apply_billing_provider_event(
 $gateSql
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $sql
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Concurrent apply failed for $EventId"
     }
@@ -237,7 +241,8 @@ SELECT rebuild_billing_entitlements('$AccountId');
 SELECT pg_advisory_xact_lock($GateKey);
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $sql
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw 'Concurrent rebuild failed'
     }
@@ -294,14 +299,16 @@ SELECT record_billing_provider_event(
     statement_timestamp() + interval '30 days', NULL, NULL, NULL, false
 );
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -c $sql
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Concurrent record failed for $EventId"
     }
 }
 
 $sharedPurchase = "sub_${run}_shared"
-$sharedPurchaseLockKey = [long](docker exec $Container psql -U supabase_admin `
+$sharedPurchaseLockKey = [long](docker exec -e PGPASSWORD=postgres $Container `
+    psql -h 127.0.0.1 -U postgres `
     -d postgres -q -A -t -c @"
 SELECT billing_purchase_lock_key(
     'stripe',
@@ -430,7 +437,8 @@ FROM get_my_entitlements('$HouseholdId');
 $gateSql
 COMMIT;
 "@
-    $output = docker exec $ContainerName psql -U supabase_admin -d postgres `
+    $output = docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -q -A -t -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Concurrent authenticated entitlement read failed for $UserId"
@@ -475,7 +483,8 @@ SELECT set_my_premium_household_sponsorship('$HouseholdId');
 $gateSql
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres `
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Sponsorship setter unexpectedly failed for $UserId"
@@ -500,7 +509,8 @@ WHERE id = '$MembershipId';
 $gateSql
 COMMIT;
 "@
-    docker exec $ContainerName psql -U supabase_admin -d postgres `
+    docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -q -c $sql
     if ($LASTEXITCODE -ne 0) {
         throw "Membership removal unexpectedly failed for $MembershipId"
@@ -571,7 +581,8 @@ SELECT set_config('request.jwt.claim.sub', '$UserId', true);
 SELECT set_my_premium_household_sponsorship('$HouseholdId');
 COMMIT;
 "@
-    $output = docker exec $ContainerName psql -U supabase_admin -d postgres `
+    $output = docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -q -c $sql 2>&1
     if ($LASTEXITCODE -eq 0) {
         throw "Sponsorship setter unexpectedly succeeded for removed member $UserId"
@@ -638,7 +649,8 @@ SELECT set_config('request.jwt.claim.sub', '$UserId', true);
 SELECT clear_my_premium_household_sponsorship('$ExpectedHouseholdId');
 COMMIT;
 "@
-    $output = docker exec $ContainerName psql -U supabase_admin -d postgres `
+    $output = docker exec -e PGPASSWORD=postgres $ContainerName `
+        psql -h 127.0.0.1 -U postgres -d postgres `
         -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -q -c $sql 2>&1
     if ($LASTEXITCODE -eq 0) {
         throw 'Expected-household clear unexpectedly cleared a newer sponsorship'
