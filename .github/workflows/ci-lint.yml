@@ -315,10 +315,12 @@ jobs:
           npm run test:billing-entitlements
           npm run test:billing-entitlements-concurrency
           npm run test:bank-connection-cap
-          npm run test:bank-connection-cap-concurrency
           npm run test:bank-connection-cap-remediation
           npm run test:bank-revocation-durable-sql
           npm run test:bank-revocation-concurrency
+          # This suite intentionally retains immutable billing evidence, so it
+          # runs last before the disposable database is destroyed.
+          npm run test:bank-connection-cap-concurrency
 
       - name: Serve the Edge Functions
         working-directory: services/api
