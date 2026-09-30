@@ -8,10 +8,11 @@
 > **Decision (2026-08-23):** the allowance proposed in §4 Option F was adopted —
 > **Free 0 Items, Premium 2 plus a $0.99/Item/month add-on, Family 4 shared.** The
 > recommendation to stay on Plaid was accepted; no provider migration is planned.
-> The server-side enforcement shipped as a **flat cap of 2 for every household**,
-> because no entitlement record exists to resolve tier — so the cost exposure in §3
-> is now bounded, but bank connections are not yet Premium-only. The approved
-> allocation is authoritative in the
+> The initial server-side enforcement shipped as a flat cap of 2 for every
+> household. It has since been replaced by the server-authoritative entitlement
+> projection and tier-aware reservation flow: Free/Plus 0, Premium 2 plus
+> verified active add-ons, and Family 4 for its bound household. The approved
+> allocation remains authoritative in the
 > [subscription entitlement catalog](../pricing/subscription-entitlement-catalog.md);
 > server authority and staged enforcement are defined by
 > [ADR-0027](../../architecture/0027-server-authoritative-entitlements.md).
@@ -442,12 +443,13 @@ Two hard side conditions, neither of which is a pricing question:
 The rule is currently unmeasurable. To operate it we need:
 
 - Monthly Plaid/MX invoice total, tagged by product.
-- Count of active (non-revoked) `bank_connections` rows, split by paying vs free — derivable from
-  `bank_connections` once an entitlement source of truth exists.
+- Count of active (non-revoked) `bank_connections` rows, split by paying versus free using the
+  server-authoritative entitlement projection.
 - Blended net ARPU from the existing revenue model.
 
-Until an entitlement table exists, the free-vs-paying split cannot be computed at all. **#4379 is a
-prerequisite for this decision rule, not merely a remediation.**
+The entitlement projection now makes the free-versus-paying split computable without trusting
+client state. The remaining prerequisite for operating this rule is the invoice and ARPU
+instrumentation above.
 
 ---
 
