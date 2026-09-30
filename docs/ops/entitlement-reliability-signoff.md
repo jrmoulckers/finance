@@ -3,8 +3,8 @@
 | Field                        | Value                                                        |
 | ---------------------------- | ------------------------------------------------------------ |
 | Status                       | Pass; staging and provider enablement remain gated           |
-| Review date                  | 2026-09-10                                                   |
-| Reviewed integrated baseline | `24ceef91c511e3e9c8f82da0d52ab420fa0d47d6`                   |
+| Review date                  | 2026-09-30                                                   |
+| Reviewed integrated baseline | `b2d7c1103c2a2831d0980ba7511ffb5e2cbc7dc6`                   |
 | PostgreSQL evidence head     | `7c5294075060557b85116694d6da01c5c6c61f70`                   |
 | Security evidence            | [PR #4426](https://github.com/jrmoulckers/finance/pull/4426) |
 | Tracking issue               | [#4406](https://github.com/jrmoulckers/finance/issues/4406)  |
@@ -20,12 +20,14 @@ The integrated implementation is suitable to proceed to non-production operation
 Provider enablement remains blocked until the production gates in this document and coordinator
 clearance of the integrated #4406 evidence.
 
-The review found two reliability gaps:
+The review found four reliability gaps:
 
 | ID            | Severity | Status   | Finding                                                                                                                                    | Resolution or required action                                                                                                                                                                                                                          |
 | ------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `REL-ENT-001` | High     | Resolved | Required entitlement signals were scattered across database and function outcomes without one bounded-cardinality SLO and metric contract. | Added an executable, validated contract for ingestion, event disposition, projection, reconciliation, revocation backlog, retry, and dead-letter telemetry.                                                                                            |
 | `REL-ENT-002` | High     | Resolved | The deterministic projection rebuild SQL suite was not invoked by any current workflow, and the local PostgreSQL stack was unavailable.    | The existing disposable PostgreSQL job now runs `test:billing-entitlements`; [Entitlement Gateway Integration](https://github.com/jrmoulckers/finance/actions/runs/34509988549/job/102981495945) passed at `7c5294075060557b85116694d6da01c5c6c61f70`. |
+| `REL-ENT-003` | High     | Resolved | Reconciliation and revocation maintenance lacked one authenticated, overlap-safe invocation contract with retries and missed-run policy.   | Added three repository-owned schedules with fixed endpoints, secret names, cadence, durable-lease requirements, bounded retries, missed-run deadlines, ownership, and an explicit manual catch-up trigger.                                             |
+| `REL-ENT-004` | High     | Resolved | Adapter disable depended on a deployment action and could not isolate RevenueCat from Stripe.                                              | Added independent fail-closed adapter states. They stop only new provider ingress/purchase mutation while server projections, immutable evidence, the other adapter, Stripe portal/status, revocation processing, and rights flows remain available.   |
 
 No implementation defect was found in provider-outage handling, deterministic projection replay,
 revocation retry/idempotency, downgrade fallbacks, client authority, or append-only ledger
@@ -60,11 +62,14 @@ user outcome misses its threshold.
 
 ## Secret-safe metrics
 
-The executable contract is
+The executable metric contract is
 [`services/api/monitoring/entitlement-reliability.ts`](../../services/api/monitoring/entitlement-reliability.ts).
 It accepts only aggregate values, permits only the fixed `revenuecat` and `stripe` provider label,
-and emits no free-form dimensions. The collector must aggregate inside the server trust boundary
-before constructing this payload.
+and emits no free-form dimensions. The repository-owned collector/sink boundary and actionable
+alert evaluator are in
+[`services/api/monitoring/entitlement-alerts.ts`](../../services/api/monitoring/entitlement-alerts.ts).
+The deployment collector must aggregate inside the server trust boundary before constructing this
+payload.
 
 | Metric                                               | Type    | Source and meaning                                                                                    |
 | ---------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
@@ -95,6 +100,21 @@ dashboard or alert must link this runbook, not a raw record.
 | Any projection divergence                          | Critical | Backend and database owners, SRE coordinator | Adapter-disable and projection-rebuild runbooks  |
 | Revocation oldest age 1 hour or retries surging    | Warning  | Backend owner                                | Provider-outage and revocation recovery          |
 | Revocation age 6 hours or any dead letter          | Critical | Backend and database owners, SRE coordinator | Disable affected adapter and preserve outbox     |
+
+## Maintenance invocation contract
+
+[`services/api/monitoring/entitlement-maintenance.ts`](../../services/api/monitoring/entitlement-maintenance.ts)
+defines the reviewed invocation contract. RevenueCat and Stripe reconciliation run hourly; durable
+bank revocation maintenance runs every five minutes. Each invocation requires its dedicated
+authorization value, obtains a task-specific durable lease before making a request, uses bounded
+timeouts and two retries, and reports an aggregate outcome. A missed RevenueCat or Stripe run is
+visible after two hours; a missed bank revocation run is visible after 15 minutes.
+
+The same executor accepts an explicit `manual-catch-up` trigger. Catch-up uses the same
+authentication, lease, retry, and metric path as scheduled work; operators must not bypass the
+lease or call provider APIs directly. The deployment adapter that supplies the durable lease,
+secret reader, timer, and HTTPS transport remains a staging proof and production enablement gate.
+No scheduler secret or deployment was configured by this review.
 
 ## Runbooks
 
@@ -127,8 +147,9 @@ hours, unexplained ledger write, or evidence that a client state granted server 
 divergence attributable to one adapter.
 
 1. Record the exact last-known-good application revision and aggregate metric snapshot.
-2. Have the deployment owner stop new webhook/confirmation/reconciliation ingress for only the
-   affected adapter. Disabling ingress must not delete its ledger evidence, grants, projections,
+2. Have the deployment owner set only the affected adapter state
+   (`REVENUECAT_ADAPTER_STATE` or `STRIPE_ADAPTER_STATE`) to `disabled`. Missing or malformed state
+   also fails closed. Disabling ingress must not delete its ledger evidence, grants, projections,
    purchase bindings, or revocation outbox.
 3. Keep server authorization on the last valid, expiring projection. Do not restore client or
    provider SDK authority and do not extend client cache expiry.
@@ -204,27 +225,31 @@ production data, production configuration, infrastructure, deployment, or produc
 
 ### Verification evidence
 
-| Command or durable check                                                                                                                                                  | Result                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npx vitest run services/api/monitoring/entitlement-reliability.test.ts services/api/monitoring/metrics.test.ts services/api/monitoring/alerts.test.ts`                   | 3 files, 40 tests passed                                                                                                                         |
-| Targeted RevenueCat service/reconciliation and Stripe reconciliation Deno suite                                                                                           | 11 tests passed                                                                                                                                  |
-| `npm run test:bank-revocation-handlers -w services/api`                                                                                                                   | 59 tests passed                                                                                                                                  |
-| `npm run test:sync-contract -w services/api`                                                                                                                              | 19 tests passed                                                                                                                                  |
-| `npm run test -w apps/web -- --run src/entitlements/entitlements.test.ts src/billing/productBilling.test.ts`                                                              | 2 files, 16 tests passed                                                                                                                         |
-| `.\gradlew.bat :packages:core:jvmTest :apps:windows:test --no-daemon`                                                                                                     | Build successful                                                                                                                                 |
-| `npm run ci:check` and `npm run docs:links:check`                                                                                                                         | Passed                                                                                                                                           |
-| [Stage 7 Entitlement Gateway Integration](https://github.com/jrmoulckers/finance/actions/runs/34313328974/job/102344327954) at merged PR #4423                            | Passed disposable PostgreSQL revocation, concurrency, gateway, handler, and privacy/sync suites                                                  |
-| Local `billing-entitlements-integration.test.sql` execution                                                                                                               | Unavailable: Docker Desktop's Linux-engine API returned HTTP 500 and no local `psql` client was installed                                        |
-| [Current Entitlement Gateway Integration](https://github.com/jrmoulckers/finance/actions/runs/34509988549/job/102981495945) at `7c5294075060557b85116694d6da01c5c6c61f70` | Passed `test:billing-entitlements` against the migrated disposable PostgreSQL schema before the cap, revocation, concurrency, and gateway suites |
+| Command or durable check                                                                                                                                                                                                                                   | Result                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npx vitest run services/api/monitoring/entitlement-reliability.test.ts services/api/monitoring/entitlement-alerts.test.ts services/api/monitoring/entitlement-maintenance.test.ts`                                                                        | 3 files, 13 tests passed                                                                                                                         |
+| `npm run test:billing-provider-functions -w services/api`                                                                                                                                                                                                  | 96 RevenueCat, Stripe, and adapter-control tests passed                                                                                          |
+| `npm run test:entitlement-functions -w services/api`                                                                                                                                                                                                       | 30 minimized entitlement contract and handler tests passed                                                                                       |
+| `deno check --config services/api/supabase/functions/deno.json services/api/supabase/functions/_shared/billing-adapter-control.ts services/api/supabase/functions/stripe-reconcile/index.ts services/api/supabase/functions/revenuecat-reconcile/index.ts` | Passed                                                                                                                                           |
+| `npm run test:bank-revocation-handlers -w services/api`                                                                                                                                                                                                    | 59 tests passed                                                                                                                                  |
+| `npm run test:sync-contract -w services/api`                                                                                                                                                                                                               | 19 tests passed                                                                                                                                  |
+| `npm run test -w apps/web -- --run src/entitlements/entitlements.test.ts src/billing/productBilling.test.ts`                                                                                                                                               | 2 files, 16 tests passed                                                                                                                         |
+| `.\gradlew.bat :packages:core:jvmTest :apps:windows:test --no-daemon`                                                                                                                                                                                      | Build successful                                                                                                                                 |
+| `npm run ci:check` and `npm run docs:links:check`                                                                                                                                                                                                          | Passed                                                                                                                                           |
+| [Stage 7 Entitlement Gateway Integration](https://github.com/jrmoulckers/finance/actions/runs/34313328974/job/102344327954) at merged PR #4423                                                                                                             | Passed disposable PostgreSQL revocation, concurrency, gateway, handler, and privacy/sync suites                                                  |
+| Local `billing-entitlements-integration.test.sql` execution                                                                                                                                                                                                | Unavailable: Docker Desktop's Linux-engine API returned HTTP 500 and no local `psql` client was installed                                        |
+| [Current Entitlement Gateway Integration](https://github.com/jrmoulckers/finance/actions/runs/34509988549/job/102981495945) at `7c5294075060557b85116694d6da01c5c6c61f70`                                                                                  | Passed `test:billing-entitlements` against the migrated disposable PostgreSQL schema before the cap, revocation, concurrency, and gateway suites |
 
 ## Residual risks and production gates
 
-| Risk / gate                                                   | Accountable owner                           | Review or expiry date | Required evidence before clearance                                                                                                                                                 |
-| ------------------------------------------------------------- | ------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Metrics are not yet wired to a production collector/dashboard | SRE owner with backend implementation owner | 2026-10-10            | Synthetic staging scrape contains every contract metric, only approved labels, working alert routes, and no identifiers, credentials, ciphertext, raw errors, or financial values. |
-| Adapter-disable action is deployment-specific and unexercised | Backend owner with DevOps and SRE review    | 2026-10-10            | Synthetic staging exercise disables one adapter without changing server authorization, ledger history, the other adapter, or the revocation outbox.                                |
-| Projection shadow comparison is not scheduled                 | Database owner with SRE review              | 2026-10-10            | Synthetic staging job produces only aggregate divergence and proves two replays are deterministic with an unchanged immutable-evidence digest.                                     |
-| Full #4406 release gate                                       | #4406 coordinator                           | Before enablement     | Security, privacy, and reliability evidence all reference integrated heads, and the coordinator explicitly clears provider enablement.                                             |
+| Risk / gate                                                 | Accountable owner                            | Review or expiry date | Required evidence before clearance                                                                                                                                                              |
+| ----------------------------------------------------------- | -------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Collector/dashboard and schedule deployment are not enabled | SRE owner with backend implementation owner  | 2026-10-10            | Synthetic staging scrape contains every metric and only approved labels; alert routes fire; every schedule proves lease overlap, retry, missed-run, and manual catch-up behavior.               |
+| Independent adapter-disable controls are not staged         | Backend owner with DevOps and SRE review     | 2026-10-10            | Synthetic staging exercise disables each adapter independently without changing server authority, ledger history, the other adapter, revocation processing, portal/status, export, or deletion. |
+| Projection shadow comparison is not deployed                | Database owner with SRE review               | 2026-10-10            | Synthetic staging job produces only aggregate divergence and proves two replays are deterministic with an unchanged immutable-evidence digest.                                                  |
+| Provider and processor configuration remains external       | Security, privacy, legal, and release owners | Before enablement     | Rotate provider/scheduler secrets, propagate trusted source addresses, approve external processors/legal terms, and complete synthetic staging alert drills.                                    |
+| Full #4406 release gate                                     | #4406 coordinator                            | Before enablement     | Security, privacy, and reliability evidence all reference integrated heads, and the coordinator explicitly clears provider enablement.                                                          |
 
-Until every row is cleared, RevenueCat/Stripe SDK or webhook configuration, provider secrets,
-product configuration, deployment, and production enablement remain blocked.
+Until every row is cleared, RevenueCat/Stripe SDK or webhook configuration, provider and scheduler
+secrets, product configuration, trusted source address propagation, external processor/legal
+approval, deployment, and production enablement remain blocked.

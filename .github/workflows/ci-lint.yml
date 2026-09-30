@@ -226,8 +226,10 @@ jobs:
           - 'services/api/supabase/tests/entitlement-gateway.integration.test.mjs'
           - 'services/api/supabase/tests/sync-contract.test.ts'
           - 'services/api/supabase/tests/billing-entitlements-integration.test.sql'
+          - 'services/api/supabase/tests/billing-entitlements-concurrency.test.ps1'
           - 'services/api/supabase/migrations/**'
           - 'services/api/supabase/tests/bank-connection-cap.test.sql'
+          - 'services/api/supabase/tests/bank-connection-cap-concurrency.test.ps1'
           - 'services/api/supabase/tests/bank-connection-cap-remediation.test.sql'
           - 'services/api/supabase/tests/bank-revocation*.test.*'
           - 'services/api/supabase/powersync/sync-rules.yaml'
@@ -282,6 +284,8 @@ jobs:
         run: |
           npm run test:bank-revocation-handlers
           npm run test:sync-contract
+          npm run test:billing-provider-functions
+          npm run test:entitlement-functions
 
       - name: Start the local Supabase stack
         working-directory: services/api
@@ -309,7 +313,9 @@ jobs:
           PGDATABASE: postgres
         run: |
           npm run test:billing-entitlements
+          npm run test:billing-entitlements-concurrency
           npm run test:bank-connection-cap
+          npm run test:bank-connection-cap-concurrency
           npm run test:bank-connection-cap-remediation
           npm run test:bank-revocation-durable-sql
           npm run test:bank-revocation-concurrency

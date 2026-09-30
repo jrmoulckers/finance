@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
+import { billingAdapterDisabledResponse } from '../_shared/billing-adapter-control.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
@@ -185,6 +186,10 @@ function json(
 
 const applicationHandler = createStripeCheckoutHandler();
 export const handler = (request: Request): Promise<Response> => {
+  if (request.method !== 'OPTIONS') {
+    const disabled = billingAdapterDisabledResponse('stripe');
+    if (disabled) return Promise.resolve(disabled);
+  }
   const envError = validateEnv('stripe-checkout', request);
   return envError ? Promise.resolve(envError) : applicationHandler(request);
 };

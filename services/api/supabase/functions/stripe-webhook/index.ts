@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { createAdminClient } from '../_shared/auth.ts';
+import { billingAdapterDisabledResponse } from '../_shared/billing-adapter-control.ts';
 import { validateEnv } from '../_shared/env.ts';
 import {
   checkRateLimit,
@@ -182,6 +183,8 @@ function json(
 }
 
 export const handler = (request: Request): Promise<Response> => {
+  const disabled = billingAdapterDisabledResponse('stripe');
+  if (disabled) return Promise.resolve(disabled);
   const envError = validateEnv('stripe-webhook', request);
   if (envError) return Promise.resolve(envError);
 

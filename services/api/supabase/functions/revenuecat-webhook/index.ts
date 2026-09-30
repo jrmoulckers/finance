@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { createAdminClient } from '../_shared/auth.ts';
+import { billingAdapterDisabledResponse } from '../_shared/billing-adapter-control.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import {
@@ -88,6 +89,8 @@ export function createRevenueCatWebhookHandler(dependencies: WebhookDependencies
 
 async function productionHandler(request: Request): Promise<Response> {
   const logger = createLogger('revenuecat-webhook');
+  const disabled = billingAdapterDisabledResponse('revenuecat');
+  if (disabled) return disabled;
   const envError = validateEnv('revenuecat-webhook', request);
   if (envError) return envError;
 
