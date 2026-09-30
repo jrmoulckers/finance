@@ -117,13 +117,15 @@ The paid add-on, not a higher included count, is what serves users with more
 than two institutions; CSV/OFX import remains unlimited on every tier, so no
 user is locked out of tracking an account they cannot auto-sync.
 
-> **Current implementation state.** The server enforces a **flat cap of 2 for
-> every household**, not the tier table above, because no server-side
-> entitlement record exists to resolve a user's tier
-> (`_shared/bank-entitlements.ts`, `resolveConnectionCap`). This bounds the cost
-> exposure but does **not** yet make bank connections Premium-only — a free user
-> can currently create 2 connections. Closing that gap requires an entitlement
-> source of truth and is tracked separately from the cap.
+> **Current implementation state.** The server-authoritative entitlement
+> projection now enforces this tier table at both the Edge Function and database
+> boundaries. Free and Plus resolve to 0; Premium resolves to 2 plus verified
+> active add-ons; Family resolves to 4 for its bound household. Direct
+> `exchange_token` calls reserve capacity before creating a billable Item, and
+> entitlement reductions disable excess connections through the durable
+> revocation workflow while preserving imported history. See
+> [ADR-0027](../../architecture/0027-server-authoritative-entitlements.md) and
+> the entitlement catalog for the authoritative runtime contract.
 
 ### 1.4 Gate UI Guidelines
 
