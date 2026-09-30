@@ -269,23 +269,8 @@ END;
 `$`$;
 "@
 
-# ---------------------------------------------------------------------------
-# Cleanup. Each object is named explicitly; nothing is deleted by wildcard.
-# ---------------------------------------------------------------------------
-Invoke-LocalPsql @"
-DELETE FROM bank_connection_reservations WHERE household_id = '$household';
-DELETE FROM bank_connections WHERE household_id = '$household';
-DELETE FROM current_household_entitlements WHERE household_id = '$household';
-DELETE FROM current_user_entitlements WHERE user_id = '$owner';
-DELETE FROM entitlement_grants WHERE billing_account_id = '$account';
-DELETE FROM billing_provider_events WHERE billing_account_id = '$account';
-DELETE FROM billing_subscriptions WHERE billing_account_id = '$account';
-DELETE FROM billing_provider_identities WHERE id = '$identity';
-DELETE FROM billing_accounts WHERE id = '$account';
-DELETE FROM household_members WHERE id = '$membership';
-DELETE FROM households WHERE id = '$household';
-DELETE FROM users WHERE id = '$owner';
-DELETE FROM auth.users WHERE id = '$owner';
-"@
+# Fixtures intentionally remain in this disposable database. In particular,
+# immutable billing evidence must never be deleted to make a test clean up.
+# The CI job destroys the entire local Supabase stack after the suite.
 
 Write-Host 'bank-connection-cap-concurrency.test.ps1: final-slot race granted exactly one reservation'
