@@ -32,10 +32,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-for-local-dev-only}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations
-      - ./supabase/seed.sql:/docker-entrypoint-initdb.d/99-seed.sql
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/finance-migrations:ro
+      - ./supabase/docker-init/local-auth-functions.sql:/docker-entrypoint-initdb.d/zy-00-local-auth-functions.sql:ro
+      - ./supabase/docker-init/01-apply-migrations.sh:/docker-entrypoint-initdb.d/zz-01-apply-migrations.sh:ro
+      - ./supabase/seed.sql:/docker-entrypoint-initdb.d/zz-99-seed.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U supabase_admin']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -45,7 +47,7 @@ services:
     ports:
       - '54321:3000'
     environment:
-      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
       PGRST_DB_SCHEMAS: public,auth,storage
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-for-local-dev-only}
@@ -84,7 +86,7 @@ services:
       PG_META_DB_HOST: db
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
-      PG_META_DB_USER: postgres
+      PG_META_DB_USER: supabase_admin
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     healthcheck:
       test:
