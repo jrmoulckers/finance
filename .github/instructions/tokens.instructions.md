@@ -1,5 +1,6 @@
 ---
 applyTo: 'tokens/**,packages/tokens/**,vendor/@jrm/tokens/**,**/vendor/@jrm/tokens/**,**/*.tokens.json'
+description: 'Design token consumption. Use for the vendored @jrm/tokens distribution, token naming and values, CSS, Tailwind, Compose, and Swift outputs, and the vendor target path.'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
