@@ -26,7 +26,12 @@ import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
-import { type EntitlementErrorCode, parseProjectionRow, toEnvelope } from './contract.ts';
+import {
+  type EntitlementEnvelope,
+  type EntitlementErrorCode,
+  parseProjectionRow,
+  toEnvelope,
+} from './contract.ts';
 
 const FUNCTION_NAME = 'entitlements-v1';
 
@@ -229,7 +234,7 @@ function failure(
 function json(
   request: Request,
   status: number,
-  body: Record<string, unknown>,
+  body: EntitlementEnvelope | { error: string; code: EntitlementErrorCode },
   headers: Record<string, string> = {},
 ): Response {
   return new Response(JSON.stringify(body), {
