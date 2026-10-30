@@ -7,6 +7,10 @@
 **Document Owner:** Product Management
 **Date:** 2025-07-31
 
+> **Historical assessment:** The matrix below is a dated snapshot, not current
+> launch evidence. See [Live-data beta readiness - October 30, 2026](live-data-beta-readiness-2026-10-30.md)
+> for the coordinated verification results, unresolved runtime gaps, and human gates.
+
 ---
 
 > **Satisfies:** `PROD-REL-001`, `PROD-PLAN-003` — Product obligations are defined in
