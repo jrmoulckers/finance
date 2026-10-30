@@ -13,6 +13,13 @@
     "noUnusedParameters": false,
     "checkJs": false
   },
-  "include": ["src", "e2e", "playwright.config.ts"],
+  "include": [
+    "src",
+    "e2e",
+    "e2e-sync",
+    "playwright.config.ts",
+    "playwright.sync.config.ts",
+    "vite.sync.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
