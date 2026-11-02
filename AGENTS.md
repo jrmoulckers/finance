@@ -103,6 +103,13 @@ See `docs/ai/worktrees.md` for the full worktree setup and lifecycle guide.
 
 AI agents that skip issue creation, commit directly to `main`, or fail to create PRs are not following the project workflow. If you discover work was done without an issue, create a retroactive issue to track it.
 
+## Report-Driven Bug Loop
+
+A plain-language bug report (or an existing issue link) in an active session is a request to run
+[`docs/ai/bug-loop.md`](docs/ai/bug-loop.md): one session, one issue/PR per root cause, risk-lane
+classification, regression evidence, and verified delivery. It layers on this workflow and never
+relaxes a gate. Use the `bug-bash` prompt for multi-scenario discovery.
+
 ## Coding Standards
 
 - Write clear, self-documenting code. Comment only when intent isn't obvious from the code itself.
