@@ -233,6 +233,8 @@ Run bug-bash with scope="JPY amount rounding in shared packages" max-findings=1
 6. Add or update affected tests, run the complete workflow instructions through self-merge, remove the task worktree, and report issue/PR/platform/fix-scope/root-cause/worktree outcomes.
 7. For web reproduction, use a free local port rather than assuming the shared `:5199` server exists.
 
+8. For one reported bug, the lighter [report-driven bug loop](../../docs/ai/bug-loop.md) defines risk lanes, a 15-minute web target, and live-verification rules.
+
 > ⚠️ Never edits `apps/web/vite.config.ts` (the bug-bash host keeps a local-only `allowedHosts` edit there).
 
 ---
