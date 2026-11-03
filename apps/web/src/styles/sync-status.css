@@ -76,7 +76,8 @@
  * Variant — offline (gray)
  * ------------------------------------------------------------------- */
 
-.sync-status-bar--offline {
+.sync-status-bar--offline,
+.sync-status-bar--local-only {
   background-color: var(--color-gray-100, #f3f4f6);
   color: var(--color-gray-600, #4b5563);
   border: 1px solid var(--color-gray-300, #d1d5db);
@@ -179,7 +180,8 @@
     border-color: rgba(239, 68, 68, 0.3);
   }
 
-  html:not([data-theme='light']) .sync-status-bar--offline {
+  html:not([data-theme='light']) .sync-status-bar--offline,
+  html:not([data-theme='light']) .sync-status-bar--local-only {
     background-color: rgba(107, 114, 128, 0.12);
     color: var(--color-gray-300, #d1d5db);
     border-color: rgba(107, 114, 128, 0.3);
@@ -220,7 +222,8 @@
   border-color: rgba(239, 68, 68, 0.3);
 }
 
-[data-theme='dark'] .sync-status-bar--offline {
+[data-theme='dark'] .sync-status-bar--offline,
+[data-theme='dark'] .sync-status-bar--local-only {
   background-color: rgba(107, 114, 128, 0.12);
   color: var(--color-gray-300, #d1d5db);
   border-color: rgba(107, 114, 128, 0.3);

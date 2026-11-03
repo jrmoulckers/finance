@@ -24,6 +24,7 @@ import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 import { NotificationCenter } from '../notifications';
+import { isLocalOnlyMode } from '../../lib/local-only-mode';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import { prefetchRoute } from '../../lib/navigation/prefetch';
@@ -172,6 +173,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
   const handleSignOut = useCallback(async () => {
     await logout();
   }, [logout]);
+  const localOnly = isLocalOnlyMode();
 
   return (
     <>
@@ -219,7 +221,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
         onNavigate={onNavigate}
         onOpenShortcuts={onOpenShortcuts}
         onOpenFeedback={onOpenFeedback}
-        onSignOut={handleSignOut}
+        onSignOut={localOnly ? undefined : handleSignOut}
         priorityItems={bottomNavItems}
       />
     </>
@@ -484,6 +486,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   const handleSignOut = useCallback(async () => {
     await logout();
   }, [logout]);
+  const localOnly = isLocalOnlyMode();
 
   return (
     <aside
@@ -627,17 +630,19 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
           </span>
           <span>Settings</span>
         </button>
-        <button
-          type="button"
-          className="sidebar-nav__item sidebar-nav__item--sign-out"
-          onClick={handleSignOut}
-          aria-label="Sign out"
-        >
-          <span className="sidebar-nav__item-icon" aria-hidden="true">
-            <SignOutIcon />
-          </span>
-          <span>Sign Out</span>
-        </button>
+        {localOnly ? null : (
+          <button
+            type="button"
+            className="sidebar-nav__item sidebar-nav__item--sign-out"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+          >
+            <span className="sidebar-nav__item-icon" aria-hidden="true">
+              <SignOutIcon />
+            </span>
+            <span>Sign Out</span>
+          </button>
+        )}
       </div>
     </aside>
   );
