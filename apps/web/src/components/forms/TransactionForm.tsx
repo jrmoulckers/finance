@@ -751,7 +751,7 @@ export function TransactionForm({
   const isEditMode = initialData !== undefined;
   const dialogTitle = isEditMode ? 'Edit Transaction' : 'New Transaction';
   const submitButtonLabel = isEditMode ? 'Update Transaction' : 'Add Transaction';
-  const submittingLabel = isEditMode ? 'Updating╬ô├ç┬¬' : 'Adding╬ô├ç┬¬';
+  const submittingLabel = isEditMode ? 'Updating…' : 'Adding…';
   const submitFailureMessage = isEditMode
     ? 'Failed to update transaction.'
     : 'Failed to add transaction.';
@@ -1252,7 +1252,7 @@ export function TransactionForm({
                 Payee
               </label>
               <p id="txn-description-help" className="form-group__help">
-                What appears on your statement (e.g. ╬ô├ç┬úAMZN MKTPL*XYZ╬ô├ç┬Ñ).
+                What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
               </p>
               <input
                 id={dictationControls.payee.id}
@@ -1277,7 +1277,7 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Type ╬ô├ç├┤ radio group */}
+            {/* Type – radio group */}
             <fieldset className="form-radio-group">
               <legend className="form-radio-group__legend">Type</legend>
               <div className="form-radio-group__options" role="radiogroup">
@@ -1324,7 +1324,7 @@ export function TransactionForm({
                 Counterparty
               </label>
               <p id="txn-counterparty-help" className="form-group__help">
-                The actual merchant or person (e.g. ╬ô├ç┬úAmazon╬ô├ç┬Ñ, ╬ô├ç┬úSarah Lee╬ô├ç┬Ñ).
+                The actual merchant or person (e.g. “Amazon”, “Sarah Lee”).
               </p>
               <CounterpartyInput
                 id="txn-counterparty"
@@ -1434,7 +1434,7 @@ export function TransactionForm({
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
-                <option value="">╬ô├ç├╢ None ╬ô├ç├╢</option>
+                <option value="">— None —</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -1774,7 +1774,7 @@ export function TransactionForm({
               </fieldset>
             )}
 
-            {/* Additional Details ╬ô├ç├╢ expandable section */}
+            {/* Additional Details — expandable section */}
             <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
               <legend style={{ display: 'contents' }}>
                 <button
@@ -1805,7 +1805,7 @@ export function TransactionForm({
                       transform: additionalOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                     }}
                   >
-                    ╬ô├╗Γòó
+                    ▶
                   </span>
                   Additional Details
                 </button>
@@ -1965,7 +1965,7 @@ export function TransactionForm({
                     </div>
                   </fieldset>
 
-                  {/* Custom fields ╬ô├ç├╢ key/value pairs */}
+                  {/* Custom fields — key/value pairs */}
                   <div className="form-group">
                     <label className="form-group__label">Custom Fields</label>
                     {customFieldEntries.map((entry, idx) => (
@@ -2015,7 +2015,7 @@ export function TransactionForm({
                           className="icon-button"
                           style={{ flexShrink: 0 }}
                         >
-                          <span aria-hidden="true">╬ô┬ú├▓</span>
+                          <span aria-hidden="true">✕</span>
                         </button>
                       </div>
                     ))}
@@ -2054,7 +2054,7 @@ export function TransactionForm({
 
           {hasValidationErrors && (
             <div className="form-submit-summary" role="status" aria-live="polite">
-              Some fields need attention ╬ô├ç├╢ see highlighted errors above.
+              Some fields need attention — see highlighted errors above.
             </div>
           )}
 

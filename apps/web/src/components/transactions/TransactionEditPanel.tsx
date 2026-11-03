@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * TransactionEditPanel ╬ô├ç├╢ Slide-over panel for editing transactions.
+ * TransactionEditPanel — Slide-over panel for editing transactions.
  *
  * Desktop: slide-over drawer from the right side.
  * Mobile: full-screen modal.
@@ -193,7 +193,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             aria-label="Close edit panel"
             disabled={submitting}
           >
-            <span aria-hidden="true">╬ô┬ú├▓</span>
+            <span aria-hidden="true">✕</span>
           </button>
         </header>
 
@@ -360,7 +360,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? 'Saving╬ô├ç┬¬' : 'Save'}
+            {submitting ? 'Saving…' : 'Save'}
           </button>
         </footer>
       </div>
