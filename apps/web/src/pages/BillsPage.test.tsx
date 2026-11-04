@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { readFileSync } from 'node:fs';
@@ -95,6 +95,23 @@ describe('BillsPage', () => {
     expect(screen.getByText('Bills & Reminders')).toBeInTheDocument();
     expect(screen.getByText('Electric Bill')).toBeInTheDocument();
     expect(screen.getByText('Internet')).toBeInTheDocument();
+  });
+
+  it('shows an empty state with a reset when the status filter matches nothing', () => {
+    render(
+      <MemoryRouter>
+        <BillsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Filter bills by status'), {
+      target: { value: 'PAID' },
+    });
+    expect(screen.getByText('No matching bills')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all bills' }));
+    expect(screen.queryByText('No matching bills')).not.toBeInTheDocument();
+    expect(screen.getByText('Electric Bill')).toBeInTheDocument();
   });
 
   it('renders summary with upcoming and overdue counts', () => {
