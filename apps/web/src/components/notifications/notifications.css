@@ -477,12 +477,14 @@
 
 .notification-history__filter {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-2, 8px);
   margin-bottom: var(--spacing-4, 16px);
 }
 
 .notification-history__filter-btn {
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  white-space: nowrap;
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--radius-full, 50px);
   background: transparent;
