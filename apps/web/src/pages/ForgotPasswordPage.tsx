@@ -99,7 +99,9 @@ export const ForgotPasswordPage: React.FC = () => {
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <p className="auth-instructions">
-            Enter your email address and we&apos;ll send a link to reset your password.
+            {isDemoMode
+              ? 'Password reset is unavailable in local-only mode because there is no account to recover.'
+              : "Enter your email address and we'll send a link to reset your password."}
           </p>
 
           <div className="auth-field">
