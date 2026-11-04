@@ -35,7 +35,7 @@ function failure(stderr, options = {}) {
 test('psql failure retains only operation, SQLSTATE and bounded input line', () => {
   for (const newline of ['\n', '\r\n']) {
     const error = failure(
-      `${privateOutput}${newline}psql:<stdin>:2: ERROR: 42501${newline}CONTEXT: ${privateOutput}`,
+      `${privateOutput}${newline}psql:<stdin>:2: ERROR:  42501${newline}CONTEXT: ${privateOutput}`,
       { sqlOperation: 'adapter-regression' },
     );
     assert.deepEqual(error.sqlDiagnostic, {

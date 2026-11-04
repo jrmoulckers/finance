@@ -40,8 +40,8 @@ export function sqlFailure(operation, status, stderr, input) {
   assertSqlOperation(operation);
   const diagnostic = { operation, sqlState: null, line: null };
   const matches = [
-    ...(stderr ?? '').matchAll(
-      /^psql:<stdin>:([1-9][0-9]{0,7}): (?:ERROR|FATAL): ([0-9A-Z]{5})\r?$/gm,
+    ...(typeof stderr === 'string' ? stderr : '').matchAll(
+      /^psql:<stdin>:([1-9][0-9]{0,7}): (?:ERROR|FATAL): {1,2}([0-9A-Z]{5})\r?$/gm,
     ),
   ];
   if (
