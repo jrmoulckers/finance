@@ -144,6 +144,45 @@ describe('useLiveQuery', () => {
     });
   });
 
+  it('does not drop a pending refetch when a re-render passes a fresh tables array (#4484)', async () => {
+    const rowsRef = { current: [{ id: 't-1' }] };
+    const db = createDatabase(rowsRef);
+    const wrapper = ({ children }: React.PropsWithChildren) => (
+      <DatabaseContext.Provider
+        value={{ db, diagnostics: {} as DatabaseContextValue['diagnostics'] }}
+      >
+        {children}
+      </DatabaseContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(
+      () =>
+        useLiveQuery<{ id: string }[]>('SELECT id FROM transactions', [], {
+          initialData: [],
+          tables: ['transactions', 'accounts'],
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([{ id: 't-1' }]);
+    });
+
+    rowsRef.current = [{ id: 't-1' }, { id: 't-2' }];
+    act(() => {
+      notifyDataChange(['transactions']);
+    });
+    // Re-render (e.g. dialog closing) before the debounce timer fires.
+    act(() => {
+      rerender();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(result.current.data).toEqual([{ id: 't-1' }, { id: 't-2' }]);
+  });
+
   it('settles loading and does not re-query on every render when callers pass fresh literals', async () => {
     // Regression: useRealtimeTable (and many callers) pass a new `initialData`
     // array and a new params array on every render. The query must run once on
