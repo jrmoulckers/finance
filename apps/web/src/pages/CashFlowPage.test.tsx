@@ -104,6 +104,9 @@ describe('CashFlowPage', () => {
 
     render(<CashFlowPage />);
     expect(screen.getByText('No cash flow data')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /Cash Flow/ })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Time period' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Export cash flow/ })).not.toBeInTheDocument();
   });
 
   it('renders metrics and chart when data exists', () => {
