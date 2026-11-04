@@ -332,7 +332,6 @@ export const InvoicesPage: React.FC = () => {
           className="analytics-export-btn"
           onClick={handleExportCsv}
           disabled={invoices.length === 0}
-          aria-label="Export invoices as CSV"
         >
           Export CSV
         </button>
