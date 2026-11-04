@@ -48,7 +48,7 @@ describe('TripBudgetsPage', () => {
     render(<TripBudgetsPage />);
 
     const card = screen
-      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 3 })
+      .getByRole('heading', { name: 'Bangkok getaway', level: 3 })
       .closest('article') as HTMLElement;
 
     expect(within(card).getByText(/20,500/)).toBeInTheDocument(); // local spend
@@ -87,14 +87,18 @@ describe('TripBudgetsPage', () => {
   it('logs local-currency spend and updates the trip transaction count', () => {
     render(<TripBudgetsPage />);
 
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-02-20' } });
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate(),
+    ).padStart(2, '0')}`;
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: today } });
     fireEvent.change(screen.getByLabelText('Amount (local currency)'), {
       target: { value: '1500' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add spend' }));
 
     const card = screen
-      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 3 })
+      .getByRole('heading', { name: 'Bangkok getaway', level: 3 })
       .closest('article') as HTMLElement;
     expect(within(card).getByText('3 transactions')).toBeInTheDocument();
   });
@@ -102,10 +106,10 @@ describe('TripBudgetsPage', () => {
   it('archives a finished trip and offers to reopen it', () => {
     render(<TripBudgetsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Archive Bangkok Jan/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Archive Bangkok getaway/ }));
 
     expect(screen.getByRole('heading', { name: 'Archived trips', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Reopen Bangkok Jan/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Reopen Bangkok getaway/ })).toBeInTheDocument();
   });
 
   it('renders an accessible spend ledger with a caption and trip filter', () => {
