@@ -59,8 +59,15 @@ function formatLotDate(isoDate: string): string {
   });
 }
 
-function formatPercent(percent: number): string {
-  return `${percent}%`;
+function formatPercent(percent: number, fixed = false): string {
+  return `${percent.toLocaleString(getCurrentLocale(), {
+    minimumFractionDigits: fixed ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}%`;
+}
+
+function formatShares(shares: number): string {
+  return shares.toLocaleString(getCurrentLocale(), { maximumFractionDigits: 4 });
 }
 
 const RETIREMENT_LIMIT_GROUP_LABELS: Record<string, string> = {
@@ -487,8 +494,8 @@ export const TaxCenterPage: React.FC = () => {
                         onChange={() => toggleSpecificLot(lot.id)}
                         label={
                           <>
-                            {formatLotDate(lot.acquiredDate)} · {lot.shares.toLocaleString()} shares
-                            @ {formatCurrency(lot.costPerShare, { currency: lot.currency })}
+                            {formatLotDate(lot.acquiredDate)} · {formatShares(lot.shares)} shares @{' '}
+                            {formatCurrency(lot.costPerShare, { currency: lot.currency })}
                           </>
                         }
                       />
@@ -643,7 +650,7 @@ export const TaxCenterPage: React.FC = () => {
               </h2>
               {matchResult.unmatchedShares > 0 && (
                 <p style={{ color: 'var(--semantic-negative, #dc2626)' }}>
-                  {matchResult.unmatchedShares.toLocaleString()} shares could not be matched to open
+                  {formatShares(matchResult.unmatchedShares)} shares could not be matched to open
                   lots.
                 </p>
               )}
@@ -691,7 +698,7 @@ export const TaxCenterPage: React.FC = () => {
                             {formatLotDate(lot.soldDate)}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {lot.shares.toLocaleString()}
+                            {formatShares(lot.shares)}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             <CurrencyDisplay amount={lot.proceeds} />
@@ -776,7 +783,7 @@ export const TaxCenterPage: React.FC = () => {
                             )}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {lot.shares.toLocaleString()}
+                            {formatShares(lot.shares)}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             <CurrencyDisplay amount={lot.costPerShare} currency={lot.currency} />
@@ -789,7 +796,7 @@ export const TaxCenterPage: React.FC = () => {
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             {formatGainLoss(row.unrealizedGainLoss, { currency: lot.currency })} (
-                            {row.unrealizedGainLossPercent}%)
+                            {formatPercent(row.unrealizedGainLossPercent, true)})
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             {row.termAsOfDate === 'LONG_TERM' ? 'Long-term' : 'Short-term'}
