@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { VisuallyHidden } from './VisuallyHidden';
@@ -45,5 +46,25 @@ describe('VisuallyHidden', () => {
     const el = screen.getByText('Text');
     expect(el).toHaveClass('sr-only');
     expect(el).toHaveClass('extra');
+  });
+
+  it('supports a keyboard-focusable link and does not forward focusable to the DOM', async () => {
+    render(
+      <VisuallyHidden as="a" href="#main-content" focusable className="skip-control">
+        Skip to content
+      </VisuallyHidden>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Skip to content' });
+    expect(link).toHaveClass('sr-only', 'sr-only-focusable', 'skip-control');
+    expect(link).toHaveAttribute('href', '#main-content');
+    expect(link).not.toHaveAttribute('focusable');
+    await userEvent.setup().tab();
+    expect(link).toHaveFocus();
+  });
+
+  it('does not reveal ordinary hidden text on focus', () => {
+    render(<VisuallyHidden focusable={false}>Context</VisuallyHidden>);
+    expect(screen.getByText('Context')).not.toHaveClass('sr-only-focusable');
   });
 });

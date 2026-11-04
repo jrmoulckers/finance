@@ -295,6 +295,8 @@ export function getFirstFocusable(container: HTMLElement): HTMLElement | null {
  * screen reader caching issues when toggling aria-live on a single element.
  */
 const liveRegions: Record<string, HTMLElement> = {};
+const announcementQueues = new WeakMap<HTMLElement, string[]>();
+const ANNOUNCEMENT_INTERVAL_MS = 100;
 
 /** Visually-hidden styling shared with the `.sr-only` / `VisuallyHidden` technique. */
 const VISUALLY_HIDDEN_STYLE: Partial<CSSStyleDeclaration> = {
@@ -342,11 +344,39 @@ export function ensureLiveRegions(): void {
   ensureLiveRegion('assertive');
 }
 
+/**
+ * Queue a transient message on the canonical channel. Each message gets a
+ * separate clear/write cycle, including identical messages in the same burst.
+ * Channels are independent so errors never wait behind polite notifications.
+ */
 export function announce(message: string, politeness: 'polite' | 'assertive' = 'polite'): void {
   const region = ensureLiveRegion(politeness);
   if (!region) return;
-  region.textContent = '';
-  requestAnimationFrame(() => {
-    region.textContent = message;
-  });
+  const pending = announcementQueues.get(region);
+  if (pending) {
+    pending.push(message);
+    return;
+  }
+
+  const queue = [message];
+  announcementQueues.set(region, queue);
+  const deliverNext = (): void => {
+    const nextMessage = queue.shift();
+    if (!region.isConnected || nextMessage === undefined) {
+      announcementQueues.delete(region);
+      return;
+    }
+    region.textContent = '';
+    requestAnimationFrame(() => {
+      if (!region.isConnected) {
+        announcementQueues.delete(region);
+        return;
+      }
+      region.textContent = nextMessage;
+      // Avoid same-frame overwrites: AT must observe a distinct text mutation
+      // before the next message clears the region.
+      setTimeout(deliverNext, ANNOUNCEMENT_INTERVAL_MS);
+    });
+  };
+  deliverNext();
 }

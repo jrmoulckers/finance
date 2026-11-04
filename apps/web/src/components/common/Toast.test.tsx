@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider, useOptionalToast, useToast, type ToastOptions } from './Toast';
 
@@ -55,8 +55,13 @@ function announcerText(politeness: 'polite' | 'assertive'): string {
   return document.querySelector(`[data-announcer="${politeness}"]`)?.textContent ?? '';
 }
 
+beforeEach(() => {
+  document.querySelectorAll('[data-announcer]').forEach((region) => region.remove());
+});
+
 afterEach(() => {
   document.documentElement.removeAttribute('data-reduced-motion');
+  document.querySelectorAll('[data-announcer]').forEach((region) => region.remove());
 });
 
 describe('ToastProvider + useToast', () => {
@@ -106,6 +111,9 @@ describe('ToastProvider + useToast', () => {
     const assertive = document.querySelector('[data-announcer="assertive"]');
     expect(polite).toHaveAttribute('aria-live', 'polite');
     expect(assertive).toHaveAttribute('aria-live', 'assertive');
+    expect(polite).toBeEmptyDOMElement();
+    expect(assertive).toBeEmptyDOMElement();
+    expect(document.querySelectorAll('[data-announcer]')).toHaveLength(2);
   });
 
   it('announces non-error toasts politely through the shared announcer', async () => {
@@ -145,6 +153,57 @@ describe('ToastProvider + useToast', () => {
     expect(toastEl).not.toBeNull();
     expect(toastEl).not.toHaveAttribute('role');
     expect(toastEl).not.toHaveAttribute('aria-label');
+    expect(toastEl).not.toHaveAttribute('aria-live');
+    expect(toastEl).not.toHaveAttribute('aria-hidden');
+  });
+
+  it.each(['warning', 'info'] as const)('announces %s toasts politely', async (type) => {
+    render(
+      <ToastProvider>
+        <TestConsumer type={type} message="Synthetic notice" />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Show Toast' }));
+    await waitFor(() =>
+      expect(announcerText('polite')).toBe(
+        `${type === 'warning' ? 'Warning' : 'Info'}: Synthetic notice`,
+      ),
+    );
+    expect(announcerText('assertive')).toBe('');
+  });
+
+  it('reuses the canonical pair across provider remounts', () => {
+    const { unmount } = render(<ToastProvider>First mount</ToastProvider>);
+    const polite = document.querySelector('[data-announcer="polite"]');
+    const assertive = document.querySelector('[data-announcer="assertive"]');
+    unmount();
+    render(<ToastProvider>Second mount</ToastProvider>);
+    expect(document.querySelectorAll('[data-announcer]')).toHaveLength(2);
+    expect(document.querySelector('[data-announcer="polite"]')).toBe(polite);
+    expect(document.querySelector('[data-announcer="assertive"]')).toBe(assertive);
+  });
+
+  it.each([true, false])('announces legitimate repeats with dedupe=%s', (dedupe) => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <ToastProvider dedupe={dedupe}>
+          <TestConsumer type="success" message="Repeated synthetic message" duration={0} />
+        </ToastProvider>,
+      );
+      const show = screen.getByRole('button', { name: 'Show Toast' });
+      fireEvent.click(show);
+      act(() => vi.advanceTimersToNextFrame());
+      expect(announcerText('polite')).toBe('Success: Repeated synthetic message');
+      act(() => vi.advanceTimersByTime(dedupe ? 3000 : 100));
+      fireEvent.click(show);
+      expect(announcerText('polite')).toBe('');
+      act(() => vi.advanceTimersToNextFrame());
+      expect(announcerText('polite')).toBe('Success: Repeated synthetic message');
+      expect(screen.getAllByText('Repeated synthetic message')).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('auto-dismisses after the specified duration', () => {

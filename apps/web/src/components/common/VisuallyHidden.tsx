@@ -16,7 +16,9 @@ export type VisuallyHiddenProps<T extends React.ElementType = 'span'> = {
   children?: React.ReactNode;
   /** Additional class names appended after the `sr-only` utility class. */
   className?: string;
-} & Omit<React.ComponentPropsWithoutRef<T>, 'as' | 'children' | 'className'>;
+  /** Reveal content on keyboard focus, for skip-link-style controls. @default false */
+  focusable?: boolean;
+} & Omit<React.ComponentPropsWithoutRef<T>, 'as' | 'children' | 'className' | 'focusable'>;
 
 /**
  * Renders content that is visually hidden but remains available to assistive
@@ -30,16 +32,20 @@ export type VisuallyHiddenProps<T extends React.ElementType = 'span'> = {
  * ```tsx
  * <VisuallyHidden>Loading transactions</VisuallyHidden>
  * <VisuallyHidden as="h2" id="dialog-title">Confirm deletion</VisuallyHidden>
+ * <VisuallyHidden as="a" href="#main-content" focusable>Skip to content</VisuallyHidden>
  * ```
  */
 export function VisuallyHidden<T extends React.ElementType = 'span'>({
   as,
   children,
   className,
+  focusable = false,
   ...rest
 }: VisuallyHiddenProps<T>): React.ReactElement {
   const Component = (as ?? 'span') as React.ElementType;
-  const composedClassName = className ? `sr-only ${className}` : 'sr-only';
+  const composedClassName = ['sr-only', focusable && 'sr-only-focusable', className]
+    .filter(Boolean)
+    .join(' ');
   return (
     <Component className={composedClassName} {...rest}>
       {children}

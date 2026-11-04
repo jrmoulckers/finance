@@ -734,6 +734,32 @@ The app respects `prefers-color-scheme`, `prefers-reduced-motion`, and
 
 ## Accessibility
 
+### Shared feedback primitives
+
+Use `VisuallyHidden` from `components/common` for screen-reader-only content. Its
+typed `as` prop forwards element-specific props; `focusable` reveals the content
+on focus or focus within (for example, an anchor linking to an existing landmark).
+It does not move focus or replace the shell's skip-link navigation helpers.
+
+`ToastProvider` prepares the single canonical pair of initially empty, atomic
+live regions in `accessibility/aria.ts`. Errors announce assertively; success,
+warning, and info messages announce politely with a localized severity prefix.
+Visible toasts remain readable without competing live-region roles or labels.
+Do not announce the same event separately when showing a toast.
+
+The announcer queues each channel independently, separating messages with a
+clear/frame-write cycle and a 100 ms interval. This preserves DOM updates for
+burst messages, including legitimate identical repeats, without making errors
+wait behind polite messages. Toast storm deduplication is unchanged: identical
+type/message events within 3 seconds coalesce unless `dedupe={false}`.
+DOM/browser checks do not prove speech delivery for every screen reader.
+
+Base focus-visible styles consume `--focus-ring-width`, `--focus-ring-offset`,
+`--focus-ring-color`, and `--focus-ring` from the local theme bridge. Explicit
+themes take precedence over system dark mode; the OS dark preference applies
+only without a `data-theme` attribute. Focus Appearance (SC 2.4.13) is AAA;
+Focus Visible and Focus Not Obscured remain part of the WCAG 2.2 AA target.
+
 ### Keyboard shortcuts
 
 Press `?` anywhere outside editable fields to open the keyboard shortcuts help dialog, and press `Esc` to close it. The dialog uses focus trapping, semantic table markup, and an `alertdialog` role so keyboard and assistive technology users get the same guidance.
