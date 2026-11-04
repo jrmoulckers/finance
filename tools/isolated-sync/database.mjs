@@ -8,9 +8,12 @@ import { MIGRATIONS, sha256 } from './profile.mjs';
 export function verifyHistory(context) {
   const { manifest, sql } = context;
   const actual = JSON.parse(
-    sql(`SELECT coalesce(json_agg(row_to_json(m) ORDER BY version), '[]'::json)
+    sql(
+      `SELECT coalesce(json_agg(row_to_json(m) ORDER BY version), '[]'::json)
 FROM (SELECT version, name, statements
-      FROM supabase_migrations.schema_migrations) m;`),
+      FROM supabase_migrations.schema_migrations) m;`,
+      'migration-history',
+    ),
   );
   const files = Object.keys(manifest.sourceFiles)
     .filter((name) => new RegExp(`^${MIGRATIONS}[0-9]{14}_[^/]+\\.sql$`).test(name))
@@ -43,12 +46,15 @@ export function migrate(context) {
   const { compose, directory, cli, sql, executeCli, wait } = context;
   compose('api', ['up', '-d', '--no-deps', '--no-recreate', '--pull', 'never', 'auth-migrate']);
   wait('auth-migrate');
-  sql(`DO $$ BEGIN
+  sql(
+    `DO $$ BEGIN
 IF EXISTS (SELECT 1 FROM auth.users) OR to_regclass('public.users') IS NOT NULL
    OR to_regclass('supabase_migrations.schema_migrations') IS NOT NULL THEN
   RAISE EXCEPTION 'fresh unmigrated database required';
 END IF;
-END $$;`);
+END $$;`,
+    'migration-preconditions',
+  );
   executeCli(
     cli,
     [
@@ -80,20 +86,26 @@ export function publication(context) {
   }
   if (tables.size === 0) throw new Error('Empty replication table inventory.');
   const values = [...tables].sort();
-  sql(statements.join('\n'));
+  sql(statements.join('\n'), 'rule-columns');
   if (
-    sql(`SELECT count(*) = ${values.length} AND bool_and(relrowsecurity)
-FROM pg_class WHERE oid = ANY(ARRAY[${values.map((name) => `'public.${name}'::regclass`).join(',')}]);`) !==
-    't'
+    sql(
+      `SELECT count(*) = ${values.length} AND bool_and(relrowsecurity)
+FROM pg_class WHERE oid = ANY(ARRAY[${values.map((name) => `'public.${name}'::regclass`).join(',')}]);`,
+      'rule-rls',
+    ) !== 't'
   ) {
     throw new Error('Rule source tables are missing RLS.');
   }
   sql(
     `CREATE PUBLICATION powersync FOR TABLE ${values.map((name) => `public."${name}"`).join(',')};`,
+    'publication-create',
   );
   const actual = JSON.parse(
-    sql(`SELECT json_agg(tablename ORDER BY tablename)
-FROM pg_publication_tables WHERE pubname = 'powersync' AND schemaname = 'public';`),
+    sql(
+      `SELECT json_agg(tablename ORDER BY tablename)
+FROM pg_publication_tables WHERE pubname = 'powersync' AND schemaname = 'public';`,
+      'publication-inventory',
+    ),
   );
   if (JSON.stringify(actual) !== JSON.stringify(values))
     throw new Error('Publication inventory mismatch.');
@@ -107,11 +119,14 @@ export function installAdapter(context) {
   const test = fs.readFileSync(path.join(directory, 'adapter-regression.sql'), 'utf8');
   const include = '\\ir ../local-only/isolated-signup-adapter.sql';
   if (test.split(include).length !== 2) throw new Error('Regression include contract changed.');
-  sql(test.replace(include, adapter));
-  sql(`BEGIN;
+  sql(test.replace(include, adapter), 'adapter-regression');
+  sql(
+    `BEGIN;
 SET LOCAL finance.isolated_signup_adapter = 'synthetic-local-only';
 ${adapter}
-COMMIT;`);
+COMMIT;`,
+    'adapter-install',
+  );
   verifyAdapter(context);
   publication(context);
 }
@@ -119,7 +134,8 @@ COMMIT;`);
 /** Recheck the committed trigger and effective RPC grants before permitting Auth traffic. */
 export function verifyAdapter({ sql }) {
   if (
-    sql(`SELECT
+    sql(
+      `SELECT
 EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'isolated_local_signup_adapter'
  AND tgrelid = 'auth.users'::regclass AND tgenabled = 'O'
  AND tgfoid = 'public.isolated_local_signup_adapter()'::regprocedure)
@@ -128,8 +144,9 @@ AND NOT has_function_privilege('anon','public.handle_new_user_signup(uuid,text,t
 AND NOT has_function_privilege('authenticated','public.handle_new_user_signup(uuid,text,text)','EXECUTE')
 AND NOT has_function_privilege('anon','public.isolated_local_signup_adapter()','EXECUTE')
 AND NOT has_function_privilege('authenticated','public.isolated_local_signup_adapter()','EXECUTE')
-AND NOT has_function_privilege('service_role','public.isolated_local_signup_adapter()','EXECUTE');`) !==
-    't'
+AND NOT has_function_privilege('service_role','public.isolated_local_signup_adapter()','EXECUTE');`,
+      'adapter-postconditions',
+    ) !== 't'
   ) {
     throw new Error('Adapter trigger/permission postconditions failed.');
   }

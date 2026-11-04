@@ -16,6 +16,9 @@ kotlin-js-store/
 # Local tool cache written by the bundled impeccable skill; never committed.
 .impeccable/
 
+# Private isolated runtime inputs and hash-inventoried generated configuration.
+.isolated-sync/
+
 # Vendored third-party design tokens (@jrm/tokens) — synced verbatim from
 # jrmoulckers/studio; must stay byte-identical, never reformatted.
 **/vendor/@jrm/

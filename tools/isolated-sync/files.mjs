@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
+import { assertSqlOperation, sqlFailure } from './diagnostics.mjs';
 import {
   ADAPTER,
   FUNCTIONS,
@@ -16,7 +17,8 @@ import {
 
 /** Child output is private by default, including command failure diagnostics. */
 export function execute(command, args, options = {}) {
-  const { rawOutput = false, ...spawnOptions } = options;
+  const { rawOutput = false, sqlOperation, ...spawnOptions } = options;
+  assertSqlOperation(sqlOperation);
   const result = spawnSync(command, args, {
     stdio: 'pipe',
     encoding: 'utf8',
@@ -26,9 +28,15 @@ export function execute(command, args, options = {}) {
     ...spawnOptions,
   });
   if (result.error || result.status !== 0) {
-    throw new Error(
+    const error = new Error(
       `Child command failed (exit ${result.status ?? 'unavailable'}); output withheld. Retain the failed inventory for private review.`,
     );
+    if (sqlOperation !== undefined) {
+      const diagnostic = sqlFailure(sqlOperation, result.status, result.stderr, spawnOptions.input);
+      error.sqlDiagnostic = diagnostic;
+      error.message += ` SQL operation: ${diagnostic.operation}; SQLSTATE: ${diagnostic.sqlState ?? 'unavailable'}; input line: ${diagnostic.line ?? 'unavailable'}.`;
+    }
+    throw error;
   }
   return rawOutput ? result.stdout : result.stdout.trim();
 }

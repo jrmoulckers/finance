@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertPrivate, execute, privateEnvironment } from './files.mjs';
+import { isSqlDiagnostic } from './diagnostics.mjs';
 import { LABEL, PORTS, validateCredentials } from './profile.mjs';
 import {
   assertFreePorts,
@@ -71,8 +72,8 @@ export async function runStage({
   const save = () =>
     fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
   let env = privateEnvironment(directory);
-  const docker = (args, input) =>
-    run('docker', args, { cwd: directory, env, input, timeout: 600000 });
+  const docker = (args, input, sqlOperation) =>
+    run('docker', args, { cwd: directory, env, input, sqlOperation, timeout: 600000 });
   const compose = (which, args) =>
     docker([
       'compose',
@@ -86,7 +87,7 @@ export async function runStage({
       path.join(directory, `${which}.compose.json`),
       ...args,
     ]);
-  const sql = (input) =>
+  const sql = (input, operation) =>
     docker(
       [
         'exec',
@@ -97,12 +98,17 @@ export async function runStage({
         '-qAt',
         '-v',
         'ON_ERROR_STOP=1',
+        '-v',
+        'VERBOSITY=sqlstate',
         '-U',
         'postgres',
         '-d',
         'postgres',
+        '-f',
+        '-',
       ],
       input,
+      operation,
     );
   const inspect = (prior = state.resources) =>
     inspectResources(docker, manifest, directory, approval, prior);
@@ -294,7 +300,12 @@ export async function runStage({
         await response.body?.cancel();
         if (!response.ok) throw new Error('Isolated HTTP readiness probe failed.');
       }
-      if (sql('SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE active);') !== 't') {
+      if (
+        sql(
+          'SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE active);',
+          'readiness-replication',
+        ) !== 't'
+      ) {
         throw new Error('No active replication slot; replication transport is not ready.');
       }
     } else if (stage === 'stop') {
@@ -332,6 +343,7 @@ export async function runStage({
   } catch (error) {
     // Keep the failure terminal. Cleanup may inventory only exact named/labeled resources.
     state.failed = true;
+    if (isSqlDiagnostic(error?.sqlDiagnostic)) state.sqlFailure = error.sqlDiagnostic;
     save();
     throw error;
   } finally {
