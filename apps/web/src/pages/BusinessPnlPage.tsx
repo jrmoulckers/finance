@@ -136,14 +136,6 @@ export function BusinessPnlPage() {
     scheduleC.expenseRows.length > 0 ||
     scheduleC.unmappedRows.length > 0;
 
-  if (loading) {
-    return <LoadingSpinner label="Loading profit and loss statement" />;
-  }
-
-  if (error) {
-    return <ErrorBanner message={error} onRetry={refresh} />;
-  }
-
   const totals = statement.totals;
   const netStatus = netStatusOf(totals.netProfitCents);
   const periodNoun = granularity === 'weekly' ? 'week' : 'month';
@@ -231,261 +223,274 @@ export function BusinessPnlPage() {
         </div>
       </section>
 
-      <section className="business-pnl__card" aria-labelledby="business-pnl-summary-title">
-        <h2 id="business-pnl-summary-title" className="business-pnl__card-title">
-          Summary
-        </h2>
-        <div
-          className="business-pnl__summary-grid"
-          role="group"
-          aria-label="Profit and loss summary"
-        >
-          <div className="business-pnl__metric">
-            <span className="business-pnl__metric-label">Revenue</span>
-            <span className="business-pnl__metric-value">
-              {formatCurrency(totals.revenueCents)}
-            </span>
-          </div>
-          <div className="business-pnl__metric">
-            <span className="business-pnl__metric-label">Gross profit</span>
-            <span className={`business-pnl__metric-value${amountClass(totals.grossProfitCents)}`}>
-              {formatCurrency(totals.grossProfitCents)}
-            </span>
-            <span className="business-pnl__metric-sub">
-              {formatMarginPercent(totals.grossMarginBps)} margin
-            </span>
-          </div>
-          <div className="business-pnl__metric">
-            <span className="business-pnl__metric-label">Operating expenses</span>
-            <span className="business-pnl__metric-value">
-              {formatCurrency(totals.operatingExpensesCents)}
-            </span>
-            <span className="business-pnl__metric-sub">Labor + overhead</span>
-          </div>
-          <div className="business-pnl__metric">
-            <span className="business-pnl__metric-label">Net profit</span>
-            <span className={`business-pnl__metric-value${amountClass(totals.netProfitCents)}`}>
-              {formatCurrency(totals.netProfitCents)}
-            </span>
-            <span className={`business-pnl__status business-pnl__status--${netStatus}`}>
-              {NET_STATUS_LABEL[netStatus]} · {formatMarginPercent(totals.netMarginBps)} margin
-            </span>
-          </div>
-        </div>
-      </section>
+      {loading ? (
+        <LoadingSpinner label="Loading profit and loss statement" />
+      ) : error ? (
+        <ErrorBanner message={error} onRetry={refresh} />
+      ) : (
+        <>
+          <section className="business-pnl__card" aria-labelledby="business-pnl-summary-title">
+            <h2 id="business-pnl-summary-title" className="business-pnl__card-title">
+              Summary
+            </h2>
+            <div
+              className="business-pnl__summary-grid"
+              role="group"
+              aria-label="Profit and loss summary"
+            >
+              <div className="business-pnl__metric">
+                <span className="business-pnl__metric-label">Revenue</span>
+                <span className="business-pnl__metric-value">
+                  {formatCurrency(totals.revenueCents)}
+                </span>
+              </div>
+              <div className="business-pnl__metric">
+                <span className="business-pnl__metric-label">Gross profit</span>
+                <span
+                  className={`business-pnl__metric-value${amountClass(totals.grossProfitCents)}`}
+                >
+                  {formatCurrency(totals.grossProfitCents)}
+                </span>
+                <span className="business-pnl__metric-sub">
+                  {formatMarginPercent(totals.grossMarginBps)} margin
+                </span>
+              </div>
+              <div className="business-pnl__metric">
+                <span className="business-pnl__metric-label">Operating expenses</span>
+                <span className="business-pnl__metric-value">
+                  {formatCurrency(totals.operatingExpensesCents)}
+                </span>
+                <span className="business-pnl__metric-sub">Labor + overhead</span>
+              </div>
+              <div className="business-pnl__metric">
+                <span className="business-pnl__metric-label">Net profit</span>
+                <span className={`business-pnl__metric-value${amountClass(totals.netProfitCents)}`}>
+                  {formatCurrency(totals.netProfitCents)}
+                </span>
+                <span className={`business-pnl__status business-pnl__status--${netStatus}`}>
+                  {NET_STATUS_LABEL[netStatus]} · {formatMarginPercent(totals.netMarginBps)} margin
+                </span>
+              </div>
+            </div>
+          </section>
 
-      {totals.untaggedExpenseCount > 0 ? (
-        <section
-          className="business-pnl__card business-pnl__card--hint"
-          aria-labelledby="business-pnl-cogs-hint-title"
-        >
-          <h2 id="business-pnl-cogs-hint-title" className="business-pnl__card-title">
-            COGS may be understated
-          </h2>
-          <p className="business-pnl__hint-text">
-            {formatCurrency(totals.untaggedExpenseCents)} across {totals.untaggedExpenseCount}{' '}
-            {totals.untaggedExpenseCount === 1 ? 'expense' : 'expenses'} fell into{' '}
-            <strong>overhead</strong> only because it carried no P&amp;L tag and matched no
-            cost-of-goods supplier rule. If any of these are inventory or materials, tag them{' '}
-            <code>cogs</code> (or designate the supplier as a cost of goods) so gross margin
-            isn&apos;t overstated.
-          </p>
-        </section>
-      ) : null}
+          {totals.untaggedExpenseCount > 0 ? (
+            <section
+              className="business-pnl__card business-pnl__card--hint"
+              aria-labelledby="business-pnl-cogs-hint-title"
+            >
+              <h2 id="business-pnl-cogs-hint-title" className="business-pnl__card-title">
+                COGS may be understated
+              </h2>
+              <p className="business-pnl__hint-text">
+                {formatCurrency(totals.untaggedExpenseCents)} across {totals.untaggedExpenseCount}{' '}
+                {totals.untaggedExpenseCount === 1 ? 'expense' : 'expenses'} fell into{' '}
+                <strong>overhead</strong> only because it carried no P&amp;L tag and matched no
+                cost-of-goods supplier rule. If any of these are inventory or materials, tag them{' '}
+                <code>cogs</code> (or designate the supplier as a cost of goods) so gross margin
+                isn&apos;t overstated.
+              </p>
+            </section>
+          ) : null}
 
-      <section className="business-pnl__card" aria-labelledby="business-pnl-statement-title">
-        <h2 id="business-pnl-statement-title" className="business-pnl__card-title">
-          Statement
-        </h2>
-        <div className="business-pnl__table-wrapper" tabIndex={0}>
-          <table className="business-pnl__table business-pnl__table--statement">
-            <caption className="business-pnl__caption">
-              Profit and loss line items across the selected range.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Line item</th>
-                <th scope="col">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <StatementRow label="Revenue" cents={totals.revenueCents} />
-              <StatementRow label="Cost of goods sold" cents={totals.cogsCents} kind="cost" />
-              <StatementRow
-                label="Gross profit"
-                cents={totals.grossProfitCents}
-                emphasis
-                marginBps={totals.grossMarginBps}
-                marginLabel="Gross margin"
-              />
-              <StatementRow label="Labor" cents={totals.laborCents} kind="cost" />
-              <StatementRow
-                label="Other operating expenses"
-                cents={totals.overheadCents}
-                kind="cost"
-              />
-              <StatementRow
-                label="Net profit"
-                cents={totals.netProfitCents}
-                emphasis
-                marginBps={totals.netMarginBps}
-                marginLabel="Net margin"
-              />
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="business-pnl__card" aria-labelledby="business-pnl-periods-title">
-        <h2 id="business-pnl-periods-title" className="business-pnl__card-title">
-          {granularity === 'weekly' ? 'Weekly' : 'Monthly'} breakdown
-        </h2>
-        {statement.periods.length > 0 ? (
-          <div
-            className="business-pnl__table-wrapper"
-            role="region"
-            aria-label="Profit and loss by period"
-            tabIndex={0}
-          >
-            <table className="business-pnl__table">
-              <caption className="business-pnl__caption business-pnl__sr-only">
-                Revenue, costs, profit and margins for each {periodNoun}.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Period</th>
-                  <th scope="col">Revenue</th>
-                  <th scope="col">COGS</th>
-                  <th scope="col">Gross profit</th>
-                  <th scope="col">Gross margin</th>
-                  <th scope="col">Operating expenses</th>
-                  <th scope="col">Net profit</th>
-                  <th scope="col">Net margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statement.periods.map((period) => (
-                  <tr key={period.key}>
-                    <th scope="row">{period.label}</th>
-                    <td>{formatCurrency(period.revenueCents)}</td>
-                    <td>{formatCurrency(period.cogsCents)}</td>
-                    <td className={amountClass(period.grossProfitCents).trim()}>
-                      {formatCurrency(period.grossProfitCents)}
-                    </td>
-                    <td>{formatMarginPercent(period.grossMarginBps)}</td>
-                    <td>{formatCurrency(period.operatingExpensesCents)}</td>
-                    <td className={amountClass(period.netProfitCents).trim()}>
-                      {formatCurrency(period.netProfitCents)}
-                    </td>
-                    <td>{formatMarginPercent(period.netMarginBps)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="business-pnl__empty">
-            No revenue or expense transactions in this range yet. Add transactions (and tag costs as{' '}
-            <code>cogs</code>, <code>labor</code> or <code>overhead</code>) to build your statement.
-          </p>
-        )}
-      </section>
-
-      <section className="business-pnl__card" aria-labelledby="business-pnl-schedule-c-title">
-        <h2 id="business-pnl-schedule-c-title" className="business-pnl__card-title">
-          Schedule C view · tax year {taxYear}
-        </h2>
-        <p className="business-pnl__schedule-c-note" role="note">
-          {SCHEDULE_C_DISCLAIMER}
-        </p>
-        {hasScheduleCData ? (
-          <>
+          <section className="business-pnl__card" aria-labelledby="business-pnl-statement-title">
+            <h2 id="business-pnl-statement-title" className="business-pnl__card-title">
+              Statement
+            </h2>
             <div className="business-pnl__table-wrapper" tabIndex={0}>
               <table className="business-pnl__table business-pnl__table--statement">
-                <caption className="business-pnl__caption business-pnl__sr-only">
-                  Estimated Schedule C income and expense lines for tax year {taxYear}.
+                <caption className="business-pnl__caption">
+                  Profit and loss line items across the selected range.
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col">Line</th>
-                    <th scope="col">Category</th>
+                    <th scope="col">Line item</th>
                     <th scope="col">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="business-pnl__row business-pnl__row--emphasis">
-                    <th scope="row" colSpan={2}>
-                      Part I · Income
-                    </th>
-                    <td className={amountClass(scheduleC.totalIncomeCents).trim()}>
-                      {formatCurrency(scheduleC.totalIncomeCents)}
-                    </td>
-                  </tr>
-                  {scheduleC.incomeRows.map((row) => (
-                    <ScheduleCRow key={row.line.id} row={row} />
-                  ))}
-                  <tr className="business-pnl__row business-pnl__row--emphasis">
-                    <th scope="row" colSpan={2}>
-                      Part II · Expenses
-                    </th>
-                    <td>{formatCurrency(scheduleC.totalExpenseCents)}</td>
-                  </tr>
-                  {scheduleC.expenseRows.length > 0 ? (
-                    scheduleC.expenseRows.map((row) => <ScheduleCRow key={row.line.id} row={row} />)
-                  ) : (
-                    <tr className="business-pnl__row">
-                      <td colSpan={3}>No deductible business expenses mapped yet.</td>
-                    </tr>
-                  )}
-                  <tr className="business-pnl__row business-pnl__row--emphasis">
-                    <th scope="row" colSpan={2}>
-                      Net profit (Line 31)
-                    </th>
-                    <td className={amountClass(scheduleC.netProfitCents).trim()}>
-                      {formatCurrency(scheduleC.netProfitCents)}
-                    </td>
-                  </tr>
+                  <StatementRow label="Revenue" cents={totals.revenueCents} />
+                  <StatementRow label="Cost of goods sold" cents={totals.cogsCents} kind="cost" />
+                  <StatementRow
+                    label="Gross profit"
+                    cents={totals.grossProfitCents}
+                    emphasis
+                    marginBps={totals.grossMarginBps}
+                    marginLabel="Gross margin"
+                  />
+                  <StatementRow label="Labor" cents={totals.laborCents} kind="cost" />
+                  <StatementRow
+                    label="Other operating expenses"
+                    cents={totals.overheadCents}
+                    kind="cost"
+                  />
+                  <StatementRow
+                    label="Net profit"
+                    cents={totals.netProfitCents}
+                    emphasis
+                    marginBps={totals.netMarginBps}
+                    marginLabel="Net margin"
+                  />
                 </tbody>
               </table>
             </div>
+          </section>
 
-            {scheduleC.unmappedRows.length > 0 && (
-              <details className="business-pnl__schedule-c-unmapped">
-                <summary>
-                  Not on Schedule C ({scheduleC.unmappedRows.length}
-                  {scheduleC.unmappedRows.length === 1 ? ' category' : ' categories'})
-                </summary>
-                <ul className="business-pnl__schedule-c-unmapped-list">
-                  {scheduleC.unmappedRows.map((row) => (
-                    <li key={row.category}>
-                      <span className="business-pnl__schedule-c-unmapped-amount">
-                        {formatCurrency(row.amountCents)}
-                      </span>{' '}
-                      {row.reason}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-
-            {(scheduleC.reviewNeededCount > 0 || scheduleC.missingReceiptCount > 0) && (
-              <p className="business-pnl__schedule-c-flags">
-                {scheduleC.reviewNeededCount > 0 &&
-                  `${scheduleC.reviewNeededCount} transaction${
-                    scheduleC.reviewNeededCount === 1 ? '' : 's'
-                  } need review. `}
-                {scheduleC.missingReceiptCount > 0 &&
-                  `${scheduleC.missingReceiptCount} missing a receipt.`}
+          <section className="business-pnl__card" aria-labelledby="business-pnl-periods-title">
+            <h2 id="business-pnl-periods-title" className="business-pnl__card-title">
+              {granularity === 'weekly' ? 'Weekly' : 'Monthly'} breakdown
+            </h2>
+            {statement.periods.length > 0 ? (
+              <div
+                className="business-pnl__table-wrapper"
+                role="region"
+                aria-label="Profit and loss by period"
+                tabIndex={0}
+              >
+                <table className="business-pnl__table">
+                  <caption className="business-pnl__caption business-pnl__sr-only">
+                    Revenue, costs, profit and margins for each {periodNoun}.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Period</th>
+                      <th scope="col">Revenue</th>
+                      <th scope="col">COGS</th>
+                      <th scope="col">Gross profit</th>
+                      <th scope="col">Gross margin</th>
+                      <th scope="col">Operating expenses</th>
+                      <th scope="col">Net profit</th>
+                      <th scope="col">Net margin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statement.periods.map((period) => (
+                      <tr key={period.key}>
+                        <th scope="row">{period.label}</th>
+                        <td>{formatCurrency(period.revenueCents)}</td>
+                        <td>{formatCurrency(period.cogsCents)}</td>
+                        <td className={amountClass(period.grossProfitCents).trim()}>
+                          {formatCurrency(period.grossProfitCents)}
+                        </td>
+                        <td>{formatMarginPercent(period.grossMarginBps)}</td>
+                        <td>{formatCurrency(period.operatingExpensesCents)}</td>
+                        <td className={amountClass(period.netProfitCents).trim()}>
+                          {formatCurrency(period.netProfitCents)}
+                        </td>
+                        <td>{formatMarginPercent(period.netMarginBps)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="business-pnl__empty">
+                No revenue or expense transactions in this range yet. Add transactions (and tag
+                costs as <code>cogs</code>, <code>labor</code> or <code>overhead</code>) to build
+                your statement.
               </p>
             )}
-          </>
-        ) : (
-          <p className="business-pnl__empty">
-            No categorized business income or expenses for {taxYear} yet. Tag transactions as
-            business/deductible so they map onto Schedule C lines.
-          </p>
-        )}
-      </section>
+          </section>
+
+          <section className="business-pnl__card" aria-labelledby="business-pnl-schedule-c-title">
+            <h2 id="business-pnl-schedule-c-title" className="business-pnl__card-title">
+              Schedule C view · tax year {taxYear}
+            </h2>
+            <p className="business-pnl__schedule-c-note" role="note">
+              {SCHEDULE_C_DISCLAIMER}
+            </p>
+            {hasScheduleCData ? (
+              <>
+                <div className="business-pnl__table-wrapper" tabIndex={0}>
+                  <table className="business-pnl__table business-pnl__table--statement">
+                    <caption className="business-pnl__caption business-pnl__sr-only">
+                      Estimated Schedule C income and expense lines for tax year {taxYear}.
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Line</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="business-pnl__row business-pnl__row--emphasis">
+                        <th scope="row" colSpan={2}>
+                          Part I · Income
+                        </th>
+                        <td className={amountClass(scheduleC.totalIncomeCents).trim()}>
+                          {formatCurrency(scheduleC.totalIncomeCents)}
+                        </td>
+                      </tr>
+                      {scheduleC.incomeRows.map((row) => (
+                        <ScheduleCRow key={row.line.id} row={row} />
+                      ))}
+                      <tr className="business-pnl__row business-pnl__row--emphasis">
+                        <th scope="row" colSpan={2}>
+                          Part II · Expenses
+                        </th>
+                        <td>{formatCurrency(scheduleC.totalExpenseCents)}</td>
+                      </tr>
+                      {scheduleC.expenseRows.length > 0 ? (
+                        scheduleC.expenseRows.map((row) => (
+                          <ScheduleCRow key={row.line.id} row={row} />
+                        ))
+                      ) : (
+                        <tr className="business-pnl__row">
+                          <td colSpan={3}>No deductible business expenses mapped yet.</td>
+                        </tr>
+                      )}
+                      <tr className="business-pnl__row business-pnl__row--emphasis">
+                        <th scope="row" colSpan={2}>
+                          Net profit (Line 31)
+                        </th>
+                        <td className={amountClass(scheduleC.netProfitCents).trim()}>
+                          {formatCurrency(scheduleC.netProfitCents)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {scheduleC.unmappedRows.length > 0 && (
+                  <details className="business-pnl__schedule-c-unmapped">
+                    <summary>
+                      Not on Schedule C ({scheduleC.unmappedRows.length}
+                      {scheduleC.unmappedRows.length === 1 ? ' category' : ' categories'})
+                    </summary>
+                    <ul className="business-pnl__schedule-c-unmapped-list">
+                      {scheduleC.unmappedRows.map((row) => (
+                        <li key={row.category}>
+                          <span className="business-pnl__schedule-c-unmapped-amount">
+                            {formatCurrency(row.amountCents)}
+                          </span>{' '}
+                          {row.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {(scheduleC.reviewNeededCount > 0 || scheduleC.missingReceiptCount > 0) && (
+                  <p className="business-pnl__schedule-c-flags">
+                    {scheduleC.reviewNeededCount > 0 &&
+                      `${scheduleC.reviewNeededCount} transaction${
+                        scheduleC.reviewNeededCount === 1 ? '' : 's'
+                      } need review. `}
+                    {scheduleC.missingReceiptCount > 0 &&
+                      `${scheduleC.missingReceiptCount} missing a receipt.`}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="business-pnl__empty">
+                No categorized business income or expenses for {taxYear} yet. Tag transactions as
+                business/deductible so they map onto Schedule C lines.
+              </p>
+            )}
+          </section>
+        </>
+      )}
     </main>
   );
 }

@@ -83,6 +83,32 @@ describe('CashFlowPage', () => {
     expect(screen.getByText('Database error')).toBeInTheDocument();
   });
 
+  it('formats bar tooltips with the shared currency formatter', () => {
+    mockUseCashFlow.mockReturnValue({
+      aggregates: [{ month: '2024-01', income: 500000, expenses: 300000, netIncome: 200000 }],
+      summary: {
+        averageMonthlyIncome: 500000,
+        averageMonthlyExpenses: 300000,
+        averageMonthlyNetIncome: 200000,
+        totalIncome: 500000,
+        totalExpenses: 300000,
+        totalNetIncome: 200000,
+        monthCount: 1,
+      },
+      incomeSources: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      exportCsv: vi.fn(),
+    });
+
+    const { container } = render(<CashFlowPage />);
+    expect(container.querySelector('[title^="Income:"]')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^Income: \$5,000\.00$/),
+    );
+  });
+
   it('shows empty state when no data', () => {
     mockUseCashFlow.mockReturnValue({
       aggregates: [],
