@@ -1,0 +1,21 @@
+{
+  "cli": {
+    "version": "2.75.0",
+    "source": "e07c7ea15b842e9bb45c79518a5f20cea84fc753",
+    "releaseArchives": {
+      "supabase_windows_amd64.tar.gz": "c6e3a97a70fbb76b7b1b87c02b4c4d9ddaf69d264e1ae94c054222b25ab22173",
+      "supabase_linux_amd64.tar.gz": "e5597462f865d5ac72af0453358e37ecb0d85962ad6914a114a53de847303bde",
+      "supabase_darwin_arm64.tar.gz": "6618736487287a9f0835c44a7101694deb4ca1192852a070a93014437641cea3"
+    }
+  },
+  "powersyncSource": "12fa59d700ded33dc33770855bde90ffb60ebc8f",
+  "images": {
+    "db": "supabase/postgres:15.8.1.085@sha256:af083ef64d0408c8f098ee6f5c364a59b26f36fbc0f3a334a62c5c1d57362e9b",
+    "auth": "supabase/gotrue:v2.186.0@sha256:f2112b9289422f205df4ea15b8b550d425ae42528ea54521faa32cc7b62490de",
+    "rest": "postgrest/postgrest:v14.3@sha256:7c5840727ad683b0fdbfb9810930665b34f8b44884a4dc740aa8844748a2b85e",
+    "edge": "supabase/edge-runtime:v1.70.0@sha256:d5b0545da7826404668c3a53809f217a9c7093526c7036c18e79ddc61e4cbe01",
+    "gateway": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+    "powersync": "journeyapps/powersync-service:1.27.2@sha256:d7a99817057a42dae9e6d8fe0c70b49d99105dcac8b8ab0e9ed3cf1ff0978b8b",
+    "mongo": "mongo:8.0.20@sha256:098862b1339f031900ca66cf8fef799e616d6324fa41b9a263f2ec899552c1ef"
+  }
+}

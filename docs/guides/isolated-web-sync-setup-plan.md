@@ -17,11 +17,16 @@ Vite development page or mocked database. Only a complete scenario pass proves
 this bounded web behavior; it does **not** prove bank/provider ingestion, native
 transport, arbitrary-failure exactly-once delivery, or production readiness.
 
-**Bootstrap is currently blocked on a reviewed isolated setup mechanism.** There
-is no checked-in command satisfying all isolation, loopback, credential-output,
-and automatic signup-provisioning requirements below. Do not substitute
+**Executable tooling is now provided separately by [#4605](https://github.com/jrmoulckers/finance/issues/4605):**
+see the [isolated materializer guide](../../tools/isolated-sync/README.md) for
+source preparation, exact resource/permissions gates and human-only lifecycle
+commands. It uses a separate explicit-loopback service definition and the
+pinned CLI only for migrations, not CLI stack startup. Human resource/location/
+credential approval and all runtime acceptance remain pending. The historical
+source-review findings below are retained; they are not current startup commands.
+Do not substitute
 `npm run dev:full`, `npm run powersync:up`, or a production Compose invocation.
-The manual stages deliberately stop where executable tooling is missing.
+Use the materializer's ordered commands rather than filling historical command gaps.
 
 ## Reviewed sources and compatibility
 
@@ -138,11 +143,11 @@ script, config, schema or runtime change. The prerequisite must:
    exact startup/readiness/cleanup commands tied to the new project before any
    human execution.
 
-**There is no executable bootstrap command to give today.** Renaming a Compose
-project alone does not fix mounts, JWT compatibility, missing GoTrue, profile
-provisioning or host exposure. Once the prerequisite is reviewed, a human can
-execute its documented local startup commands in stages 2-3. Do not turn the
-steps above into an improvised shell command.
+The [materializer's ordered human-only commands](../../tools/isolated-sync/README.md#human-only-ordered-lifecycle)
+now implement this prerequisite with separate service definitions. Renaming a
+Compose project alone remains insufficient. Follow those commands only after
+the coordinator obtains exact approval; do not turn the historical requirements
+above into an improvised shell command.
 
 ## Stage 2: database, Auth and household prerequisites (human only)
 

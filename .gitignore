@@ -116,5 +116,6 @@ kotlin-js-store/
 # Git worktrees (agent work directories)
 worktrees/
 .worktrees/
+.isolated-sync/
 lighthouse-report.json
 blob-report/

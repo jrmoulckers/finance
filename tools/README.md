@@ -8,6 +8,15 @@ This directory contains cross-platform scripts and Git hooks that support the de
 
 ## Contents
 
+### `isolated-sync.mjs` — Human-gated synthetic sync materializer
+
+Prepares an exact-source private local profile and separately gates database,
+migration/adapter, API, PowerSync, readiness and cleanup stages. It never wraps
+the shared-stack runners, inherits repository environment files or prints keys.
+See [the isolated tooling guide](./isolated-sync/README.md) for immutable pins,
+the resource manifest, permissions requirements and exact human-only commands.
+`node tools/isolated-sync.mjs --help` is safe without provisioning.
+
 ### `dev-full.mjs` — One-command local full-stack web e2e (on edge)
 
 The seamless developer entry point. Brings up the local Supabase **edge** stack
