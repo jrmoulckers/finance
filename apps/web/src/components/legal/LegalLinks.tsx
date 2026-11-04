@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { FC } from 'react';
+import { Link } from 'react-router';
 
 import './legal-links.css';
 
@@ -18,9 +19,9 @@ interface LegalLinksProps {
 export const LegalLinks: FC<LegalLinksProps> = ({ className }) => (
   <nav className={['legal-links', className].filter(Boolean).join(' ')} aria-label="Legal links">
     {LEGAL_LINKS.map((link) => (
-      <a key={link.to} href={link.to} className="legal-links__link">
+      <Link key={link.to} to={link.to} className="legal-links__link">
         {link.label}
-      </a>
+      </Link>
     ))}
   </nav>
 );

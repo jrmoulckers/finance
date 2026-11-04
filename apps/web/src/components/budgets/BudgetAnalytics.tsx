@@ -182,9 +182,11 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
         </div>
         <p className="analytics-card__value">{savingsRate}%</p>
         <p className="analytics-card__detail">
-          {savingsRate >= 0
-            ? `Saving ${savingsRate}% of income this period`
-            : `Overspending by ${Math.abs(savingsRate)}% of income`}
+          {totalIncome <= 0
+            ? 'No income recorded this period'
+            : savingsRate >= 0
+              ? `Saved ${savingsRate}% of income so far (day ${Math.min(daysElapsed, totalDays)} of ${totalDays})`
+              : `Overspent by ${Math.abs(savingsRate)}% of income so far (day ${Math.min(daysElapsed, totalDays)} of ${totalDays})`}
         </p>
       </article>
 

@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { CurrencyDisplay } from '../common';
 import { AppIcon, type IconName } from '../icons';
 import type { CoachAnalysis, CoachSeverity, RecurrenceCadence } from '../../lib/coaching';
+import { getCurrentLocale } from '../../lib/i18n';
 import './coach.css';
 
 export interface CoachPanelProps {
@@ -34,6 +35,16 @@ function formatCadence(cadence: RecurrenceCadence): string {
     default:
       return 'Monthly';
   }
+}
+
+function formatExpectedDate(isoDate: string): string {
+  const date = new Date(`${isoDate.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return date.toLocaleDateString(getCurrentLocale(), {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 export const CoachPanel: FC<CoachPanelProps> = ({ analysis, loading = false }) => {
@@ -139,7 +150,8 @@ export const CoachPanel: FC<CoachPanelProps> = ({ analysis, loading = false }) =
                   <div>
                     <p className="coach-panel__item-title">{item.label}</p>
                     <p className="coach-panel__item-body">
-                      {formatCadence(item.cadence)} · next expected {item.nextExpectedDate}
+                      {formatCadence(item.cadence)} · next expected{' '}
+                      {formatExpectedDate(item.nextExpectedDate)}
                     </p>
                   </div>
                   <p className="coach-panel__meta">
