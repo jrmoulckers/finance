@@ -198,7 +198,6 @@ export const AccountsPage: React.FC = () => {
         onClick={() => {
           setIsFormOpen(true);
         }}
-        aria-label="Add new account"
       >
         + Add Account
       </button>
