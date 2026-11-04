@@ -104,6 +104,10 @@ are not auth identities; all assertions use fresh synthetic auth subjects.
 The suite tests real auth INSERT behavior, RPC idempotency, active versus
 deleted membership, metadata rejection, missing prerequisites, exact migration
 inventory, atomic failure, execute grants, and household/profile RLS isolation.
+Auth fixture inserts use the CI `postgres` administrator; it cannot impersonate
+`supabase_auth_admin`. No role membership is granted to work around that
+restriction. Actual GoTrue-role execution remains part of the real signup
+acceptance gate, not a claim made by this fixture suite.
 
 The database-independent contract check is:
 

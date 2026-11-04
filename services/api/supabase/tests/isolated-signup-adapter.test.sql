@@ -79,13 +79,10 @@ INSERT INTO signup_subjects (position, user_id)
 VALUES (1, gen_random_uuid()), (2, gen_random_uuid());
 
 -- A real INSERT into auth.users invokes the installed trigger, not a mock RPC.
-GRANT SELECT ON signup_subjects TO supabase_auth_admin;
-SET LOCAL ROLE supabase_auth_admin;
 INSERT INTO auth.users (id, email, raw_user_meta_data)
 SELECT user_id, 'signup-' || user_id || '@local.test',
        jsonb_build_object('role', 'admin', 'household_id', (SELECT user_id FROM signup_subjects WHERE position = 1))
 FROM signup_subjects;
-RESET ROLE;
 
 SELECT pg_temp.expect_signup_error(
     'SELECT pg_temp.check_isolated_signup_prerequisites()',
