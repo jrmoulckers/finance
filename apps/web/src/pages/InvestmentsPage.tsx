@@ -26,6 +26,7 @@ import { InvestmentProjections } from '../components/investments/InvestmentProje
 import { DeFiPositionsCard } from '../components/investments/DeFiPositionsCard';
 import { useAccounts, useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
+import { getCurrentLocale } from '../lib/i18n';
 import type { Investment, InvestmentType } from '../kmp/bridge';
 import type { IconName } from '../components/icons';
 import {
@@ -40,6 +41,11 @@ import type {
 } from '../lib/export/investment-export';
 import { DEFAULT_ASSET_CLASS_MAP } from '../lib/investment/allocation';
 import { ASSET_CLASS_LABELS } from '../types/investment';
+
+/** Formats a percentage with locale separators and two fixed decimals. */
+function formatPercentValue(value: number): string {
+  return `${value.toLocaleString(getCurrentLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
 
 /**
  * Crypto wallet & exchange connectivity panel — lazily loaded as its own chunk
@@ -343,7 +349,7 @@ export const InvestmentsPage: React.FC = () => {
                     }}
                   >
                     {formatGainLoss(summary.totalGainLoss, { currency: displayCurrency })} (
-                    {summary.totalGainLossPercent}%)
+                    {formatPercentValue(summary.totalGainLossPercent)})
                   </p>
                 </div>
                 <div>
@@ -460,7 +466,7 @@ export const InvestmentsPage: React.FC = () => {
                           }}
                         />
                         <span>
-                          {item.name}: {item.percent}%
+                          {item.name}: {formatPercentValue(item.percent)}
                         </span>
                       </li>
                     ))}
@@ -469,7 +475,9 @@ export const InvestmentsPage: React.FC = () => {
                 {/* Screen-reader accessible allocation summary */}
                 <div className="sr-only" aria-live="polite">
                   Asset allocation:{' '}
-                  {allocation.map((item) => `${item.name} ${item.percent}%`).join(', ')}
+                  {allocation
+                    .map((item) => `${item.name} ${formatPercentValue(item.percent)}`)
+                    .join(', ')}
                 </div>
               </div>
             </section>

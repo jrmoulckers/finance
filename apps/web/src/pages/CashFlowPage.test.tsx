@@ -171,6 +171,8 @@ describe('CashFlowPage', () => {
     expect(screen.getByLabelText('Income vs expenses chart')).toBeInTheDocument();
     expect(screen.getByText('Income Sources')).toBeInTheDocument();
     expect(screen.getByText('Export CSV')).toBeInTheDocument();
+    const confidenceCard = screen.getByLabelText('Forecast confidence');
+    expect(within(confidenceCard).getByText(/^(Low|Medium|High)$/)).toBeInTheDocument();
   });
 
   it('renders period selector options', () => {
