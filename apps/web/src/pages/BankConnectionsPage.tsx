@@ -15,12 +15,14 @@
  * References: #1575, #1577, #1583
  */
 
-import React, { Suspense, lazy, useCallback, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 
+import { announce } from '../accessibility/aria';
 import { ConnectionHealthCard } from '../components/bank/ConnectionHealthCard';
 import { ProviderStatusList } from '../components/bank/ProviderStatusList';
 import { SafetyCenter } from '../components/bank/SafetyCenter';
 import { EmptyState } from '../components/common/EmptyState';
+import { VisuallyHidden } from '../components/common/VisuallyHidden';
 import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
@@ -118,6 +120,28 @@ export const BankConnectionsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<BankTabId>('health');
   const [historyConnectionId, setHistoryConnectionId] = useState<string | null>(null);
+  const [refreshState, setRefreshState] = useState<'idle' | 'refreshing' | 'complete'>('idle');
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshState('refreshing');
+    await refreshConnections();
+    setRefreshState('complete');
+  }, [refreshConnections]);
+
+  // The hook reports failures in error state; announce only a completed,
+  // successful user refresh, never initial loads or background data changes.
+  useEffect(() => {
+    if (refreshState !== 'complete' || connectionsLoading) return;
+    if (!connectionsError) {
+      const healthy = connections.filter(
+        (connection) => connection.healthStatus === 'healthy',
+      ).length;
+      announce(
+        `Connections refreshed: ${healthy} healthy, ${connections.length - healthy} with issues.`,
+      );
+    }
+    setRefreshState('idle');
+  }, [refreshState, connectionsLoading, connectionsError, connections]);
 
   // Roving-tabindex focus management for the tablist (#3862). Each tab button
   // registers its node so keyboard navigation can move DOM focus to the newly
@@ -191,12 +215,7 @@ export const BankConnectionsPage: React.FC = () => {
       </header>
 
       {/* Summary strip */}
-      <div
-        className="connection-summary"
-        role="status"
-        aria-live="polite"
-        aria-label="Connection health summary"
-      >
+      <section className="connection-summary" aria-label="Connection health summary">
         <div className="connection-summary__stat">
           <span className="connection-summary__count">{connections.length}</span>
           <span className="connection-summary__label">Connections</span>
@@ -223,7 +242,13 @@ export const BankConnectionsPage: React.FC = () => {
             <span className="connection-summary__label">Need Re-auth</span>
           </div>
         )}
-      </div>
+      </section>
+
+      {connectionsError && (
+        <div role="alert">
+          <p className="error-message">{connectionsError}</p>
+        </div>
+      )}
 
       {/* Tab navigation — WAI-ARIA Tabs pattern (#3862). Roving tabindex keeps a
           single tab stop; Left/Right/Home/End move (and activate) tabs. */}
@@ -277,7 +302,7 @@ export const BankConnectionsPage: React.FC = () => {
                         <ConnectBankButton onConnected={() => void reloadConnections()} />
                       </Suspense>
                     ) : (
-                      <span role="status">
+                      <span>
                         Refresh plan status before connecting a bank. Finance verifies access again
                         when the connection starts.
                       </span>
@@ -287,8 +312,10 @@ export const BankConnectionsPage: React.FC = () => {
                 <button
                   type="button"
                   className="section-action"
-                  onClick={() => void refreshConnections()}
+                  onClick={() => void handleRefresh()}
                   aria-label="Refresh connection health"
+                  disabled={connectionsLoading || refreshState !== 'idle'}
+                  aria-busy={refreshState === 'refreshing'}
                 >
                   Refresh
                 </button>
@@ -298,12 +325,6 @@ export const BankConnectionsPage: React.FC = () => {
             {connectionsLoading && (
               <div role="status" aria-live="polite">
                 <p>Loading connections…</p>
-              </div>
-            )}
-
-            {connectionsError && (
-              <div role="alert">
-                <p className="error-message">{connectionsError}</p>
               </div>
             )}
 
@@ -392,6 +413,9 @@ export const BankConnectionsPage: React.FC = () => {
         {/* Wallets & Exchanges tab (#2164) */}
         {activeTab === 'crypto' && (
           <section aria-label="Crypto wallets and exchanges">
+            <VisuallyHidden>
+              <h2>Wallets &amp; Exchanges</h2>
+            </VisuallyHidden>
             <Suspense
               fallback={
                 <div role="status" aria-live="polite">

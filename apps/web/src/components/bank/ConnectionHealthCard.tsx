@@ -109,13 +109,7 @@ export const ConnectionHealthCard: React.FC<ConnectionHealthCardProps> = ({
           <h3 className="connection-health-card__name">{connection.institutionName}</h3>
           <span className="connection-health-card__provider">{connection.provider}</span>
         </div>
-        <span
-          className={`health-badge ${healthClass}`}
-          role="status"
-          aria-label={`Health: ${healthLabel}`}
-        >
-          {healthLabel}
-        </span>
+        <span className={`health-badge ${healthClass}`}>{healthLabel}</span>
       </div>
 
       <div className="connection-health-card__details">
@@ -128,7 +122,7 @@ export const ConnectionHealthCard: React.FC<ConnectionHealthCardProps> = ({
 
         <div className="connection-health-card__detail">
           <span className="connection-health-card__label">Freshness</span>
-          <span className="connection-health-card__value" aria-live="polite">
+          <span className="connection-health-card__value">
             {formatStaleness(connection.stalenessMinutes)}
           </span>
         </div>
