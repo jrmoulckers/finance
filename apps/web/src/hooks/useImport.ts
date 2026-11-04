@@ -300,12 +300,12 @@ export function useImport(): UseImportResult {
     let errors = 0;
 
     // Process in batches using microtasks to keep UI responsive
-    const processBatch = (startIndex: number) => {
+    const processBatch = async (startIndex: number) => {
       const endIndex = Math.min(startIndex + IMPORT_BATCH_SIZE, total);
 
       for (let i = startIndex; i < endIndex; i++) {
         const row = rowsToImport[i];
-        const result = createTransaction(row.data);
+        const result = await createTransaction(row.data);
         if (result !== null) {
           imported++;
         } else {
@@ -317,7 +317,7 @@ export function useImport(): UseImportResult {
 
       if (endIndex < total) {
         // Yield to the event loop so the UI can repaint
-        setTimeout(() => processBatch(endIndex), 0);
+        setTimeout(() => void processBatch(endIndex), 0);
       } else {
         // Done
         const skipped = skippedDuplicates.size;
@@ -328,7 +328,7 @@ export function useImport(): UseImportResult {
     };
 
     // Kick off the first batch after a frame so the progress bar renders
-    requestAnimationFrame(() => processBatch(0));
+    requestAnimationFrame(() => void processBatch(0));
   }, [validationResult, skippedDuplicates, createTransaction]);
 
   // -------------------------------------------------------------------------

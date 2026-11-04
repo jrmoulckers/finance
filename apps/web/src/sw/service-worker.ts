@@ -116,6 +116,7 @@ export function getAppShellPrecacheUrls(basePath: string = BASE_PATH): string[] 
     withServiceWorkerBasePath(basePath, ''),
     withServiceWorkerBasePath(basePath, 'index.html'),
     withServiceWorkerBasePath(basePath, 'manifest.json'),
+    withServiceWorkerBasePath(basePath, 'assets/sql-wasm/sql-wasm.wasm'),
   ];
 }
 
@@ -678,7 +679,16 @@ export async function cacheFirst(request: Request, fallbackUrl?: string): Promis
 
   const cache = await caches.open(STATIC_CACHE);
 
-  const cached = await cache.match(request);
+  const url = new URL(request.url);
+  // Build-manifest JS/CSS is public, content-addressed output. Module requests
+  // can carry Origin where cache.add() did not; Vary: Origin must not hide
+  // these precached chunks offline. Never relax Vary for user data or APIs.
+  const isBuildChunk =
+    url.origin === self.location.origin &&
+    PRECACHE_MANIFEST.includes(`${url.pathname}${url.search}`);
+  const cached = isBuildChunk
+    ? await cache.match(request, { ignoreVary: true })
+    : await cache.match(request);
   if (cached) {
     if (isHtmlForStaticAsset(request, cached)) {
       // Evict a previously poisoned entry (HTML cached under an asset URL)

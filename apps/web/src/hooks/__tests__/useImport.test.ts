@@ -142,7 +142,7 @@ beforeEach(() => {
     errors: [],
   });
   mockDetectDuplicates.mockReturnValue([]);
-  mockCreateTransaction.mockReturnValue({ id: 'txn-new' });
+  mockCreateTransaction.mockResolvedValue({ id: 'txn-new' });
 });
 
 afterEach(() => {
@@ -561,6 +561,27 @@ describe('useImport', () => {
     expect(mockCreateTransaction).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps importing until the durable transaction write settles', async () => {
+    let finishWrite!: (value: null) => void;
+    mockCreateTransaction.mockReturnValue(
+      new Promise<null>((resolve) => {
+        finishWrite = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useImport());
+    act(() => result.current.uploadFile(createCsvFile('Date,Amount\n2025-01-15,-50.00')));
+    await waitFor(() => expect(result.current.step).toBe('mapping'));
+    act(() => result.current.setSelectedAccountId('acct-1'));
+    act(() => result.current.confirmMapping());
+    act(() => result.current.startImport());
+    await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+    expect(result.current.step).toBe('importing');
+    expect(result.current.importSummary).toBeNull();
+    await act(async () => finishWrite(null));
+    await waitFor(() => expect(result.current.step).toBe('complete'));
+    expect(result.current.importSummary).toMatchObject({ imported: 0, errors: 1 });
+  });
+
   it('startImport skips rows marked as duplicates', async () => {
     // Two valid rows
     mockValidateImportRows.mockReturnValue({
@@ -650,8 +671,7 @@ describe('useImport', () => {
   });
 
   it('startImport tracks failed transactions as errors', async () => {
-    // createTransaction returns null to signal failure
-    mockCreateTransaction.mockReturnValue(null);
+    mockCreateTransaction.mockResolvedValue(null);
 
     const { result } = renderHook(() => useImport());
     const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');

@@ -48,7 +48,7 @@ interface UploadStepProps {
   onUpload: (file: File) => void;
   uploadError: string | null;
   selectedAccountId: string | null;
-  onSelectAccount: (id: string) => void;
+  onSelectAccount: (id: string, householdId: string) => void;
 }
 
 const UploadStep: React.FC<UploadStepProps> = ({
@@ -77,7 +77,10 @@ const UploadStep: React.FC<UploadStepProps> = ({
           id={accountSelectId}
           className="form-select"
           value={selectedAccountId ?? ''}
-          onChange={(e) => onSelectAccount(e.target.value)}
+          onChange={(e) => {
+            const account = accounts.find((item) => item.id === e.target.value);
+            if (account) onSelectAccount(account.id, account.householdId);
+          }}
           aria-required="true"
           disabled={accountsLoading}
         >
@@ -149,7 +152,10 @@ export const ImportPage: React.FC = () => {
           onUpload={importState.uploadFile}
           uploadError={importState.uploadError}
           selectedAccountId={importState.selectedAccountId}
-          onSelectAccount={importState.setSelectedAccountId}
+          onSelectAccount={(id, householdId) => {
+            importState.setSelectedAccountId(id);
+            importState.setSelectedHouseholdId(householdId);
+          }}
         />
       )}
 
