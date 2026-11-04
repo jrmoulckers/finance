@@ -198,7 +198,6 @@ export const AccountsPage: React.FC = () => {
         onClick={() => {
           setIsFormOpen(true);
         }}
-        aria-label="Add new account"
       >
         + Add Account
       </button>
@@ -289,11 +288,7 @@ export const AccountsPage: React.FC = () => {
             <ul className="list-group" role="list">
               {group.accounts.map((account) => (
                 <li key={account.id} role="listitem">
-                  <Link
-                    to={`/accounts/${account.id}`}
-                    className="list-item page-list-link"
-                    aria-label={account.name}
-                  >
+                  <Link to={`/accounts/${account.id}`} className="list-item page-list-link">
                     <div className="list-item__content">
                       <p className="list-item__primary account-list-primary">
                         <span>{account.name}</span>
