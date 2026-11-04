@@ -55,6 +55,16 @@ describe('BudgetAnalytics', () => {
     expect(screen.getByText('30%')).toBeInTheDocument();
   });
 
+  it('qualifies the savings rate as period-to-date', () => {
+    render(<BudgetAnalytics {...defaultProps} />);
+    expect(screen.getByText('Saved 30% of income so far (day 15 of 30)')).toBeInTheDocument();
+  });
+
+  it('explains when no income is recorded', () => {
+    render(<BudgetAnalytics {...defaultProps} totalIncome={0} />);
+    expect(screen.getByText('No income recorded this period')).toBeInTheDocument();
+  });
+
   it('displays spending trajectory card', () => {
     render(<BudgetAnalytics {...defaultProps} />);
     expect(screen.getByLabelText('Spending trajectory')).toBeInTheDocument();
