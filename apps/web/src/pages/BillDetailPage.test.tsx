@@ -86,7 +86,7 @@ describe('BillDetailPage', () => {
   it('renders mark paid button for upcoming bill', () => {
     renderWithRoute('bill-1');
 
-    expect(screen.getByLabelText('Mark Electric Bill as paid')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mark Paid: Electric Bill')).toBeInTheDocument();
   });
 
   it('renders not found when bill does not exist', () => {

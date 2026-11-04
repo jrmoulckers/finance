@@ -116,7 +116,7 @@ export const BillDetailPage: React.FC = () => {
               type="button"
               className="form-button form-button--primary"
               onClick={handleMarkPaid}
-              aria-label={`Mark ${bill.name} as paid`}
+              aria-label={`Mark Paid: ${bill.name}`}
             >
               Mark Paid
             </button>
