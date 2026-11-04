@@ -175,8 +175,26 @@ describe('ReportBuilderPage', () => {
     );
 
     render(<ReportBuilderPage />);
-    expect(screen.getByText('Preview (1 rows)')).toBeInTheDocument();
+    expect(screen.getByText('Preview (1 row)')).toBeInTheDocument();
     expect(screen.getByText('Store')).toBeInTheDocument();
+  });
+
+  it('explains an empty preview instead of showing a blank table', () => {
+    mockedUseReportBuilder.mockReturnValue(
+      mockResult({
+        preview: {
+          headers: ['Date'],
+          rows: [],
+          totalRows: 0,
+          chartData: [],
+          summary: { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 },
+        },
+      }),
+    );
+
+    render(<ReportBuilderPage />);
+    expect(screen.getByText('Preview (0 rows)')).toBeInTheDocument();
+    expect(screen.getByText(/no transactions match these filters/i)).toBeInTheDocument();
   });
 
   it('shows error banner when error exists', () => {

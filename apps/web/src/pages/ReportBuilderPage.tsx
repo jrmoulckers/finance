@@ -749,8 +749,14 @@ export function ReportBuilderPage() {
       {preview && (
         <section className="report-card" aria-labelledby="preview-title">
           <h2 id="preview-title" className="report-card__title">
-            Preview ({preview.totalRows} rows)
+            Preview ({preview.totalRows} {preview.totalRows === 1 ? 'row' : 'rows'})
           </h2>
+          {preview.rows.length === 0 && (
+            <p className="report-card__description" role="status">
+              No transactions match these filters. Try a wider date range or clear the category and
+              account filters, then generate the preview again.
+            </p>
+          )}
           <div
             className="report-table-wrapper"
             role="region"
