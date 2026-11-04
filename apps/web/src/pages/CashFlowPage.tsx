@@ -19,7 +19,9 @@ import { EmptyState } from '../components/common/EmptyState';
 import { ErrorBanner } from '../components/common/ErrorBanner';
 import { ExplainThis } from '../components/common/ExplainThis';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { useEffectiveMaskingMode } from '../contexts/PrivacyModeContext';
 import { useCashFlow } from '../hooks/useCashFlow';
+import { formatAmount } from '../lib/ui/privacy';
 import type { MonthlyAggregate, IncomeSource } from '../lib/analytics/cash-flow';
 import { forecastMonthEndBalance } from '../lib/budgeting-beta';
 import { CHART_COLORS } from '../components/charts/chart-palette';
@@ -109,6 +111,7 @@ interface IncomeExpenseChartProps {
 }
 
 const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) => {
+  const maskingMode = useEffectiveMaskingMode();
   const maxValue = Math.max(...aggregates.flatMap((a) => [a.income, a.expenses]), 1);
 
   return (
@@ -124,12 +127,12 @@ const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) =
               <div
                 className="analytics-bar-chart__bar analytics-bar-chart__bar--income"
                 style={{ height: `${Math.max((agg.income / maxValue) * 100, 1)}%` }}
-                title={`Income: $${(agg.income / 100).toFixed(2)}`}
+                title={`Income: ${formatAmount(agg.income, maskingMode)}`}
               />
               <div
                 className="analytics-bar-chart__bar analytics-bar-chart__bar--expense"
                 style={{ height: `${Math.max((agg.expenses / maxValue) * 100, 1)}%` }}
-                title={`Expenses: $${(agg.expenses / 100).toFixed(2)}`}
+                title={`Expenses: ${formatAmount(agg.expenses, maskingMode)}`}
               />
             </div>
             <span className="analytics-bar-chart__label">{agg.month.slice(5)}</span>
@@ -281,32 +284,23 @@ export const CashFlowPage: React.FC = () => {
   const isEmpty =
     summary.monthCount === 0 || (summary.totalIncome === 0 && summary.totalExpenses === 0);
 
-  if (isEmpty) {
-    return (
-      <EmptyState
-        title="No cash flow data"
-        description="Start adding balances, income, and expense transactions to see cash flow trends and month-end forecast assumptions."
-      />
-    );
-  }
-
-  return (
-    <div className="analytics-page">
-      <div className="analytics-page__header">
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-          }}
-        >
-          <h1 className="analytics-page__title" style={{ margin: 0 }}>
-            Cash Flow
-          </h1>
-          <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
-        </div>
-        <div className="analytics-page__actions">
-          <PeriodSelector value={period} onChange={setPeriod} />
+  const header = (
+    <div className="analytics-page__header">
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--spacing-2)',
+        }}
+      >
+        <h1 className="analytics-page__title" style={{ margin: 0 }}>
+          Cash Flow
+        </h1>
+        <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
+      </div>
+      <div className="analytics-page__actions">
+        <PeriodSelector value={period} onChange={setPeriod} />
+        {!isEmpty && (
           <button
             className="analytics-export-btn"
             onClick={exportCsv}
@@ -314,8 +308,26 @@ export const CashFlowPage: React.FC = () => {
           >
             Export CSV
           </button>
-        </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (isEmpty) {
+    return (
+      <div className="analytics-page">
+        {header}
+        <EmptyState
+          title="No cash flow data"
+          description="Start adding balances, income, and expense transactions to see cash flow trends and month-end forecast assumptions."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="analytics-page">
+      {header}
 
       <section className="analytics-section" aria-label="Month-end balance forecast">
         <h3 className="analytics-section__title">Month-end balance forecast</h3>

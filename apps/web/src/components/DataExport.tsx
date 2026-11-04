@@ -836,7 +836,7 @@ export const DataExport: React.FC<DataExportProps> = ({
 
       {showFinanceExports && (
         <div className="data-export__progress" role="status" aria-live="polite">
-          <span>Status: {statusLabel(status)}</span>
+          <span className="data-export__progress-text">Status: {statusLabel(status)}</span>
           {(status === 'pending' || status === 'generating') && (
             <div className="progress-bar">
               <div className="progress-bar__fill data-export__progress-fill" />

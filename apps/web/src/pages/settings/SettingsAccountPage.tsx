@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/auth-context';
 import { AppIcon } from '../../components/icons';
 import { DangerZone, SettingInfoWidget } from '../../components/settings';
 import { useAccountDeletion } from '../../components/settings/AccountDeletionModal';
+import { isLocalOnlyMode } from '../../lib/local-only-mode';
 
 /**
  * Account sub-page — identity, sign-out, and the destructive
@@ -14,6 +15,7 @@ import { useAccountDeletion } from '../../components/settings/AccountDeletionMod
 export const SettingsAccountPage: React.FC = () => {
   const { isAuthenticated, isLoading, logout, user } = useAuth();
 
+  const localOnly = isLocalOnlyMode();
   const { openDeleteModal, deleteModal } = useAccountDeletion();
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
@@ -33,6 +35,26 @@ export const SettingsAccountPage: React.FC = () => {
       setSignOutError(err instanceof Error ? err.message : 'Sign out failed.');
     }
   }, [isAuthenticated, isLoading, logout]);
+
+  if (localOnly) {
+    return (
+      <>
+        <h2 className="settings-subpage__title">Account</h2>
+        <section aria-label="Account" className="page-section">
+          <div className="settings-group">
+            <h3 className="settings-group__title">Profile</h3>
+            <div className="settings-item settings-item--static">
+              <span className="settings-item__label">Account</span>
+              <span className="settings-item__value">None (local only)</span>
+            </div>
+            <p className="settings-item__description">
+              Your data is saved on this device only. To erase it, use Privacy &amp; Data.
+            </p>
+          </div>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>

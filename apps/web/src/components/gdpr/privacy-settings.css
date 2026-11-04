@@ -11,7 +11,7 @@
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);
   margin-bottom: var(--spacing-4);
-  padding: 0 var(--spacing-2);
+  padding: 0 var(--settings-card-gutter, var(--spacing-4));
 }
 
 .privacy-settings__category-description {
@@ -32,7 +32,7 @@
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);
   margin-bottom: var(--spacing-3);
-  padding: 0 var(--spacing-2);
+  padding: 0 var(--settings-card-gutter, var(--spacing-4));
 }
 
 /* Delete confirmation alert — aligned with card styling */

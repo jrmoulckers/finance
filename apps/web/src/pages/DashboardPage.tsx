@@ -18,6 +18,7 @@ import {
   ReadAloudButton,
 } from '../components/common';
 import { ExplainThis } from '../components/common/ExplainThis';
+import { AppIcon } from '../components/icons';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
@@ -1030,8 +1031,7 @@ export const DashboardPage: React.FC = () => {
                         <h3 className="card__title">Budget Health</h3>
                       </div>
                       <div className="card__value" aria-live="polite">
-                        <span aria-hidden="true">{dashboardBudgetStatus.icon} </span>
-                        {budgetPercentage}% used
+                        <AppIcon name={dashboardBudgetStatus.icon} /> {budgetPercentage}% used
                         <span className="sr-only">, {dashboardBudgetStatus.label}</span>
                       </div>
                       <div

@@ -168,22 +168,33 @@ export function detectMilestones(input: DetectMilestonesInput): DetectedMileston
   for (const goal of Object.values(input.current.goals)) {
     const previousGoalPercent = input.previous.goals[goal.goalId]?.progressPercent ?? 0;
 
-    for (const threshold of GOAL_PROGRESS_THRESHOLDS) {
-      if (previousGoalPercent < threshold.percent && goal.progressPercent >= threshold.percent) {
-        maybeAddMilestone(milestones, input.shownMilestoneIds, {
-          id: `goal-${goal.goalId}-${threshold.percent}`,
-          category: 'goal-progress',
-          title: threshold.title,
-          message:
-            threshold.percent === 100
-              ? `${goal.goalName} is fully funded at ${formatCurrency(goal.currentAmountCents)}.`
-              : `${goal.goalName} reached ${threshold.percent}% funded (${formatCurrency(goal.currentAmountCents)} of ${formatCurrency(goal.targetAmountCents)}).`,
-          icon: threshold.icon,
-          badge: `${threshold.percent}%`,
-          confetti: threshold.confetti,
-          createdAt: input.now,
-        });
+    // Only the highest threshold crossed in one update is celebrated.
+    let highest: (typeof GOAL_PROGRESS_THRESHOLDS)[number] | undefined;
+    for (const candidate of GOAL_PROGRESS_THRESHOLDS) {
+      if (
+        previousGoalPercent < candidate.percent &&
+        goal.progressPercent >= candidate.percent &&
+        (!highest || candidate.percent > highest.percent)
+      ) {
+        highest = candidate;
       }
+    }
+
+    const threshold = highest;
+    if (threshold) {
+      maybeAddMilestone(milestones, input.shownMilestoneIds, {
+        id: `goal-${goal.goalId}-${threshold.percent}`,
+        category: 'goal-progress',
+        title: threshold.title,
+        message:
+          threshold.percent === 100
+            ? `${goal.goalName} is fully funded at ${formatCurrency(goal.currentAmountCents)}.`
+            : `${goal.goalName} reached ${threshold.percent}% funded (${formatCurrency(goal.currentAmountCents)} of ${formatCurrency(goal.targetAmountCents)}).`,
+        icon: threshold.icon,
+        badge: `${threshold.percent}%`,
+        confetti: threshold.confetti,
+        createdAt: input.now,
+      });
     }
   }
 
