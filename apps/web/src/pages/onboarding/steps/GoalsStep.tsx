@@ -188,8 +188,8 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0,
                 })}
-                {goalDraft.targetDate ? ` by ${formatTargetDate(goalDraft.targetDate)}` : ''}. Estimated monthly
-                contribution:{' '}
+                {goalDraft.targetDate ? ` by ${formatTargetDate(goalDraft.targetDate)}` : ''}.
+                Estimated monthly contribution:{' '}
                 {formatCurrencyValue(monthlyContribution, {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0,
