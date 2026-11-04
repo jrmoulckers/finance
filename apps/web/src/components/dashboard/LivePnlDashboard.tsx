@@ -20,6 +20,7 @@
 import React from 'react';
 import { CurrencyDisplay } from '../common';
 import { formatRelativeAge } from '../../lib/investment';
+import { getCurrentLocale } from '../../lib/i18n';
 import type {
   LivePnlView,
   PnlBreakdown,
@@ -56,6 +57,11 @@ export interface LivePnlDashboardProps {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+/** Formats a percentage with locale separators and two fixed decimals. */
+function formatPnlPercent(value: number): string {
+  return `${value.toLocaleString(getCurrentLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
 
 interface PnlFigureProps {
   amountCents: number;
@@ -237,7 +243,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
   const excludedCount = view.report.excludedSymbols.length;
 
   // Concise summary announced to assistive tech whenever totals change.
-  const liveSummary = `${view.indicators.day.label === 'flat' ? 'No change' : `Day ${view.indicators.day.label}`} ${view.dayPnlPercent}%. ${updatedLabel}. Market data ${view.staleness.label}.`;
+  const liveSummary = `${view.indicators.day.label === 'flat' ? 'No change' : `Day ${view.indicators.day.label}`} ${formatPnlPercent(view.dayPnlPercent)}. ${updatedLabel}. Market data ${view.staleness.label}.`;
 
   return (
     <div className="live-pnl">
@@ -331,7 +337,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
           </p>
           <p className="live-pnl__metric-sub">
             {view.dayPnlPercent >= 0 ? '+' : '−'}
-            {Math.abs(view.dayPnlPercent)}% of start-of-day net worth
+            {formatPnlPercent(Math.abs(view.dayPnlPercent))} of start-of-day net worth
           </p>
         </article>
 
