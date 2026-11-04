@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { useAccessibility } from '../hooks/useAccessibility';
+import { isLocalOnlyMode } from '../lib/local-only-mode';
 import './settings/settings-shell.css';
 
 /**
@@ -93,8 +94,14 @@ export const SettingsPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
 
+  const localOnly = isLocalOnlyMode();
+
   const sections = useMemo(() => {
-    const visibleInMode = SETTINGS_SECTIONS.filter(
+    const visibleInMode = SETTINGS_SECTIONS.map((section) =>
+      localOnly && section.to === 'account'
+        ? { ...section, description: 'Local-only mode, no account' }
+        : section,
+    ).filter(
       (section) =>
         !isSimplified ||
         SIMPLIFIED_SETTINGS_SECTIONS.has(section.to) ||

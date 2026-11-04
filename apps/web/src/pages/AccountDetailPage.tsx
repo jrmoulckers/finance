@@ -519,7 +519,6 @@ export const AccountDetailPage: React.FC = () => {
                     <Link
                       to={`/transactions/${transaction.id}`}
                       className="list-item page-list-link"
-                      aria-label={`View details for ${label}`}
                     >
                       <div className="list-item__content">
                         <p className="list-item__primary">{label}</p>

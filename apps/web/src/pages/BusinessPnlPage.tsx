@@ -475,10 +475,12 @@ export function BusinessPnlPage() {
                   <p className="business-pnl__schedule-c-flags">
                     {scheduleC.reviewNeededCount > 0 &&
                       `${scheduleC.reviewNeededCount} transaction${
-                        scheduleC.reviewNeededCount === 1 ? '' : 's'
-                      } need review. `}
+                        scheduleC.reviewNeededCount === 1 ? ' needs' : 's need'
+                      } review. `}
                     {scheduleC.missingReceiptCount > 0 &&
-                      `${scheduleC.missingReceiptCount} missing a receipt.`}
+                      `${scheduleC.missingReceiptCount} transaction${
+                        scheduleC.missingReceiptCount === 1 ? ' is' : 's are'
+                      } missing a receipt.`}
                   </p>
                 )}
               </>

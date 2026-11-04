@@ -43,6 +43,8 @@ interface PeriodSelectorProps {
 
 const PERIOD_OPTIONS: PeriodOption[] = [6, 12, 24];
 
+const CONFIDENCE_LABELS = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+
 function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
     date.getDate(),
@@ -360,7 +362,9 @@ export const CashFlowPage: React.FC = () => {
           </article>
           <article className="analytics-metric-card" aria-label="Forecast confidence">
             <p className="analytics-metric-card__label">Confidence</p>
-            <p className="analytics-metric-card__value">{monthEndForecast.confidence}</p>
+            <p className="analytics-metric-card__value">
+              {CONFIDENCE_LABELS[monthEndForecast.confidence]}
+            </p>
           </article>
         </div>
         <details style={{ marginTop: 'var(--spacing-3)' }}>
