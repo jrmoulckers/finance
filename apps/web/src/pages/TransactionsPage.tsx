@@ -1746,7 +1746,12 @@ export const TransactionsPage: React.FC = () => {
                     <ul className="list-group" role="list">
                       {group.transactions.map((transaction) => {
                         const transactionLabel = getTransactionLabel(transaction);
-                        const autoCategory = suggestForTransaction(transaction);
+                        const rawSuggestion = suggestForTransaction(transaction);
+                        // Amount-only hints are too weak to show on rows that already have a category.
+                        const autoCategory =
+                          rawSuggestion?.matchKind === 'amount-range' && transaction.categoryId
+                            ? null
+                            : rawSuggestion;
                         const canQuickCategorize =
                           autoCategory !== null &&
                           autoCategory.categoryId !== transaction.categoryId;
