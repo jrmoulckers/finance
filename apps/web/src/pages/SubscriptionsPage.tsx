@@ -75,7 +75,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onTog
       <button
         className={`analytics-status-btn analytics-status-btn--${subscription.status}`}
         onClick={onToggleStatus}
-        aria-label={`Change status of ${subscription.name}. Currently: ${STATUS_LABELS[subscription.status]}`}
+        aria-label={`${STATUS_LABELS[subscription.status]}: change status of ${subscription.name}`}
       >
         {STATUS_LABELS[subscription.status]}
       </button>

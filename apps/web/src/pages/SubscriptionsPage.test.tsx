@@ -174,7 +174,7 @@ describe('SubscriptionsPage', () => {
     expect(screen.getByLabelText('Netflix: Keep')).toBeInTheDocument();
     expect(screen.getByLabelText('Spotify: Flagged')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Change status of Netflix. Currently: Keep' }),
+      screen.getByRole('button', { name: 'Keep: change status of Netflix' }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/6 transactions/)).toHaveLength(2);
   });
