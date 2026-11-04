@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { useBills } from '../hooks';
@@ -86,7 +86,7 @@ describe('BillDetailPage', () => {
   it('renders mark paid button for upcoming bill', () => {
     renderWithRoute('bill-1');
 
-    expect(screen.getByLabelText('Mark Electric Bill as paid')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mark Paid: Electric Bill')).toBeInTheDocument();
   });
 
   it('renders not found when bill does not exist', () => {
@@ -133,6 +133,31 @@ describe('BillDetailPage', () => {
     renderWithRoute('bill-1');
 
     expect(screen.getByText('Database error')).toBeInTheDocument();
+  });
+
+  it('asks for confirmation before deleting the bill', async () => {
+    const deleteBill = vi.fn().mockResolvedValue(true);
+    mockedUseBills.mockReturnValue({
+      bills: [mockBill],
+      summary: { upcomingCount: 1, overdueCount: 0, totalUpcoming: 12500, totalOverdue: 0 },
+      loading: false,
+      error: null,
+      notificationPermission: 'default',
+      refresh: vi.fn(),
+      createBill: vi.fn(),
+      updateBill: vi.fn(),
+      deleteBill,
+      markPaid: vi.fn(),
+      requestNotificationPermission: vi.fn().mockResolvedValue('default'),
+    });
+
+    renderWithRoute('bill-1');
+
+    fireEvent.click(screen.getByLabelText('Delete Electric Bill'));
+    expect(deleteBill).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Bill' }));
+    await waitFor(() => expect(deleteBill).toHaveBeenCalledWith('bill-1'));
   });
 
   it('renders note when present', () => {

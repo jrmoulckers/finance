@@ -54,9 +54,15 @@ export function useLiveQuery<TData = Row[]>(
     tables,
   } = options;
 
+  // Key on the table VALUES: callers pass a fresh `tables` array literal every
+  // render, and an unstable Set would re-run the subscription effect, whose
+  // cleanup cancels any pending debounced refetch (dropping the update).
+  const tablesKey = normalizeTables(tables ?? extractTablesFromSql(sql))
+    .sort()
+    .join(',');
   const watchedTables = useMemo(
-    () => new Set(normalizeTables(tables ?? extractTablesFromSql(sql))),
-    [sql, tables],
+    () => new Set(tablesKey.length > 0 ? tablesKey.split(',') : []),
+    [tablesKey],
   );
   const [data, setData] = useState<TData>(initialData as TData);
   const [loading, setLoading] = useState(enabled);
