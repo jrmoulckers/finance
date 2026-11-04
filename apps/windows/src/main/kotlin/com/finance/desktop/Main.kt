@@ -118,7 +118,7 @@ fun main() {
             },
             title = windowTitle,
             state = windowState,
-            onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
+            onKeyEvent = { shortcutHandler.onKeyEvent(it) },
         ) {
             // Prevent the window from shrinking below a usable size (#3589) so the
             // sidebar + content never collapse.

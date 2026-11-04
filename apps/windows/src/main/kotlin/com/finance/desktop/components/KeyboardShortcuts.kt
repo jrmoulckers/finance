@@ -106,7 +106,8 @@ data class KeyboardShortcut(
  * Registry that collects [KeyboardShortcut]s and dispatches incoming [KeyEvent]s.
  *
  * Create an instance via [rememberShortcutHandler] inside a composable scope,
- * then wire [onKeyEvent] into a window or root modifier `onPreviewKeyEvent`.
+ * then wire [onKeyEvent] into a window or root modifier `onKeyEvent` so focused
+ * children can consume editing keys first, including fields without focus tracking.
  */
 @Stable
 class ShortcutHandler {
@@ -136,8 +137,8 @@ class ShortcutHandler {
     /**
      * Attempt to handle a [KeyEvent]. Returns `true` if the event was consumed.
      *
-     * Call this from `onPreviewKeyEvent` on the application [Window] so that
-     * shortcuts fire before any child composable consumes the event.
+     * Call this from `onKeyEvent` on the application window so that shortcuts
+     * only receive events that focused child composables have not consumed.
      *
      * While a text input is focused (see [TextInputFocusTracker]),
      * [ShortcutCategory.NAVIGATION] bindings are NOT consumed so standard editing
