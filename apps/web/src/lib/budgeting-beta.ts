@@ -181,10 +181,26 @@ export interface VarianceInsight {
   readonly action: string;
 }
 
+/** Minimum fraction of the period that must elapse before underspend is advised on. */
+export const MIN_UNDERSPEND_PERIOD_PROGRESS = 0.75;
+
+/** Fraction (0-1] of the calendar month elapsed as of `date`, inclusive of today. */
+export function getMonthProgress(date: Date): number {
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return date.getDate() / daysInMonth;
+}
+
+/**
+ * `periodProgress` is the elapsed fraction (0-1) of the budget period. When omitted, underspend
+ * is classified without regard to elapsed time (legacy behaviour).
+ */
 export function generateVarianceInsights(
   budgets: readonly VarianceBudgetInput[],
   limit = 4,
+  periodProgress?: number,
 ): VarianceInsight[] {
+  const underspendAllowed =
+    periodProgress === undefined || periodProgress >= MIN_UNDERSPEND_PERIOD_PROGRESS;
   return budgets
     .map((budget): VarianceInsight => {
       const varianceCents = budget.actualCents - budget.budgetedCents;
@@ -193,7 +209,10 @@ export function generateVarianceInsights(
       const kind: VarianceKind =
         varianceCents > 0
           ? 'over'
-          : budget.actualCents <= budget.budgetedCents * 0.5
+          : underspendAllowed &&
+              budget.actualCents <= budget.budgetedCents * 0.5 &&
+              (periodProgress === undefined ||
+                budget.actualCents < budget.budgetedCents * periodProgress)
             ? 'under'
             : 'on-track';
       const priorVariance =

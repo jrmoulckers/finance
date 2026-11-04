@@ -23,6 +23,7 @@ import {
   useChartKeyboardNavigation,
 } from './chart-accessibility';
 import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
+import { formatCount } from '../../lib/ui/pluralize';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import './trend-line-chart.css';
 
@@ -99,7 +100,7 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
         return `${s.name} (${seriesPattern(index).name} line): range ${formatChartCurrency(min, currency, 'en-US', maskingMode)} to ${formatChartCurrency(max, currency, 'en-US', maskingMode)}`;
       })
       .join('. ');
-    return `Line chart "${title}" with ${data.length} data points and ${series.length} series. ${seriesDesc}.`;
+    return `Line chart "${title}" with ${formatCount(data.length, 'data point')} and ${formatCount(series.length, 'series', 'series')}. ${seriesDesc}.`;
   }, [data, series, currency, title, maskingMode]);
 
   const dataPointRows = useMemo(

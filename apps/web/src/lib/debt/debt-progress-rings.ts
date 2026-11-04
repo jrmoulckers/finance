@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { formatCurrency } from '../currency';
 import type {
   DebtMilestoneSummary,
   StrategyResult,
@@ -61,7 +62,7 @@ export function buildDebtPayoffProgressRingCard(input: {
     primaryText,
     secondaryText: input.debtFreeLabel,
     detailItems: [
-      `Interest saved versus minimum payments: ${input.interestSavedCents} cents`,
+      `Interest saved versus minimum payments: ${formatCurrency(input.interestSavedCents)}`,
       `Debt-free estimate: ${input.debtFreeLabel}`,
       nextMilestone,
       `Modeled payoff timeline: ${formatMonths(input.activeResult.totalMonths)}`,
@@ -86,8 +87,8 @@ export function buildStudentLoanProgressRingCard(input: {
     secondaryText: payoffText,
     detailItems: [
       payoffText,
-      `Interest saved with current what-if: ${input.interestSavedCents} cents`,
-      `Remaining interest estimate: ${input.summary.totalInterestCents} cents`,
+      `Interest saved with current what-if: ${formatCurrency(input.interestSavedCents)}`,
+      `Remaining interest estimate: ${formatCurrency(input.summary.totalInterestCents)}`,
     ],
   };
 }
