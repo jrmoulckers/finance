@@ -6,6 +6,9 @@
 :root {
   --breakpoint-content-max: 760px; /** Max content column width */
   --breakpoint-tile-min: 150px; /** Min game-tile width in the auto-fit grid */
+  --breakpoint-sm: 640px; /** Mobile → tablet-size screens */
+  --breakpoint-md: 1024px; /** Tablet → desktop-size screens */
+  --breakpoint-lg: 1440px; /** Desktop → widescreen displays */
   --cognitive-touch-target-min: 48px; /** Minimum interactive touch/click target — WCAG 2.2 SC 2.5.5 Target Size (Enhanced, AAA). */
   --cognitive-focus-ring-width: 3px; /** Enhanced focus-ring width for improved visibility (default is 2px). */
   --cognitive-focus-ring-offset: 3px; /** Enhanced focus-ring offset for improved visibility (default is 2px). */
@@ -15,11 +18,20 @@
   --focus-ring-offset: 2px; /** Gap between the control edge and the ring, so the ring stays legible on filled controls. */
   --duration-instant: 0ms;
   --duration-press: 50ms; /** Button :active press-down */
-  --duration-state: 150ms; /** Hover / state color transitions */
   --duration-tile: 120ms; /** Game-tile hover lift */
-  --duration-reduced: 0ms; /** Reduced-motion alternative — collapse motion to instant (prefers-reduced-motion). */
-  --easing-standard: ease; /** Default functional easing */
+  --duration-state: 150ms; /** Hover / state color transitions */
+  --duration-normal: 250ms; /** Standard enter/exit for surfaces and overlays */
+  --duration-slow: 400ms; /** Deliberate transitions — sheets, expanding panels */
+  --duration-slower: 800ms; /** Extended animations: celebrations, complex transitions */
+  --duration-reduced: 1ms; /** Reduced-motion alternative — effectively instant, but deliberately 1ms rather than 0ms. A zero-duration transition or animation never fires transitionend or animationend, so any cleanup, focus hand-off, or promise that awaits those events hangs forever under prefers-reduced-motion. 1ms is imperceptible and still dispatches the event. */
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1); /** Default functional easing — the Material 3 standard curve, balanced enter/exit. Deliberately not the CSS `ease` keyword: `ease` is the browser default that applies when no easing is authored, so emitting it as the kernel's standard curve makes designed and undesigned motion indistinguishable, and a consumer that overrides `easing.standard` with a real curve silently loses it when this layer loads last. */
   --easing-linear: linear; /** Reduced-motion / crossfade easing */
+  --easing-in: cubic-bezier(0.4, 0, 1, 1); /** Ease-in — motion leaving the viewport */
+  --easing-out: cubic-bezier(0, 0, 0.2, 1); /** Ease-out — motion entering the viewport */
+  --easing-in-out: cubic-bezier(0.4, 0, 0.2, 1); /** Symmetric ease-in-out */
+  --easing-accelerate: cubic-bezier(0.3, 0, 1, 1); /** Content exiting — starts slow, exits quickly */
+  --easing-decelerate: cubic-bezier(0, 0, 0, 1); /** Content entering — starts fast, settles gently */
+  --easing-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275); /** Playful overshoot — celebrations, success moments */
   --opacity-none: 0; /** Fully transparent. */
   --opacity-subtle: 0.04; /** Barely-there wash — hover on large surfaces (rows, tiles). */
   --opacity-soft: 0.08; /** Hover overlay on controls. */
@@ -27,21 +39,41 @@
   --opacity-strong: 0.24; /** Scrims and heavy washes. */
   --opacity-disabled: 0.38; /** Disabled content alpha — WCAG-exempt, matching the disabled text/interactive tokens. */
   --opacity-full: 1; /** Fully opaque. */
-  --radius-sm: 9px; /** Controls: buttons, inputs, steppers */
-  --radius-md: 14px; /** Containers: cards, tiles */
-  --radius-chip: 10px; /** Icon buttons and small chips */
-  --radius-pill: 999px; /** Fully-rounded pills and avatars */
+  --radius-0: 0px;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+  --radius-6: 24px;
+  --radius-8: 32px;
+  --radius-full: 9999px; /** Fully-round — pills, avatars, circular targets. */
   --shadow-soft-lift-dark: 0 10px 30px rgba(0, 0, 0, 0.45); /** The single dark-theme shadow — floats cards, tiles, toast. */
   --shadow-soft-lift-light: 0 10px 30px rgba(60, 50, 120, 0.12); /** Light-theme equivalent of Soft Lift. */
   --shadow-inset-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.18); /** 1px inner ring on avatars so light player colors keep their edge. */
   --shadow-none: none; /** No shadow — the flattened surface used by cognitive-accessibility mode. */
-  --spacing-xs: 6px;
-  --spacing-sm: 10px;
-  --spacing-md: 14px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px; /** Roomier block padding — cognitive-accessibility mode. */
-  --spacing-2xl: 24px; /** Card gap / inline padding — cognitive-accessibility mode. */
-  --spacing-3xl: 32px; /** Section gap — cognitive-accessibility mode. */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /** Elevation 1 — resting cards on a light surface. */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /** Elevation 2 — raised cards, dropdowns. */
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1); /** Elevation 3 — popovers, sheets. */
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1); /** Elevation 4 — modals. */
+  --shadow-dark-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.5); /** Elevation 1 on dark surfaces. */
+  --shadow-dark-md: 0 4px 8px -1px rgba(0, 0, 0, 0.55); /** Elevation 2 on dark surfaces. */
+  --shadow-dark-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6); /** Elevation 3 on dark surfaces. */
+  --shadow-dark-xl: 0 20px 30px -5px rgba(0, 0, 0, 0.65); /** Elevation 4 on dark surfaces. */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
   --target-min: 46px; /** Minimum interactive target — the thumb-first control height (exceeds the WCAG 2.2 AA 24px floor and the 44px platform guidance). */
   --target-compact: 32px; /** Dense affordance (icon button inside an already-large target). Only valid when the parent row itself meets target.min. */
   --target-spacious: 56px; /** Roomier target for primary actions and cognitive-accessibility mode. */
@@ -49,17 +81,24 @@
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-size-display: 1.6rem;
-  --font-size-title: 1.25rem;
-  --font-size-body: 1rem;
-  --font-size-label: 0.9rem;
-  --font-size-overline: 0.8rem;
+  --font-size-xs: 0.8rem;
+  --font-size-sm: 0.9rem;
+  --font-size-base: 1rem; /** Body copy — the reference size the rest of the ladder is read against. */
+  --font-size-md: 1.125rem; /** Between body and title. No role occupies this step, which is why callers reach for it by name. */
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.4rem;
+  --font-size-2xl: 1.6rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
   --font-line-height-tight: 1.2;
   --font-line-height-snug: 1.4;
   --font-line-height-normal: 1.5;
   --font-line-height-relaxed: 1.75; /** Roomy leading — used by cognitive-accessibility mode for improved reading flow. */
   --font-letter-spacing-normal: 0;
   --font-letter-spacing-wide: 0.08em; /** Overline tracking */
+  --font-variant-numeric-normal: normal; /** Proportional figures — the default, correct inside running text. */
+  --font-variant-numeric-tabular: tabular-nums; /** Fixed-width figures so digits align vertically in scores, amounts, and tables. */
+  --font-variant-numeric-tabular-slashed: tabular-nums slashed-zero; /** Tabular figures with a slashed zero, which separates 0 from O in reference codes and account numbers. */
   --z-index-base: 0; /** In-flow content. */
   --z-index-raised: 10; /** Lifted in-flow content. */
   --z-index-sticky: 100; /** Sticky chrome. */
@@ -84,6 +123,8 @@
   --color-crown-gold-800: oklch(0.42 0.07 90);
   --color-crown-gold-900: oklch(0.30 0.05 90);
   --color-crown-gold-ink-light: #806600; /** Gold text on light surfaces — darkened to clear WCAG >=4.5:1 on white while keeping the gold identity. */
+  --color-win-50: oklch(0.98 0.015 165);
+  --color-win-100: oklch(0.97 0.03 165);
   --color-win-200: oklch(0.95 0.05 165);
   --color-win-300: oklch(0.87 0.10 165);
   --color-win-400: oklch(0.78 0.15 165);
@@ -92,6 +133,8 @@
   --color-win-700: oklch(0.47 0.10 165);
   --color-win-800: oklch(0.36 0.07 165);
   --color-win-900: oklch(0.25 0.05 165);
+  --color-loss-50: oklch(0.98 0.012 25);
+  --color-loss-100: oklch(0.97 0.025 25);
   --color-loss-200: oklch(0.95 0.04 25);
   --color-loss-300: oklch(0.88 0.09 25);
   --color-loss-400: oklch(0.79 0.14 25);
@@ -100,6 +143,8 @@
   --color-loss-700: oklch(0.50 0.13 25);
   --color-loss-800: oklch(0.39 0.10 25);
   --color-loss-900: oklch(0.28 0.06 25);
+  --color-caution-50: oklch(0.98 0.015 80);
+  --color-caution-100: oklch(0.97 0.03 80);
   --color-caution-200: oklch(0.96 0.05 80);
   --color-caution-300: oklch(0.90 0.11 80);
   --color-caution-400: oklch(0.83 0.16 80);
@@ -108,6 +153,8 @@
   --color-caution-700: oklch(0.53 0.11 80);
   --color-caution-800: oklch(0.41 0.08 80);
   --color-caution-900: oklch(0.29 0.05 80);
+  --color-info-50: oklch(0.98 0.01 230);
+  --color-info-100: oklch(0.97 0.02 230);
   --color-info-200: oklch(0.95 0.03 230);
   --color-info-300: oklch(0.88 0.07 230);
   --color-info-400: oklch(0.80 0.11 230);
@@ -116,6 +163,16 @@
   --color-info-700: oklch(0.52 0.12 230);
   --color-info-800: oklch(0.42 0.10 230);
   --color-info-900: oklch(0.30 0.07 230);
+  --color-pending-50: oklch(0.98 0.012 195);
+  --color-pending-100: oklch(0.97 0.025 195);
+  --color-pending-200: oklch(0.95 0.04 195);
+  --color-pending-300: oklch(0.88 0.08 195);
+  --color-pending-400: oklch(0.80 0.11 195);
+  --color-pending-500: oklch(0.72 0.12 195);
+  --color-pending-600: oklch(0.61 0.11 195);
+  --color-pending-700: oklch(0.50 0.09 195);
+  --color-pending-800: oklch(0.40 0.07 195);
+  --color-pending-900: oklch(0.28 0.05 195);
   --color-ink-midnight: #0f1020; /** Midnight Court — app background */
   --color-ink-indigo-slate: #1a1b2e; /** Indigo Slate — surface */
   --color-ink-raised-slate: #24263f; /** Raised Slate — surface-2 */
@@ -166,10 +223,39 @@
   --button-default-padding-y: 12px;
   --button-ghost-bg: transparent;
   --button-danger-bg: transparent;
+  --chart-min-height: 240px; /** Floor for a legible plot area. Below this, axis labels collide and a chart stops being readable faster than it stops fitting. */
+  --chart-default-height: 320px; /** Height a chart takes when the layout expresses no preference. */
+  --chart-max-height: 480px; /** Ceiling, so a chart in a tall container does not crowd out everything beneath it. */
+  --chart-swatch-size: 12px; /** Legend color swatch size. Deliberately not on the 4px grid's spacing scale: this is a glyph dimension, not a layout gap, and it is sized to sit optically with the legend label rather than with the layout. */
+  --chart-slice-stroke-width: 2px; /** Width of the slice separator. Studio already had the stroke color but not its width, so every consumer picked one and adjacent slices merged at different thresholds. */
+  --chart-donut-inner-ratio: 0.6; /** Inner radius as a fraction of the outer radius. A ratio rather than a length so the hole scales with the chart instead of swallowing it at small sizes. */
+  --chart-line-width: 2px; /** Line series stroke width. Matches the slice separator so strokes across chart types read as one weight. */
+  --chart-dot-radius: 4px; /** Data point marker radius on a line series. Markers are required, not decorative: they are what makes a series distinguishable without relying on color. */
+  --chart-dot-radius-active: 6px; /** Marker radius for the hovered or focused point. The size change is the non-color signal for the active point. */
   --input-padding-y: 11px;
+  --modal-max-width: 560px; /** Comfortable measure for dialog prose. */
   --pill-padding-y: 3px;
+  --toast-max-width: 420px; /** Keeps a toast readable in one or two lines on a wide viewport. */
+  --duration-fast: var(--duration-state); /** Generic short transition — alias of the state duration. */
+  --easing-balanced: var(--easing-standard); /** Compatibility alias of easing.standard, retained so existing references keep resolving. Prefer easing.standard. */
+  --radius-sm: var(--radius-2); /** Controls: buttons, inputs, steppers */
+  --radius-chip: var(--radius-3); /** Icon buttons and small chips */
+  --radius-md: var(--radius-4); /** Containers: cards, tiles */
+  --radius-pill: var(--radius-full); /** Fully-rounded pills and avatars */
   --shadow-lift: var(--shadow-soft-lift-light);
   --shadow-hairline: var(--shadow-inset-hairline);
+  --spacing-xs: var(--spacing-1);
+  --spacing-sm: var(--spacing-2);
+  --spacing-md: var(--spacing-3);
+  --spacing-lg: var(--spacing-4);
+  --spacing-xl: var(--spacing-5); /** Roomier block padding — cognitive-accessibility mode. */
+  --spacing-2xl: var(--spacing-6); /** Card gap / inline padding — cognitive-accessibility mode. */
+  --spacing-3xl: var(--spacing-8); /** Section gap — cognitive-accessibility mode. */
+  --font-size-display: var(--font-size-2xl);
+  --font-size-title: var(--font-size-lg);
+  --font-size-body: var(--font-size-base);
+  --font-size-label: var(--font-size-sm);
+  --font-size-overline: var(--font-size-xs);
   --semantic-background-primary: var(--color-paper-lilac-mist); /** App background. */
   --semantic-background-secondary: var(--color-paper-frost); /** Secondary chrome surface. */
   --semantic-background-elevated: var(--color-paper-white); /** Elevated surface — cards, popovers, inputs. */
@@ -179,67 +265,75 @@
   --semantic-text-disabled: var(--color-paper-cloud-line); /** Disabled text — WCAG-exempt. */
   --semantic-text-inverse: var(--color-base-white); /** Text on interactive/brand fills. */
   --semantic-border-default: var(--color-paper-cloud-line);
-  --semantic-border-focus: var(--color-royal-violet-500); /** Shared Royal Violet focus ring. */
+  --semantic-border-focus: var(--color-royal-violet-600); /** Shared Royal Violet focus ring, tracking interactive.default. */
   --semantic-border-error: var(--color-loss-500);
-  --semantic-interactive-default: var(--color-royal-violet-500); /** Royal Violet — the one brand action color. */
-  --semantic-interactive-hover: var(--color-royal-violet-600); /** Deep Violet hover echo. */
-  --semantic-interactive-pressed: var(--color-royal-violet-700);
+  --semantic-interactive-default: var(--color-royal-violet-600); /** Royal Violet — the one brand action color. Uses the 600 step, not 500: this fill carries text.inverse on primary buttons, and 500 measures only 4.35:1 against white, below WCAG 2.2 AA for normal text. */
+  --semantic-interactive-hover: var(--color-royal-violet-700); /** Deep Violet hover echo — one step below default, keeping three distinct stops. */
+  --semantic-interactive-pressed: var(--color-royal-violet-800);
   --semantic-interactive-disabled: var(--color-paper-haze); /** Disabled interactive fill — WCAG-exempt. */
   --semantic-accent-default: var(--color-crown-gold-500); /** Crown Gold — leader & winner fills/washes (the Crown Gold Rule). */
   --semantic-accent-ink: var(--color-crown-gold-ink-light); /** Pure Crown Gold fails WCAG on light surfaces — darken gold TEXT to #806600 while keeping gold fills as accent.default. */
-  --semantic-status-positive: var(--color-win-500);
-  --semantic-status-negative: var(--color-loss-500);
-  --semantic-status-warning: var(--color-caution-500);
-  --semantic-status-info: var(--color-info-500);
+  --semantic-status-positive: var(--color-win-700); /** Light-theme positive. Uses the 700 step, not 500: 500 is tuned for dark surfaces and measures only 1.92:1 on white. 700 clears WCAG AA on every light surface — 6.46:1 on white, 5.75:1 on frost, 5.27:1 on haze — and 6.46:1 for white text placed on it as a fill. */
+  --semantic-status-negative: var(--color-loss-700); /** Light-theme negative. Reaches real text through --button-danger-text, so the dark-tuned 500 step was body text at 2.77:1. 700 measures 6.42:1 on white, 5.71:1 on frost, 5.24:1 on haze, and 6.42:1 for white text on it as a fill. */
+  --semantic-status-warning: var(--color-caution-800); /** Light-theme warning. Amber is an inherently low-luminance-contrast hue: the 700 step measures only 4.37:1 on haze, short of AA. The 800 step clears every light surface — 8.89:1 on white, 7.91:1 on frost, 7.25:1 on haze. */
+  --semantic-status-info: var(--color-info-800); /** Light-theme info. Sky behaves like amber here: the 700 step measures only 4.28:1 on haze, short of AA. The 800 step clears every light surface — 8.05:1 on white, 7.17:1 on frost, 6.57:1 on haze. */
+  --semantic-status-pending: var(--color-pending-700); /** In-flight, processing, syncing, unsettled — distinct from warning because a pending operation is not a problem. 5.68:1 on white, 5.05:1 on frost, 4.63:1 on haze. Pair with an icon or label; never signal state by hue alone. */
+  --semantic-status-neutral: var(--color-paper-slate-gray); /** Uncategorized or inactive status. 6.27:1 on white, 5.12:1 on haze. */
+  --semantic-status-positive-subtle: var(--color-win-50); /** Low-emphasis positive fill for badges, banners, and toasts. Carries text.primary at 15.78:1. */
+  --semantic-status-negative-subtle: var(--color-loss-50); /** Low-emphasis negative fill. Carries text.primary at 15.61:1. */
+  --semantic-status-warning-subtle: var(--color-caution-50); /** Low-emphasis warning fill. Carries text.primary at 15.71:1. */
+  --semantic-status-info-subtle: var(--color-info-50); /** Low-emphasis info fill. Carries text.primary at 15.72:1. */
+  --semantic-status-pending-subtle: var(--color-pending-50); /** Low-emphasis pending fill. Carries text.primary at 15.73:1. */
+  --semantic-status-neutral-subtle: var(--color-paper-cloud-line); /** Low-emphasis neutral fill for uncategorized badges. */
   --text-display-family: var(--font-family-sans);
-  --text-display-size: var(--font-size-display);
   --text-display-weight: var(--font-weight-bold);
   --text-display-line-height: var(--font-line-height-tight);
   --text-title-family: var(--font-family-sans);
-  --text-title-size: var(--font-size-title);
   --text-title-weight: var(--font-weight-bold);
   --text-title-line-height: var(--font-line-height-tight);
   --text-body-family: var(--font-family-sans);
-  --text-body-size: var(--font-size-body);
   --text-body-weight: var(--font-weight-regular);
   --text-body-line-height: var(--font-line-height-normal);
   --text-label-family: var(--font-family-sans);
-  --text-label-size: var(--font-size-label);
   --text-label-weight: var(--font-weight-regular);
   --text-label-line-height: var(--font-line-height-snug);
   --text-overline-family: var(--font-family-sans);
-  --text-overline-size: var(--font-size-overline);
   --text-overline-weight: var(--font-weight-semibold);
   --text-overline-line-height: var(--font-line-height-tight);
   --text-overline-letter-spacing: var(--font-letter-spacing-wide);
+  --text-amount-family: var(--font-family-sans);
+  --text-amount-weight: var(--font-weight-semibold);
+  --text-amount-line-height: var(--font-line-height-normal);
+  --text-amount-variant-numeric: var(--font-variant-numeric-tabular);
   --motion-press-duration: var(--duration-press);
   --motion-press-easing: var(--easing-standard);
   --motion-state-duration: var(--duration-state);
   --motion-state-easing: var(--easing-standard);
   --motion-tile-duration: var(--duration-tile);
   --motion-tile-easing: var(--easing-standard);
+  --motion-page-transition-duration: var(--duration-normal);
+  --motion-list-item-easing: var(--easing-decelerate);
+  --motion-progress-duration: var(--duration-slow);
+  --motion-progress-easing: var(--easing-in-out);
+  --motion-celebrate-duration: var(--duration-slower);
+  --motion-celebrate-easing: var(--easing-spring);
+  --motion-fade-in-duration: var(--duration-normal);
+  --motion-fade-in-easing: var(--easing-decelerate);
+  --motion-fade-out-easing: var(--easing-accelerate);
+  --motion-loading-duration: var(--duration-slower);
+  --motion-loading-easing: var(--easing-in-out);
   --motion-reduced-duration: var(--duration-reduced);
   --motion-reduced-easing: var(--easing-linear);
-  --cognitive-type-display-size: var(--font-size-display);
   --cognitive-type-display-weight: var(--font-weight-bold);
   --cognitive-type-display-line-height: var(--font-line-height-normal); /** Relaxed from tight (1.2) to normal (1.5). */
-  --cognitive-type-title-size: var(--font-size-title);
   --cognitive-type-title-weight: var(--font-weight-bold);
   --cognitive-type-title-line-height: var(--font-line-height-normal); /** Relaxed from tight (1.2) to normal (1.5). */
-  --cognitive-type-body-size: var(--font-size-title); /** Stepped up from body (1rem) to title (1.25rem) for readability. */
   --cognitive-type-body-weight: var(--font-weight-regular);
   --cognitive-type-body-line-height: var(--font-line-height-relaxed); /** Relaxed from normal (1.5) to relaxed (1.75). */
-  --cognitive-type-label-size: var(--font-size-body); /** Stepped up from label (0.9rem) to body (1rem). */
   --cognitive-type-label-weight: var(--font-weight-regular);
   --cognitive-type-label-line-height: var(--font-line-height-relaxed);
-  --cognitive-type-overline-size: var(--font-size-label); /** Stepped up from overline (0.8rem) to label (0.9rem) — 0.8rem is too small for cognitive needs. */
   --cognitive-type-overline-weight: var(--font-weight-semibold);
   --cognitive-type-overline-line-height: var(--font-line-height-snug);
-  --cognitive-spacing-section-gap: var(--spacing-3xl); /** Gap between major sections — 32px. */
-  --cognitive-spacing-card-gap: var(--spacing-2xl); /** Gap between cards — 24px. */
-  --cognitive-spacing-element-gap: var(--spacing-lg); /** Gap between elements within a section — 16px. */
-  --cognitive-spacing-inline-padding: var(--spacing-2xl); /** Horizontal padding inside containers — 24px. */
-  --cognitive-spacing-block-padding: var(--spacing-xl); /** Vertical padding inside containers — 20px. */
   --cognitive-focus-width: var(--cognitive-focus-ring-width);
   --cognitive-focus-offset: var(--cognitive-focus-ring-offset);
   --cognitive-target-min: var(--target-spacious); /** Promotes the standard 46px target to the spacious 56px step. */
@@ -261,25 +355,48 @@
   --state-scrim-opacity: var(--opacity-strong); /** Dimming strength behind modals and sheets. */
   --elevation-flat: var(--shadow-none); /** No lift — the default for in-flow content. */
   --avatar-bg: var(--color-player-1); /** Default fill; runtime assigns #7c5cff–#facc15 in order. */
+  --avatar-text: var(--color-base-black); /** Initials ink. Deliberately theme-invariant, because the fill is: player colors are fixed identities that do not change between light and dark, so an ink that flipped with the theme would be measured against the wrong background. Black is the only ink that clears WCAG 2.2 AA against all twelve fills (worst case player.1 at 4.83:1). */
   --avatar-weight: var(--font-weight-bold);
-  --avatar-radius: var(--radius-pill);
-  --button-primary-radius: var(--radius-sm);
   --button-primary-min-height: var(--target-min);
-  --button-default-radius: var(--radius-sm);
   --button-default-min-height: var(--target-min);
-  --card-radius: var(--radius-md);
-  --card-padding: var(--spacing-lg);
-  --tile-radius: var(--radius-md);
-  --tile-padding: var(--spacing-lg);
-  --input-radius: var(--radius-sm);
+  --chart-series-1: var(--color-chart-1);
+  --chart-series-2: var(--color-chart-2);
+  --chart-series-3: var(--color-chart-3);
+  --chart-series-4: var(--color-chart-4);
+  --chart-series-5: var(--color-chart-5);
+  --chart-series-6: var(--color-chart-6);
+  --cognitive-button-padding-y: var(--spacing-3); /** Roomier vertical padding. */
+  --cognitive-button-radius: var(--radius-3); /** Softer corner than the default control radius. */
+  --cognitive-button-border-width: var(--cognitive-border-width); /** Thicker border so an outline button reads as a control, not as text. */
+  --cognitive-input-padding-x: var(--spacing-4); /** Roomier horizontal padding. */
+  --cognitive-input-padding-y: var(--spacing-3); /** Roomier vertical padding. */
+  --cognitive-input-radius: var(--radius-3); /** Softer corner than the default control radius. */
+  --cognitive-input-border-width: var(--cognitive-border-width); /** Thicker border so the field boundary is unambiguous. */
+  --cognitive-card-radius: var(--radius-4); /** Softer container corner. */
+  --cognitive-card-border-width: var(--cognitive-border-width); /** Thicker border so the card boundary does not rely on a shadow. */
+  --cognitive-nav-item-padding-x: var(--spacing-5); /** Roomier horizontal padding on navigation items. */
+  --cognitive-nav-item-padding-y: var(--spacing-3); /** Roomier vertical padding on navigation items. */
+  --cognitive-nav-item-gap: var(--spacing-2); /** Separation between adjacent targets, so a near miss lands on nothing rather than on the wrong item. */
+  --cognitive-list-item-padding-x: var(--spacing-5); /** Roomier horizontal padding. */
+  --cognitive-list-item-padding-y: var(--spacing-3); /** Roomier vertical padding. */
+  --cognitive-list-item-gap: var(--spacing-2); /** Separation between adjacent rows, so a near miss lands on nothing rather than on the wrong row. */
   --input-min-height: var(--target-min);
-  --input-padding-x: var(--spacing-md);
-  --nav-tabbar-radius: var(--radius-md);
-  --nav-tab-radius: var(--radius-chip);
+  --modal-padding: var(--spacing-5); /** Dialog padding. */
+  --modal-gap: var(--spacing-4); /** Gap between title, body, and actions. */
   --nav-iconbtn-size: var(--target-min);
-  --nav-iconbtn-radius: var(--radius-chip);
-  --pill-radius: var(--radius-pill);
-  --pill-padding-x: var(--spacing-sm);
+  --premium-badge-padding-x: var(--spacing-2); /** Horizontal padding. */
+  --premium-badge-padding-y: var(--spacing-1); /** Vertical padding. */
+  --premium-gate-icon-size: var(--spacing-6); /** Lock glyph size. */
+  --premium-upsell-padding: var(--spacing-4); /** Card padding. */
+  --premium-paywall-cta-padding-x: var(--spacing-8); /** Extra-wide horizontal padding — the CTA is the most prominent control on the surface. */
+  --premium-paywall-cta-padding-y: var(--spacing-3); /** Vertical padding. */
+  --premium-paywall-cta-min-height: var(--target-min); /** Added in the port. Finance sized the CTA by padding alone, so its height depended on the inherited line-height and could fall under the touch-target floor. The single most important button in a paid product should not be the one that is hard to tap. */
+  --skeleton-radius-text: var(--radius-1); /** Tighter radius for text-line placeholders. */
+  --skeleton-line-height: var(--spacing-3); /** Height of a single text-line placeholder. */
+  --skeleton-gap: var(--spacing-2); /** Gap between stacked placeholder lines. */
+  --toast-padding-block: var(--spacing-3); /** Vertical padding. */
+  --toast-padding-inline: var(--spacing-4); /** Horizontal padding. */
+  --toast-gap: var(--spacing-3); /** Gap between icon, message, and action. */
   --color-bg: var(--semantic-background-primary); /** Back-compat alias → --semantic-background-primary. Re-flows across every mode via the semantic var. */
   --color-surface: var(--semantic-background-elevated);
   --color-surface-2: var(--semantic-background-secondary);
@@ -296,43 +413,170 @@
   --color-danger: var(--semantic-status-negative);
   --color-warning: var(--semantic-status-warning);
   --color-focus-ring: var(--semantic-border-focus);
+  --text-display-size: var(--font-size-display);
+  --text-title-size: var(--font-size-title);
+  --text-body-size: var(--font-size-body);
+  --text-label-size: var(--font-size-label);
+  --text-overline-size: var(--font-size-overline);
+  --text-amount-size: var(--font-size-body);
+  --motion-page-transition-easing: var(--easing-balanced);
+  --motion-list-item-duration: var(--duration-fast);
+  --motion-fade-out-duration: var(--duration-fast);
+  --cognitive-type-display-size: var(--font-size-display);
+  --cognitive-type-title-size: var(--font-size-title);
+  --cognitive-type-body-size: var(--font-size-title); /** Stepped up from body (1rem) to title (1.25rem) for readability. */
+  --cognitive-type-label-size: var(--font-size-body); /** Stepped up from label (0.9rem) to body (1rem). */
+  --cognitive-type-overline-size: var(--font-size-label); /** Stepped up from overline (0.8rem) to label (0.9rem) — 0.8rem is too small for cognitive needs. */
+  --cognitive-spacing-section-gap: var(--spacing-3xl); /** Gap between major sections — 32px. */
+  --cognitive-spacing-card-gap: var(--spacing-2xl); /** Gap between cards — 24px. */
+  --cognitive-spacing-element-gap: var(--spacing-lg); /** Gap between elements within a section — 16px. */
+  --cognitive-spacing-inline-padding: var(--spacing-2xl); /** Horizontal padding inside containers — 24px. */
+  --cognitive-spacing-block-padding: var(--spacing-xl); /** Vertical padding inside containers — 20px. */
   --elevation-hairline: var(--shadow-hairline); /** 1px inner ring that preserves an edge without a drop shadow. */
   --elevation-raised: var(--shadow-lift); /** The single Soft Lift — cards, tiles, popovers, toast. */
-  --avatar-text: var(--semantic-text-inverse);
   --avatar-ring: var(--shadow-hairline);
+  --avatar-radius: var(--radius-pill);
   --button-primary-bg: var(--semantic-interactive-default);
   --button-primary-text: var(--semantic-text-inverse);
   --button-primary-border: var(--semantic-interactive-hover);
   --button-primary-hover-bg: var(--semantic-interactive-hover);
+  --button-primary-radius: var(--radius-sm);
   --button-default-bg: var(--semantic-background-secondary);
   --button-default-text: var(--semantic-text-primary);
   --button-default-border: var(--semantic-border-default);
   --button-default-hover-bg: var(--semantic-background-raised);
+  --button-default-radius: var(--radius-sm);
   --button-ghost-text: var(--semantic-text-primary);
   --button-danger-text: var(--semantic-status-negative);
   --button-danger-border: var(--semantic-status-negative);
   --card-bg: var(--semantic-background-elevated);
   --card-text: var(--semantic-text-primary);
   --card-border: var(--semantic-border-default);
+  --card-radius: var(--radius-md);
+  --card-padding: var(--spacing-lg);
   --card-shadow: var(--shadow-lift);
   --tile-bg: var(--semantic-background-elevated);
   --tile-text: var(--semantic-text-primary);
   --tile-border: var(--semantic-border-default);
   --tile-hover-border: var(--semantic-interactive-default);
+  --tile-radius: var(--radius-md);
+  --tile-padding: var(--spacing-lg);
   --tile-shadow: var(--shadow-lift);
+  --chart-bg: var(--semantic-background-primary); /** Plot area background — inherits the page surface so charts sit flush. */
+  --chart-radius: var(--radius-md); /** Chart container corner radius. Matches card radius. */
+  --chart-padding: var(--spacing-md); /** Padding between the container edge and the plot area. */
+  --chart-axis: var(--semantic-border-default); /** Axis line color. */
+  --chart-grid: var(--semantic-border-default); /** Grid line color. Render grid lines at reduced opacity rather than with a separate token, so the axis stays dominant without adding a theme-parity surface. */
+  --chart-axis-label: var(--semantic-text-secondary); /** Axis tick and label text. */
+  --chart-legend-label: var(--semantic-text-secondary); /** Legend item text. */
+  --chart-legend-gap: var(--spacing-md); /** Gap between legend items. */
+  --chart-swatch-radius: var(--radius-sm); /** Legend color swatch corner radius. */
+  --chart-tooltip-bg: var(--semantic-background-elevated); /** Tooltip surface. */
+  --chart-tooltip-text: var(--semantic-text-primary); /** Tooltip text. */
+  --chart-tooltip-border: var(--semantic-border-default); /** Tooltip border. */
+  --chart-tooltip-radius: var(--radius-sm); /** Tooltip corner radius. */
+  --chart-tooltip-padding-x: var(--spacing-sm); /** Tooltip horizontal padding. */
+  --chart-tooltip-padding-y: var(--spacing-xs); /** Tooltip vertical padding. */
+  --chart-bar-radius: var(--radius-sm); /** Bar cap rounding. */
+  --chart-bar-gap: var(--spacing-xs); /** Gap between adjacent bars. */
+  --chart-slice-stroke: var(--semantic-background-primary); /** Separator stroke between pie or donut slices. Matches the background so slices read as separated rather than outlined. */
+  --chart-empty-icon: var(--semantic-text-secondary); /** Glyph on the no-data state. Finance used text.disabled, which measured 1.24:1 in light. Strictly this icon is decorative — the empty-state text is required alongside it, so WCAG 1.4.11 does not apply — but an invisible icon is not a subtle icon, it is a missing one. Raised to the same value as the accompanying text. */
+  --chart-empty-text: var(--semantic-text-secondary); /** Explanatory copy on the no-data state. Always required: a chart with no data must say why, never render blank. */
+  --chart-enter-duration: var(--motion-progress-duration); /** Series entrance. Shares the progress duration because both animate a value growing into place, and both collapse to 1ms under prefers-reduced-motion. */
+  --chart-enter-easing: var(--motion-progress-easing); /** Series entrance easing. */
+  --chart-transition-duration: var(--motion-fade-in-duration); /** Transition when the underlying data changes without the chart being re-entered. */
+  --chart-transition-easing: var(--motion-fade-in-easing); /** Data transition easing. */
+  --chart-series-other: var(--semantic-status-neutral); /** Grouped tail categories rendered as a single "Other" series. Neutral by design, so it never competes with a real series. */
+  --cognitive-button-min-height: var(--cognitive-target-min); /** Minimum target height. */
+  --cognitive-input-min-height: var(--cognitive-target-min); /** Minimum target height. */
+  --cognitive-nav-item-min-height: var(--cognitive-target-min); /** Minimum navigation-item height. */
+  --cognitive-list-item-min-height: var(--cognitive-target-min); /** Minimum list-item height. */
   --input-bg: var(--semantic-background-elevated);
   --input-text: var(--semantic-text-primary);
   --input-border: var(--semantic-border-default);
   --input-placeholder: var(--semantic-text-secondary);
   --input-focus-ring: var(--semantic-border-focus);
+  --input-radius: var(--radius-sm);
+  --input-padding-x: var(--spacing-md);
+  --modal-surface: var(--semantic-background-elevated); /** Dialog background. */
+  --modal-text: var(--semantic-text-primary); /** Body text. */
+  --modal-text-muted: var(--semantic-text-secondary); /** Supporting text and helper copy. */
+  --modal-border: var(--semantic-border-default); /** Edge against the scrim. */
+  --modal-radius: var(--radius-md); /** Dialog corner radius. */
+  --modal-layer: var(--layer-dialog); /** Dialog plane. */
+  --modal-scrim-layer: var(--layer-scrim); /** Dimming plane, directly beneath the dialog. */
+  --modal-scrim-opacity: var(--state-scrim-opacity); /** Scrim strength. Shared with sheets so every modal surface dims identically. */
+  --modal-enter-duration: var(--motion-page-transition-duration); /** Entrance — a dialog is a page-scale move. */
+  --modal-exit-easing: var(--motion-fade-out-easing); /** Exit easing. */
   --nav-tabbar-bg: var(--semantic-background-elevated); /** Consumers may layer glass (backdrop-filter: blur(12px)) + alpha per the Glass-Chrome Rule. */
   --nav-tabbar-border: var(--semantic-border-default);
+  --nav-tabbar-radius: var(--radius-md);
   --nav-tab-text: var(--semantic-text-secondary);
   --nav-tab-active-text: var(--semantic-text-primary);
   --nav-tab-active-bg: var(--semantic-background-secondary);
+  --nav-tab-radius: var(--radius-chip);
   --nav-iconbtn-bg: var(--semantic-background-secondary);
   --nav-iconbtn-text: var(--semantic-text-primary);
+  --nav-iconbtn-radius: var(--radius-chip);
   --pill-bg: var(--semantic-background-secondary);
   --pill-text: var(--semantic-text-secondary);
   --pill-border: var(--semantic-border-default);
+  --pill-radius: var(--radius-pill);
+  --pill-padding-x: var(--spacing-sm);
+  --premium-badge-bg: var(--semantic-interactive-default); /** Badge fill — the brand interactive color, so premium reads as actionable rather than as a warning. */
+  --premium-badge-text: var(--semantic-text-inverse); /** Badge label. This pair measured 4.35:1 in finance and failed WCAG AA; it clears in Studio only because the light interactive ramp was shifted one step. Pinned in CONTRAST_PAIRS so it cannot regress. */
+  --premium-badge-radius: var(--radius-pill); /** Fully rounded — a badge is a pill, never a button. */
+  --premium-gate-overlay-bg: var(--semantic-background-primary); /** Overlay fill, composited at overlay-opacity. */
+  --premium-gate-overlay-opacity: var(--state-scrim-opacity); /** Added in the port. Finance's overlay said 'applied with opacity' but shipped no opacity token, so every consumer picked its own and gated features dimmed inconsistently. Shares the modal scrim strength: a gate and a modal are both 'you cannot reach this yet'. */
+  --premium-gate-icon: var(--semantic-text-secondary); /** Lock glyph. Deliberately NOT text.disabled, which finance used: a lock is not a disabled control, it is the only signal that the feature is gated, so WCAG 1.4.11 applies and the disabled-state exemption does not. text.disabled measured 1.24:1 (light), 1.56:1 (dark), 1.74:1 (dark-oled) against its own background; text.secondary clears 3:1 in every theme, worst case 6.23:1. */
+  --premium-upsell-bg: var(--semantic-background-secondary); /** Card fill — recessed, so an upsell never outranks the content it sits beside. */
+  --premium-upsell-border: var(--semantic-border-default); /** Card edge. Decorative: the card is not a control, so the 3:1 non-text minimum does not apply, matching card.border. */
+  --premium-upsell-radius: var(--radius-md); /** Container radius. Finance used 12px here, which would have made the upsell the only card in the system with a non-standard corner; realigned to the shared container radius (16px) that card and tile already use. */
+  --premium-upsell-icon: var(--semantic-status-info); /** Informational glyph — an upsell informs, it does not warn. */
+  --premium-paywall-preview-radius: var(--radius-md); /** Blurred feature preview — a container, so it takes the container radius. */
+  --premium-paywall-feature-check: var(--semantic-status-positive); /** Checkmark in the included-features list. Never the only signal that a feature is included — pair it with the feature text itself. */
+  --premium-paywall-price-selector-radius: var(--radius-chip); /** Price option card. Deliberately smaller than the container radius: it nests inside the paywall, and the tighter corner preserves the nesting hierarchy finance authored. */
+  --progress-track: var(--semantic-background-secondary); /** Unfilled portion of a bar or ring. */
+  --progress-fill: var(--semantic-interactive-default); /** Filled portion, for progress that carries no status meaning. */
+  --progress-height: var(--spacing-sm); /** Bar thickness at the default size. */
+  --progress-height-lg: var(--spacing-md); /** Bar thickness when the bar is the primary element of a card. */
+  --progress-radius: var(--radius-pill); /** Fully rounded ends on both the track and the fill. */
+  --progress-stroke: var(--spacing-sm); /** Ring stroke width. Matches the default bar height so the two read as one component family. */
+  --progress-duration: var(--motion-state-duration); /** Fill transition. Uses the shared state duration, so it collapses to 1ms under prefers-reduced-motion along with everything else. */
+  --progress-easing: var(--motion-state-easing); /** Fill transition easing. */
+  --progress-label: var(--semantic-text-primary); /** Primary label — the value itself. */
+  --progress-label-muted: var(--semantic-text-secondary); /** Secondary label — percentage, remaining amount, or description. */
+  --progress-on-track: var(--semantic-status-positive); /** Progressing as expected. Requires a success icon and a text label; color alone is not sufficient. */
+  --progress-at-risk: var(--semantic-status-warning); /** Approaching a limit or deadline. Requires a warning icon and a text label naming the threshold. */
+  --progress-exceeded: var(--semantic-status-negative); /** Past the limit. Requires an icon and a text label stating the overage. */
+  --progress-pending: var(--semantic-status-pending); /** Indeterminate or awaiting data. Requires an icon and a text label; do not animate indefinitely without one. */
+  --progress-complete: var(--semantic-status-positive); /** Finished. Distinguished from on-track by its icon and label, not by color — the two share a value deliberately. */
+  --skeleton-base: var(--semantic-background-secondary); /** Placeholder body. */
+  --skeleton-highlight: var(--semantic-background-raised); /** Shimmer sweep — deliberately low contrast against base, since it carries no information. */
+  --skeleton-radius: var(--radius-sm); /** Placeholder radius for blocks and controls. */
+  --skeleton-duration: var(--motion-loading-duration); /** Shimmer cycle. */
+  --skeleton-easing: var(--motion-loading-easing); /** Shimmer easing. */
+  --toast-surface: var(--semantic-background-elevated); /** Toast background — elevated so it separates from the page beneath. */
+  --toast-text: var(--semantic-text-primary); /** Message text. */
+  --toast-text-muted: var(--semantic-text-secondary); /** Supporting detail or timestamp. */
+  --toast-border: var(--semantic-border-default); /** Hairline edge, so the toast holds its shape on a busy surface. */
+  --toast-action: var(--semantic-accent-ink); /** Inline action ("Undo"). Must remain a real control, never the only way to recover. Uses accent.ink, not accent.default: this is gold TEXT, and pure Crown Gold measures 1.44:1 on a light toast surface. accent.ink is the per-theme gold that is legible as text. */
+  --toast-radius: var(--radius-md); /** Container radius — matches cards. */
+  --toast-layer: var(--layer-toast); /** Above dialogs, so a toast raised by a dialog action stays visible. */
+  --toast-enter-duration: var(--motion-fade-in-duration); /** Entrance. */
+  --toast-enter-easing: var(--motion-fade-in-easing); /** Entrance easing. */
+  --toast-exit-easing: var(--motion-fade-out-easing); /** Exit easing. */
+  --toast-positive: var(--semantic-status-positive); /** Success. Requires a success icon and text. */
+  --toast-negative: var(--semantic-status-negative); /** Error. Requires an icon, text, and a way to retry or recover. */
+  --toast-warning: var(--semantic-status-warning); /** Warning. Requires an icon and text naming the risk. */
+  --toast-info: var(--semantic-status-info); /** Neutral information. Requires an icon and text. */
+  --chart-tooltip-shadow: var(--elevation-raised); /** Tooltip elevation, so it reads above the plot area. */
+  --cognitive-button-padding-x: var(--cognitive-spacing-inline-padding); /** Roomier horizontal padding for a larger hit area. */
+  --cognitive-card-padding: var(--cognitive-spacing-inline-padding); /** Roomier card padding. */
+  --cognitive-card-gap: var(--cognitive-spacing-element-gap); /** Gap between elements inside the card. */
+  --modal-elevation: var(--elevation-raised); /** The single Soft Lift. */
+  --modal-enter-easing: var(--motion-page-transition-easing); /** Entrance easing. */
+  --modal-exit-duration: var(--motion-fade-out-duration); /** Exit. */
+  --toast-elevation: var(--elevation-raised); /** The single Soft Lift. */
+  --toast-exit-duration: var(--motion-fade-out-duration); /** Exit — faster than the entrance, so a dismissal feels answered. */
 }
