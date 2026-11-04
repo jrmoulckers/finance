@@ -70,6 +70,13 @@ export function GoalContributionDialog({
     return () => cancelAnimationFrame(id);
   }, [goal?.id, isOpen]);
 
+  // Drop a stale validation error as soon as the typed amount changes.
+  useEffect(() => {
+    if (amountInput.cents > 0) {
+      setAmountError(null);
+    }
+  }, [amountInput.cents]);
+
   const handleCancel = useCallback(() => {
     if (submitting) {
       return;

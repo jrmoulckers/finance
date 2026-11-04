@@ -296,6 +296,17 @@ describe('SettingsPage', () => {
     });
   });
 
+  describe('account in local-only mode', () => {
+    it('hides sign-out and delete-account when there is no account', () => {
+      localStorage.setItem('finance-local-only-mode', 'true');
+      renderSettingsAt('/settings/account');
+
+      expect(screen.getByText('None (local only)')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeInTheDocument();
+    });
+  });
+
   describe('shell', () => {
     it('renders the page title and section navigation rail', () => {
       renderSettingsAt('/settings/account');

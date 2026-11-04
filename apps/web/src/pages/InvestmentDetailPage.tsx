@@ -28,6 +28,11 @@ const TYPE_LABELS: Record<InvestmentType, string> = {
   OTHER: 'Other',
 };
 
+/** Formats a percentage value (already in percent units) with a consistent two-decimal, locale-aware style. */
+function formatPercentValue(value: number, locale: string): string {
+  return `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
 /** Investment detail page component. */
 export const InvestmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -135,7 +140,7 @@ export const InvestmentDetailPage: React.FC = () => {
                     : 'var(--semantic-negative, #dc2626)',
                 }}
               >
-                {formatGainLoss(gainLoss)} ({gainLossPercent}%)
+                {formatGainLoss(gainLoss)} ({formatPercentValue(gainLossPercent, locale)})
               </p>
             </div>
             <div>
@@ -183,7 +188,7 @@ export const InvestmentDetailPage: React.FC = () => {
             aria-valuenow={Math.min(Math.abs(gainLossPercent), 100)}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`${isPositive ? 'Gain' : 'Loss'} of ${Math.abs(gainLossPercent)}%`}
+            aria-label={`${isPositive ? 'Gain' : 'Loss'} of ${formatPercentValue(Math.abs(gainLossPercent), locale)}`}
           >
             <div
               className={`progress-bar__fill progress-bar__fill--${isPositive ? 'positive' : 'negative'}`}
@@ -198,8 +203,8 @@ export const InvestmentDetailPage: React.FC = () => {
             }}
           >
             {isPositive
-              ? `This holding is up ${gainLossPercent}% from your purchase price.`
-              : `This holding is down ${Math.abs(gainLossPercent)}% from your purchase price.`}
+              ? `This holding is up ${formatPercentValue(gainLossPercent, locale)} from your purchase price.`
+              : `This holding is down ${formatPercentValue(Math.abs(gainLossPercent), locale)} from your purchase price.`}
           </p>
         </div>
       </section>
@@ -358,7 +363,8 @@ export const InvestmentDetailPage: React.FC = () => {
                                 : 'var(--semantic-negative, #dc2626)',
                           }}
                         >
-                          {formatGainLoss(unrealizedGainLoss)} ({unrealizedGainLossPercent}%)
+                          {formatGainLoss(unrealizedGainLoss)} (
+                          {formatPercentValue(unrealizedGainLossPercent, locale)})
                         </td>
                         <td style={{ padding: 'var(--spacing-3)' }}>
                           <span
@@ -377,7 +383,7 @@ export const InvestmentDetailPage: React.FC = () => {
                               color: 'var(--semantic-text-secondary)',
                             }}
                           >
-                            {daysHeld.toLocaleString()} days
+                            {daysHeld.toLocaleString(locale)} {daysHeld === 1 ? 'day' : 'days'}
                           </span>
                         </td>
                       </tr>

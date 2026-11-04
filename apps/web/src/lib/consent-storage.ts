@@ -88,7 +88,7 @@ export const CONSENT_DESCRIPTIONS: Record<ConsentCategory, string> = {
   analytics:
     'Anonymous usage data to help us understand how the app is used and improve the experience.',
   error_reporting: 'Crash reports and error logs to help us identify and fix bugs quickly.',
-  sync: 'Synchronise your financial data across devices via our secure cloud servers.',
+  sync: 'Sync your financial data across your devices. Not used in local-only mode.',
   marketing:
     'Occasional emails about new features, tips, and product updates. You can unsubscribe at any time.',
 };

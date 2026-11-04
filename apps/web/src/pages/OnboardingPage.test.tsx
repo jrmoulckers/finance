@@ -783,7 +783,7 @@ describe('OnboardingPage', () => {
 
     const previewButton = screen.getByRole('button', { name: /preview goal/i });
     expect(previewButton).toBeDisabled();
-    expect(screen.getByText(/enter a target amount greater than \$0/i)).toBeInTheDocument();
+    expect(screen.getByText(/enter a target amount greater than zero/i)).toBeInTheDocument();
 
     // Clicking the disabled control must not open the confirmation.
     fireEvent.click(previewButton);
@@ -792,7 +792,7 @@ describe('OnboardingPage', () => {
     // A positive amount re-enables previewing and clears the hint.
     fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '500' } });
     expect(screen.getByRole('button', { name: /preview goal/i })).toBeEnabled();
-    expect(screen.queryByText(/enter a target amount greater than \$0/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/enter a target amount greater than zero/i)).not.toBeInTheDocument();
   });
 
   it('strips non-numeric characters from goal amount inputs (#3411)', () => {
