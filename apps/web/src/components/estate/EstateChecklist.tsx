@@ -21,6 +21,8 @@ export const EstateChecklist: React.FC<EstateChecklistProps> = ({ items, accessI
     (categoryId) => getEstateCategory(categoryId).label,
   );
 
+  const hasItems = items.length > 0;
+
   const checks = [
     {
       id: 'categories',
@@ -31,20 +33,22 @@ export const EstateChecklist: React.FC<EstateChecklistProps> = ({ items, accessI
     {
       id: 'documents',
       label: 'Document locations recorded',
-      detail:
-        summary.itemsMissingDocuments === 0
+      detail: !hasItems
+        ? 'Add an entry to record where documents live.'
+        : summary.itemsMissingDocuments === 0
           ? 'Every entry includes where documents live.'
           : `${summary.itemsMissingDocuments} entr${summary.itemsMissingDocuments === 1 ? 'y is' : 'ies are'} missing a document location.`,
-      complete: summary.itemsMissingDocuments === 0,
+      complete: hasItems && summary.itemsMissingDocuments === 0,
     },
     {
       id: 'verification',
       label: 'Recently verified',
-      detail:
-        summary.itemsMissingVerification === 0
+      detail: !hasItems
+        ? 'Add an entry and verify it to track freshness.'
+        : summary.itemsMissingVerification === 0
           ? 'Every entry has a verification date.'
           : `${summary.itemsMissingVerification} entr${summary.itemsMissingVerification === 1 ? 'y needs' : 'ies need'} a verification date.`,
-      complete: summary.itemsMissingVerification === 0,
+      complete: hasItems && summary.itemsMissingVerification === 0,
     },
     {
       id: 'contacts',
