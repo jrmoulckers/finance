@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { EmptyState, Icon, ReadAloudButton } from '../components/common';
+import { EmptyState, Icon, LoadingSpinner, ReadAloudButton } from '../components/common';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { IconToken } from '../icons/tokens';
 import { useAccounts } from '../hooks/useAccounts';
@@ -519,9 +519,13 @@ export function CashRunwayPage() {
             )}
           </section>
         </>
+      ) : loading ? (
+        <div className="analytics-page__loading">
+          <LoadingSpinner label="Loading your cash position" />
+        </div>
       ) : (
         <EmptyState
-          title={loading ? 'Loading your cash position…' : 'No cash data yet'}
+          title="No cash data yet"
           description="Add a checking, savings or cash account and schedule bills or expected invoice payments to project your cash runway."
         />
       )}
