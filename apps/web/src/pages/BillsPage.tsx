@@ -86,12 +86,19 @@ function getStatusIcon(status: BillStatus): IconName {
 }
 
 /** Format a due date relative to today. */
-function formatDueDate(dueDate: string): string {
+function formatDueDate(dueDate: string, settled = false): string {
   const due = new Date(`${dueDate}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil((due.getTime() - today.getTime()) / 86400000);
 
+  if (settled) {
+    return due.toLocaleDateString(getCurrentLocale(), {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
   if (diffDays === 0) return 'Due today';
   if (diffDays === 1) return 'Due tomorrow';
   if (diffDays === -1) return '1 day overdue';
@@ -416,7 +423,11 @@ export const BillsPage: React.FC = () => {
                           marginBottom: 'var(--spacing-2)',
                         }}
                       >
-                        {bill.payee} · {formatDueDate(bill.dueDate)}
+                        {bill.payee} ·{' '}
+                        {formatDueDate(
+                          bill.dueDate,
+                          bill.status === 'PAID' || bill.status === 'CANCELLED',
+                        )}
                       </p>
 
                       {bill.isAutoPay && (

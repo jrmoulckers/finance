@@ -248,6 +248,21 @@ describe('BillsPage', () => {
     expect(markPaidButtons.length).toBeGreaterThan(0);
   });
 
+  it('shows a plain due date, not overdue wording, for paid bills', () => {
+    mockedUseBills.mockReturnValue({
+      ...mockedUseBills(),
+      bills: [{ ...mockBills[1], id: 'bill-paid', name: 'Paid Internet', status: 'PAID' as const }],
+    });
+    render(
+      <MemoryRouter>
+        <BillsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Feb 1, 2025/)).toBeInTheDocument();
+    expect(screen.queryByText(/days? overdue/i)).not.toBeInTheDocument();
+  });
+
   describe('compact-width responsive layout (#2190)', () => {
     it('reflows the summary into a grid of three labelled metrics', () => {
       render(
