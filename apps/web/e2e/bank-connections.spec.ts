@@ -33,11 +33,11 @@ test.describe('Bank Connections page', () => {
   test('shows the connection health summary strip', async ({ authenticatedPage: page }) => {
     await page.goto('/bank-connections');
 
-    // The summary strip is always rendered (role="status") regardless of how
-    // many connections exist, and reports the total connection count.
-    const summary = page.getByRole('status', { name: /connection health summary/i });
+    // Persistent summary data is a named region, not a live announcement.
+    const summary = page.getByRole('region', { name: /connection health summary/i });
     await expect(summary).toBeVisible();
     await expect(summary).toContainText(/connections/i);
+    await expect(summary).not.toHaveAttribute('aria-live');
   });
 
   test('renders all four section tabs', async ({ authenticatedPage: page }) => {
@@ -54,6 +54,28 @@ test.describe('Bank Connections page', () => {
     );
   });
 
+  test('announces one user refresh without making the summary live or enabling bank setup', async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto('/bank-connections');
+    const refresh = page.getByRole('button', { name: 'Refresh connection health' });
+    await expect(refresh).toBeEnabled();
+    await expect(page.getByRole('button', { name: /connect a bank/i })).toHaveCount(0);
+    await refresh.focus();
+    await refresh.press('Enter');
+    await expect(refresh).toBeEnabled();
+    await expect(
+      page.locator('[aria-live="polite"]').filter({
+        hasText: 'Connections refreshed: 0 healthy, 0 with issues.',
+      }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole('region', { name: 'Connection health summary' }),
+    ).not.toHaveAttribute('aria-live');
+    await expect(refresh).toHaveAccessibleName('Refresh connection health');
+    await expect(refresh).toBeFocused();
+  });
+
   test('switching to the Providers tab updates the active tab', async ({
     authenticatedPage: page,
   }) => {
@@ -63,6 +85,7 @@ test.describe('Bank Connections page', () => {
     await providersTab.click();
 
     await expect(providersTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Provider Status', level: 2 })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Connection Health' })).toHaveAttribute(
       'aria-selected',
       'false',
@@ -94,5 +117,31 @@ test.describe('Bank Connections page', () => {
     await safetyTab.click();
 
     await expect(safetyTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Safety Center', level: 2 })).toBeVisible();
+    await expect(
+      page.locator('.safety-center [aria-live], .safety-center [role="status"]'),
+    ).toHaveCount(0);
+  });
+
+  test('keyboard navigation preserves the tab outline and manual crypto panel', async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto('/bank-connections');
+    const health = page.getByRole('tab', { name: 'Connection Health' });
+    await health.focus();
+    await health.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Providers' })).toBeFocused();
+    await expect(page.getByRole('heading', { name: 'Provider Status', level: 2 })).toBeVisible();
+    await page.getByRole('tab', { name: 'Providers' }).press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Wallets & Exchanges' })).toBeFocused();
+    await expect(
+      page.getByRole('heading', { name: 'Wallets & Exchanges', level: 2 }),
+    ).toBeAttached();
+    await expect(
+      page.getByRole('tabpanel').getByRole('heading', { level: 3 }).first(),
+    ).toBeVisible();
+    await page.getByRole('tab', { name: 'Wallets & Exchanges' }).press('End');
+    await expect(page.getByRole('tab', { name: 'Safety Center' })).toBeFocused();
+    await expect(page.getByRole('heading', { name: 'Safety Center', level: 2 })).toBeVisible();
   });
 });

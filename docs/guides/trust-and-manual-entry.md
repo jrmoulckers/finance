@@ -211,6 +211,20 @@ All trust messaging must meet WCAG 2.2 AA:
 - Links to security documentation must have descriptive link text
 - Trust messaging must be reachable via screen reader navigation
 
+The web Bank Connections dashboard keeps its summary, provider badges, freshness
+values, and Safety Center explanation readable without making them live regions
+([#3863](https://github.com/jrmoulckers/finance/issues/3863)). A successful
+user-initiated refresh sends one concise health-count message through the existing
+canonical announcer; loading messages and errors remain announced separately.
+Each tab has an `h2` below the page's `h1`, including loading and empty states.
+Connection cards and Safety Center connector sections use `h3`
+([#3864](https://github.com/jrmoulckers/finance/issues/3864)).
+
+Regression coverage uses synthetic component/axe and stubbed browser tests without
+enabling a provider. Native screen-reader speech and heading navigation still
+require a manual NVDA, Narrator, or VoiceOver pass; automated checks are not proof
+of those results.
+
 ---
 
 _For technical encryption details, see the [Encryption Explainer](../compliance/encryption-explainer.md). For the full privacy and security guide, see [Privacy & Security](./privacy-security.md)._
