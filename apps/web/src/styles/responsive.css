@@ -22,6 +22,9 @@
   flex-direction: column;
   min-width: 0;
   min-height: 100dvh;
+  /* Clear the fixed bottom nav and home-indicator safe area below everything in
+     the column (footer + notice banners), not just `.app-main`. */
+  padding-bottom: calc(var(--layout-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---------------------------------------------------------------------------
@@ -168,9 +171,7 @@
   /* Clear the fixed bottom nav *and* the device home-indicator safe area so the
      last row / primary CTA is never hidden on notched phones (needs
      viewport-fit=cover on the viewport meta to resolve to a non-zero value). */
-  padding-bottom: calc(
-    var(--layout-bottom-nav-height) + var(--spacing-4) + env(safe-area-inset-bottom, 0px)
-  );
+  padding-bottom: var(--spacing-4);
   /* Respect the notch in landscape so content isn't clipped behind it. */
   padding-left: max(var(--layout-content-padding), env(safe-area-inset-left, 0px));
   padding-right: max(var(--layout-content-padding), env(safe-area-inset-right, 0px));
@@ -1095,6 +1096,9 @@
 @media (min-width: 768px) {
   .app-layout {
     flex-direction: row;
+  }
+  .app-shell {
+    padding-bottom: 0;
   }
   .app-header {
     display: none;
