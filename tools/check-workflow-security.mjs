@@ -47,7 +47,7 @@ const localReusableBaselines = {
   },
   'reusable-release-smoke-test.yml': {
     canonicalSha: 'f0bacf77dbdf0f5394793031875700b515ac2a1d',
-    contentHash: '3c6a90f99e9a8cf7c08bec0ed825b583a48884068710ba3e028c15641aad3f05',
+    contentHash: '24c03bd20ed3b23cd3110f41e4fa52e4a0907a6b8c163990e2a7b40beaf56912',
   },
 };
 

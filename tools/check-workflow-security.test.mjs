@@ -434,3 +434,19 @@ test('the failure branch emits the scope before returning', () => {
     'the failure branch must print the scope before it sets the exit code',
   );
 });
+
+test('Android SDK setup explicitly requests supported platform-tools instead of legacy tools', async () => {
+  const { load: loadYaml } = await import('js-yaml');
+  let setupCount = 0;
+  for (const [file, source] of Object.entries(workflowsOnDisk())) {
+    const workflow = loadYaml(source);
+    for (const job of Object.values(workflow.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        if (!step.uses?.startsWith('android-actions/setup-android@')) continue;
+        assert.equal(step.with?.packages, 'platform-tools', `${file}: ${step.name}`);
+        setupCount++;
+      }
+    }
+  }
+  assert.ok(setupCount > 0, 'expected Android SDK setup steps');
+});
