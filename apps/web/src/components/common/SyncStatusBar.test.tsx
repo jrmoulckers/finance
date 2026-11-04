@@ -46,6 +46,18 @@ describe('SyncStatusBar', () => {
     expect(screen.getByText('All synced')).toBeInTheDocument();
   });
 
+  it('shows "Local only" instead of "All synced" in local-only mode', () => {
+    localStorage.setItem('finance-local-only-mode', 'true');
+    syncStatusMock.lastSyncTime = new Date().toISOString();
+
+    render(<SyncStatusBar />);
+
+    expect(screen.getByText('Local only. Saved on this device')).toBeInTheDocument();
+    expect(screen.queryByText('All synced')).not.toBeInTheDocument();
+    expect(screen.queryByText('just now')).not.toBeInTheDocument();
+    localStorage.removeItem('finance-local-only-mode');
+  });
+
   it('shows pending changes count with Sync now button', () => {
     syncStatusMock.pendingMutations = 3;
 

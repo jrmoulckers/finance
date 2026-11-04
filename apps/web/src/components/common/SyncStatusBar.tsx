@@ -235,6 +235,15 @@ const SyncIcon: React.FC<SyncIconProps> = ({ variant }) => {
         </svg>
       );
 
+    case 'local-only':
+      // Device
+      return (
+        <svg {...common} aria-label="Local only">
+          <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+          <path d="M11 18h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+
     case 'conflict':
       // Warning diamond
       return (

@@ -25,8 +25,10 @@ import { useLivePowerSyncStatus } from './useLivePowerSyncStatus';
 import { getUnresolvedConflicts } from '../db/sync/sync-conflict';
 import { isPowerSyncEnabled } from '../db/sync/powersync/database';
 import type { LivePowerSyncStatus } from '../db/sync/powersync/live-status';
+import { isLocalOnlyMode } from '../lib/local-only-mode';
 
-export type SyncStatusVariant = 'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'conflict';
+export type SyncStatusVariant =
+  'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'conflict' | 'local-only';
 
 export interface SyncStatusView {
   /** The single derived status variant shared by every sync surface. */
@@ -84,6 +86,8 @@ export function describeSyncVariant(
       return 'Offline. Changes saved locally';
     case 'conflict':
       return `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''} need attention`;
+    case 'local-only':
+      return 'Local only. Saved on this device';
   }
 }
 
@@ -164,12 +168,18 @@ export function useSyncStatusVariant(): SyncStatusView {
     variant = deriveLiveVariant(live, isOffline);
   }
 
+  // Local-only mode disables sync entirely, so never claim a synced state.
+  const localOnly = isLocalOnlyMode();
+  if (localOnly) {
+    variant = 'local-only';
+  }
+
   const retry = useCallback(() => {
     setLastSyncFailed(false);
     syncNow();
   }, [syncNow]);
 
-  const activeLastSyncTime = powerSyncActive ? live.lastSyncedAt : lastSyncTime;
+  const activeLastSyncTime = localOnly ? null : powerSyncActive ? live.lastSyncedAt : lastSyncTime;
 
   return {
     variant,
