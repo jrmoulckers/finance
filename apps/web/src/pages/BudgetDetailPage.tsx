@@ -16,7 +16,11 @@ import { useCategories } from '../hooks/useCategories';
 import { isFoodMealBudgetParentCategory } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
-import { calculateRolloverLedger, generateVarianceInsights } from '../lib/budgeting-beta';
+import {
+  calculateRolloverLedger,
+  generateVarianceInsights,
+  getMonthProgress,
+} from '../lib/budgeting-beta';
 import '../styles/pages.css';
 
 /*
@@ -221,6 +225,7 @@ export const BudgetDetailPage: React.FC = () => {
       },
     ],
     1,
+    getMonthProgress(new Date()),
   )[0];
 
   return (

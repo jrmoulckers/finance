@@ -111,7 +111,11 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
         <p className="privacy-settings__info">
           Manage how your data is used. Privacy policy version: {CURRENT_POLICY_VERSION}.
           {consent.timestamp && (
-            <> Last updated: {new Date(consent.timestamp).toLocaleDateString()}.</>
+            <>
+              {' '}
+              Last updated:{' '}
+              {new Date(consent.timestamp).toLocaleDateString(undefined, { dateStyle: 'medium' })}.
+            </>
           )}
         </p>
 
