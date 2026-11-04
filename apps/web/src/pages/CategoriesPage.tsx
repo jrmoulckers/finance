@@ -26,7 +26,8 @@ const FamilyKidsCategoryCard = lazy(
 );
 
 function isCustomCategoryIcon(iconName: string | null | undefined): iconName is string {
-  return Boolean(iconName && iconName.length <= 4);
+  // Plain identifiers ('home', 'car') map to AppIcon; anything else is a custom emoji.
+  return Boolean(iconName && !/^[a-z][a-z0-9_-]*$/i.test(iconName));
 }
 
 function getCategoryIcon(iconName: string | null | undefined): IconName {
