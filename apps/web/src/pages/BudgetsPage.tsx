@@ -901,6 +901,16 @@ export const BudgetsPage: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <p
+                style={{
+                  marginTop: 'var(--spacing-3)',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+              >
+                Spent counts only expenses in each budget&apos;s categories. Uncategorized
+                transactions are not included.
+              </p>
             </div>
           </section>
           <section className="page-section" aria-labelledby="essentials-budget-title">
