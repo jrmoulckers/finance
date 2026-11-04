@@ -86,6 +86,19 @@ describe('GoalContributionDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('clears the validation error once a valid amount is typed', async () => {
+    renderDialog();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '25.00' } });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
+
   it('asks for confirmation before contributing past the goal target', async () => {
     const goal = makeGoal({ currentAmount: { amount: 95000 } });
     const { onSubmit } = renderDialog({}, goal);
