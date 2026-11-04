@@ -184,16 +184,9 @@ export const NetWorthPage: React.FC = () => {
     return <ErrorBanner message={error} onRetry={refresh} />;
   }
 
-  if (!currentNetWorth) {
-    return (
-      <EmptyState
-        title="No accounts found"
-        description="Add bank accounts, credit cards, or investment accounts to see your net worth breakdown."
-      />
-    );
-  }
-
-  const isEmpty = currentNetWorth.assets === 0 && currentNetWorth.liabilities === 0;
+  const isEmpty = currentNetWorth
+    ? currentNetWorth.assets === 0 && currentNetWorth.liabilities === 0
+    : false;
   const workspaceLabel =
     purposeFilter === 'business' ? 'business' : purposeFilter === 'personal' ? 'personal' : '';
   const emptyDescription =
@@ -218,6 +211,18 @@ export const NetWorthPage: React.FC = () => {
       <AccountPurposeFilterControl value={purposeFilter} onChange={setPurposeFilter} />
     </div>
   );
+
+  if (!currentNetWorth) {
+    return (
+      <div className="analytics-page">
+        {header}
+        <EmptyState
+          title="No accounts found"
+          description="Add bank accounts, credit cards, or investment accounts to see your net worth breakdown."
+        />
+      </div>
+    );
+  }
 
   if (isEmpty) {
     return (
