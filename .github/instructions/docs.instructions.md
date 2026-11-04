@@ -1,5 +1,6 @@
 ---
 applyTo: 'docs/**,*.md,**/README.md'
+description: 'Documentation conventions. Use for READMEs, guides, ADRs, diagrams, changelogs, cross-references, and ownership of generated documentation.'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
