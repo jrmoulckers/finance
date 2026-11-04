@@ -237,6 +237,16 @@ describe('BillsPage', () => {
     expect(screen.getByText('No bills yet')).toBeInTheDocument();
   });
 
+  it('exposes the Add Bill link under its visible name (WCAG 2.5.3)', () => {
+    render(
+      <MemoryRouter>
+        <BillsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Add Bill' })).toHaveAttribute('href', '/bills/new');
+  });
+
   it('renders mark paid button for upcoming bills', () => {
     render(
       <MemoryRouter>
