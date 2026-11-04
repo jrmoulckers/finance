@@ -268,8 +268,7 @@ export const SignupPage: React.FC = () => {
         {displayMessage && (
           <div
             className={displayMessage.type === 'error' ? 'auth-error' : 'auth-info'}
-            role="status"
-            aria-live="polite"
+            role={displayMessage.type === 'error' ? 'alert' : 'status'}
           >
             {displayMessage.text}
           </div>
