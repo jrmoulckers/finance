@@ -56,6 +56,7 @@ import {
 import {
   calculateActiveCadenceRange,
   generateVarianceInsights,
+  getMonthProgress,
   summarizeCadenceIncome,
   summarizeEnvelopePlan,
   type IncomeEventInput,
@@ -482,6 +483,7 @@ export const BudgetsPage: React.FC = () => {
           priorActualCents: null,
         })),
         3,
+        getMonthProgress(new Date()),
       ),
     [budgets],
   );
