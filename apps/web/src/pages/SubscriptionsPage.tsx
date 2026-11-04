@@ -18,6 +18,7 @@
 import React from 'react';
 import { CurrencyDisplay, EmptyState, ErrorState, ListSkeleton } from '../components/common';
 import { useSubscriptions } from '../hooks/useSubscriptions';
+import { pluralize } from '../lib/ui/pluralize';
 import type {
   DetectedSubscription,
   SubscriptionCategoryGroup,
@@ -50,14 +51,14 @@ interface SubscriptionCardProps {
 const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onToggleStatus }) => (
   <article
     className={`analytics-subscription-card analytics-subscription-card--${subscription.status}`}
-    aria-label={`${subscription.name}: $${(subscription.monthlyCostCents / 100).toFixed(2)} per month, ${subscription.status}`}
+    aria-label={`${subscription.name}: ${STATUS_LABELS[subscription.status]}`}
     role="listitem"
   >
     <div className="analytics-subscription-card__info">
       <h4 className="analytics-subscription-card__name">{subscription.name}</h4>
       <p className="analytics-subscription-card__meta">
         {CADENCE_LABELS[subscription.cadence]} · {subscription.categoryName} ·{' '}
-        {subscription.transactionCount} transactions
+        {subscription.transactionCount} {pluralize(subscription.transactionCount, 'transaction')}
       </p>
     </div>
     <div className="analytics-subscription-card__cost">
@@ -74,7 +75,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onTog
       <button
         className={`analytics-status-btn analytics-status-btn--${subscription.status}`}
         onClick={onToggleStatus}
-        aria-label={`Change status of ${subscription.name}. Currently: ${subscription.status}`}
+        aria-label={`Change status of ${subscription.name}. Currently: ${STATUS_LABELS[subscription.status]}`}
       >
         {STATUS_LABELS[subscription.status]}
       </button>
