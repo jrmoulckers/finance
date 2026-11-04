@@ -101,7 +101,7 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onDismiss }) => (
       onClick={() => onDismiss(alert.watchlist.id)}
       aria-label={`Dismiss ${alert.watchlist.categoryName} alert`}
     >
-      Γ£ò
+      ✕
     </button>
   </div>
 );
