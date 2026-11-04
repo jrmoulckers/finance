@@ -103,6 +103,7 @@ describe('NetWorthPage', () => {
 
     render(<NetWorthPage />);
     expect(screen.getByText('No accounts found')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /net worth/i })).toBeInTheDocument();
   });
 
   it('renders net worth data and milestones', () => {
