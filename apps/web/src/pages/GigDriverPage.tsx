@@ -279,14 +279,6 @@ export function GigDriverPage() {
 
   const handleRetry = useCallback(() => refresh(), [refresh]);
 
-  if (loading) {
-    return <LoadingSpinner label="Loading gig-driver economics" />;
-  }
-
-  if (error) {
-    return <ErrorBanner message={error} onRetry={handleRetry} />;
-  }
-
   const hasData = transactions.length > 0 || trips.length > 0;
 
   return (
@@ -399,7 +391,11 @@ export function GigDriverPage() {
         </div>
       </section>
 
-      {hasData ? (
+      {loading ? (
+        <LoadingSpinner label="Loading gig-driver economics" />
+      ) : error ? (
+        <ErrorBanner message={error} onRetry={handleRetry} />
+      ) : hasData ? (
         <>
           <TakeHomeSummary result={takeHome} periods={profitability} />
           <VehicleCostSummaryCard summary={vehicleSummary} reminders={maintenanceReminders} />
