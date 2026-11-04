@@ -113,6 +113,8 @@ export interface SqliteDb {
   exec(sql: string, params?: unknown[]): void;
   selectAll(sql: string, params?: unknown[]): Row[];
   selectOne(sql: string, params?: unknown[]): Row | null;
+  /** Wait for queued snapshot persistence; rejects when the latest write fails. */
+  flush?(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -1346,7 +1348,15 @@ async function initIndexedDbBackend(): Promise<{
   let SQL: any;
   try {
     const initSqlJs = (await import(/* webpackChunkName: "sql-js" */ 'sql.js')).default;
+    // sql.js caches its initialization promise, including rejection. Fetch
+    // before invoking it so a transient network failure does not poison retry.
+    const wasmResponse = await fetch(`${import.meta.env.BASE_URL}assets/sql-wasm/sql-wasm.wasm`);
+    if (!wasmResponse.ok) {
+      throw new Error('Failed to download the local database engine.');
+    }
+    const wasmBinary = await wasmResponse.arrayBuffer();
     SQL = await initSqlJs({
+      wasmBinary,
       locateFile: (file: string) => `${import.meta.env.BASE_URL}assets/sql-wasm/${file}`,
     });
   } catch (err) {
@@ -1995,6 +2005,7 @@ function createDbWrapper(
   backend: StorageBackend,
 ): SqliteDb {
   const shouldPersistAfterExec = backend === 'indexeddb' ? createIndexedDbPersistenceGate() : null;
+  let pendingPersistence: Promise<void> = Promise.resolve();
 
   return {
     backend,
@@ -2002,7 +2013,15 @@ function createDbWrapper(
     exec(sql: string, params?: unknown[]): void {
       execRaw(driver, db, sql, backend, params);
       if (backend === 'indexeddb' && shouldPersistAfterExec?.(sql) === true) {
-        void persistToIndexedDB(DB_NAME, exportDatabase(driver, db, backend));
+        const snapshot = exportDatabase(driver, db, backend);
+        const persist = () => persistToIndexedDB(DB_NAME, snapshot);
+        // Serialize snapshot verification/commit. A later full snapshot can
+        // retry a failed write without allowing an older snapshot to win.
+        pendingPersistence = pendingPersistence.then(persist, persist);
+        void pendingPersistence.catch(() => {
+          // eslint-disable-next-line no-console
+          console.error('[db] Local snapshot persistence failed.');
+        });
       }
     },
 
@@ -2015,8 +2034,13 @@ function createDbWrapper(
       return rows[0] ?? null;
     },
 
+    flush(): Promise<void> {
+      return pendingPersistence;
+    },
+
     async close(): Promise<void> {
       if (backend === 'indexeddb') {
+        await pendingPersistence;
         await persistToIndexedDB(DB_NAME, exportDatabase(driver, db, backend));
         db.close();
       } else {

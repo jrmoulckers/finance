@@ -72,6 +72,10 @@ describe('App shell pre-cache list (#1330)', () => {
     expect(APP_SHELL).toContain('/manifest.json');
   });
 
+  it('precaches the database engine before the first offline reload', () => {
+    expect(APP_SHELL).toContain('/assets/sql-wasm/sql-wasm.wasm');
+  });
+
   it('normalizes Vite base paths with leading and trailing slashes', () => {
     expect(normalizeServiceWorkerBasePath('/finance')).toBe('/finance/');
     expect(normalizeServiceWorkerBasePath('finance/')).toBe('/finance/');
@@ -83,6 +87,7 @@ describe('App shell pre-cache list (#1330)', () => {
       '/finance/',
       '/finance/index.html',
       '/finance/manifest.json',
+      '/finance/assets/sql-wasm/sql-wasm.wasm',
     ]);
   });
 

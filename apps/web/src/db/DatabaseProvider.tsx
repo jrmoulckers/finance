@@ -427,6 +427,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
           // eslint-disable-next-line no-console
           console.warn('[db] Seed step failed; continuing with an empty database.', seedError);
         }
+        await result.db.flush?.();
 
         if (isDisposed) {
           // Provider truly unmounted (not just StrictMode replay) — leave

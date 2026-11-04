@@ -214,8 +214,8 @@ export function tablesIntersect(
 // ---------------------------------------------------------------------------
 
 /**
- * Wrap a synchronous {@link SqliteDb} as an {@link AsyncDb}. Reads and writes
- * resolve immediately; change notifications flow through the existing cross-tab
+ * Wrap a synchronous {@link SqliteDb} as an {@link AsyncDb}. Writes wait for
+ * durable snapshot persistence; change notifications flow through the existing cross-tab
  * data-change bus so `useLiveQuery` refreshes exactly as it does today.
  */
 export function createSqliteAsyncDb(db: SqliteDb): AsyncDb {
@@ -228,9 +228,9 @@ export function createSqliteAsyncDb(db: SqliteDb): AsyncDb {
     getOptional<T = Row>(sql: string, params?: unknown[]): Promise<T | null> {
       return Promise.resolve((db.selectOne(sql, params) ?? null) as T | null);
     },
-    execute(sql: string, params?: unknown[]): Promise<void> {
+    async execute(sql: string, params?: unknown[]): Promise<void> {
       db.exec(sql, params);
-      return Promise.resolve();
+      await db.flush?.();
     },
     onChange(tables: readonly string[], callback: () => void): () => void {
       const watched = new Set(normalizeTableNames(tables));

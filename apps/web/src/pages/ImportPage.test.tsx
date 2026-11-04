@@ -166,6 +166,15 @@ describe('ImportPage', () => {
   // =========================================================================
 
   describe('Upload step', () => {
+    it('sets the owning household together with the selected import account', () => {
+      renderPage();
+      fireEvent.change(screen.getByLabelText('Import into account'), {
+        target: { value: 'account-2' },
+      });
+      expect(setSelectedAccountIdMock).toHaveBeenCalledWith('account-2');
+      expect(setSelectedHouseholdIdMock).toHaveBeenCalledWith('household-1');
+    });
+
     it('renders upload heading', () => {
       renderPage();
 

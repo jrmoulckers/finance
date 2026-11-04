@@ -577,6 +577,33 @@ The `OfflineBanner` component renders a non-intrusive banner with
 
 Use Playwright for browser-level verification of core flows such as authentication, offline recovery, and navigation between lazy-loaded routes. When the suite is enabled locally, run it from `apps/web` with `npx playwright install` once and `npx playwright test` for regular execution.
 
+#### Synthetic local-core acceptance
+
+Run `npm run test:e2e:local -w apps/web` on Windows with Microsoft Edge installed.
+This separate runner builds the production PWA into `dist/local`, starts its own
+strict loopback preview on port 25973 (never reuses another server), and uses fresh
+browser contexts. It does not read environment files, provision services, mock
+authentication, or enable the `__PLAYWRIGHT_E2E__` database stub. Local-only,
+onboarding-complete and essential-only consent preferences are preselected; the
+normal sample workspace supplies synthetic household/category prerequisites.
+SQLite snapshot encryption is explicitly enabled.
+
+The scenarios exercise account, transaction, budget and goal CRUD through the UI,
+reload persistence, a downloaded transaction CSV imported back into SQLite,
+and recovery after a failed WASM download. Account coverage also waits for the
+built service worker to control the page, closes the page, opens a new page while
+the browser context is offline, deletes locally, and reloads offline and online.
+This is genuine service-worker-backed **offline page reopen**, not just an SPA
+route change. It is not a full browser-process restart, installed-app relaunch,
+OPFS-worker validation, native-platform validation, or cross-client replication
+proof. The current main-thread browser path uses SQLite-WASM with encrypted
+IndexedDB snapshots.
+
+Unlike this runner, the default `authenticatedPage` fixture uses an in-memory
+database stub and blocks service workers. Its form/navigation coverage must not
+be cited as durable storage or offline PWA restart evidence. Traces, screenshots
+and video are disabled for the local-core runner; use synthetic data only.
+
 ### Test Stack
 
 - **Vitest** — test runner (configuration in `vitest.config.ts`)

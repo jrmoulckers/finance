@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:local": "playwright test --config=playwright.local.config.ts",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts --project=chromium",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts --project=chromium-edge",
     "test:e2e:live:chromium": "playwright test --config=playwright.live.config.ts --project=chromium",
