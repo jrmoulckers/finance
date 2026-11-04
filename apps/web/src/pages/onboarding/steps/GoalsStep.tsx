@@ -13,6 +13,17 @@ import { formatCurrencyValue } from '../../../lib/currency';
 import { todayISO } from '../goal-math';
 import type { GlossaryTermId, GoalDraft, StoredGoal } from '../types';
 
+/** Formats a `YYYY-MM-DD` value as a localized date without timezone drift. */
+function formatTargetDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  if (!year || !month || !day) return isoDate;
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 export type GoalsStepProps = {
   onboardingClassName: string;
   onboardingProgressLiveRegion: React.ReactNode;
@@ -164,7 +175,7 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
               className="onboarding__path-description"
               role="note"
             >
-              Enter a target amount greater than $0 to preview and save your goal.
+              Enter a target amount greater than zero to preview and save your goal.
             </p>
           )}
 
@@ -177,7 +188,7 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0,
                 })}
-                {goalDraft.targetDate ? ` by ${goalDraft.targetDate}` : ''}. Estimated monthly
+                {goalDraft.targetDate ? ` by ${formatTargetDate(goalDraft.targetDate)}` : ''}. Estimated monthly
                 contribution:{' '}
                 {formatCurrencyValue(monthlyContribution, {
                   minimumFractionDigits: 0,
