@@ -38,6 +38,7 @@ import {
   useChartKeyboardNavigation,
 } from './chart-accessibility';
 import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
+import { formatCount } from '../../lib/ui/pluralize';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import './spending-trend.css';
 
@@ -247,7 +248,7 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
     const min = Math.min(...values);
     const max = Math.max(...values);
     const total = values.reduce((sum, v) => sum + v, 0);
-    return `${title}: ${data.length} data points, range ${formatChartCurrency(min, currency, 'en-US', maskingMode)} to ${formatChartCurrency(max, currency, 'en-US', maskingMode)}, total ${formatChartCurrency(total, currency, 'en-US', maskingMode)}.`;
+    return `${title}: ${formatCount(data.length, 'data point')}, range ${formatChartCurrency(min, currency, 'en-US', maskingMode)} to ${formatChartCurrency(max, currency, 'en-US', maskingMode)}, total ${formatChartCurrency(total, currency, 'en-US', maskingMode)}.`;
   }, [data, currency, title, maskingMode]);
 
   const dataPointRows = useMemo(
