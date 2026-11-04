@@ -104,6 +104,11 @@ Get-NetTCPConnection -State Listen |
 
 ## Stage 1: unblock the isolated bootstrap (tooling review, not execution)
 
+The [local-only signup adapter contract](./isolated-signup-adapter.md) now
+provides the separately opt-in database prerequisite. It is not part of the
+production migration chain and does not provide the materializer, authorize
+startup, or establish real signup/replication acceptance.
+
 DevOps owns the smallest separate prerequisite: a local-only profile/materializer
 around the Supabase CLI and the existing PowerSync/Mongo service definitions.
 Database/backend owners review schema and auth provisioning. This plan adds no
