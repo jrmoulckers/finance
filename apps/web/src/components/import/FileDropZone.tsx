@@ -77,19 +77,20 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
     [onFile],
   );
 
-  const handleBrowseClick = useCallback(() => {
+  const handleBrowseClick = useCallback((event: React.MouseEvent) => {
+    // The input's own click already opens the picker; re-dispatching would loop.
+    if (event.target === fileInputRef.current) return;
     fileInputRef.current?.click();
   }, []);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        handleBrowseClick();
-      }
-    },
-    [handleBrowseClick],
-  );
+  // The visually hidden input is the single tab stop; it opens the picker natively.
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.target === fileInputRef.current) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      fileInputRef.current?.click();
+    }
+  }, []);
 
   const defaultMessage = (
     <>
@@ -120,7 +121,6 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
         className="import-upload-zone__input"
         onChange={handleFileChange}
         aria-label={inputLabel}
-        tabIndex={-1}
       />
     </div>
   );
