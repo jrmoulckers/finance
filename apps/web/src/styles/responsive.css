@@ -147,6 +147,13 @@
   font-size: var(--type-scale-title-font-size);
   font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
+  /* Truncate rather than overlap the action buttons on narrow viewports. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-header__lead > div {
+  min-width: 0;
 }
 .app-header__lead {
   display: flex;
@@ -161,6 +168,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
+  flex-shrink: 0;
 }
 .app-main {
   flex: 1;
