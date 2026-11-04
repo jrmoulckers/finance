@@ -14,6 +14,7 @@ import {
 import { Checkbox } from '../components/common/Checkbox';
 import { useAccounts, useInvestments, useTransactions } from '../hooks';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
+import { getCurrentLocale } from '../lib/i18n';
 import { dollarsToCents as toCents, formatCurrency, formatGainLoss } from '../lib/currency';
 import { summarizeTaggedRetirementContributions } from '../lib/tax/retirement-contribution-metadata';
 import {
@@ -42,6 +43,20 @@ function dollarsToCents(value: string): number {
 function parseShares(value: string): number {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Formats a YYYY-MM-DD lot date for display, matching the investment detail lots table. */
+function formatLotDate(isoDate: string): string {
+  const date = new Date(`${isoDate.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+  return date.toLocaleDateString(getCurrentLocale(), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 function formatPercent(percent: number): string {
@@ -472,8 +487,8 @@ export const TaxCenterPage: React.FC = () => {
                         onChange={() => toggleSpecificLot(lot.id)}
                         label={
                           <>
-                            {lot.acquiredDate} · {lot.shares.toLocaleString()} shares @{' '}
-                            {formatCurrency(lot.costPerShare, { currency: lot.currency })}
+                            {formatLotDate(lot.acquiredDate)} · {lot.shares.toLocaleString()} shares
+                            @ {formatCurrency(lot.costPerShare, { currency: lot.currency })}
                           </>
                         }
                       />
@@ -607,7 +622,7 @@ export const TaxCenterPage: React.FC = () => {
                   >
                     {alert.explanation} Replacement lots:{' '}
                     {alert.replacementLots
-                      .map((lot) => `${lot.lotId} (${lot.acquiredDate})`)
+                      .map((lot) => `${lot.lotId} (${formatLotDate(lot.acquiredDate)})`)
                       .join(', ')}
                     .
                   </p>
@@ -670,10 +685,10 @@ export const TaxCenterPage: React.FC = () => {
                         <tr key={`${lot.lotId}-${index}`}>
                           <td style={{ padding: 'var(--spacing-3)' }}>{lot.lotId}</td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {lot.acquiredDate}
+                            {formatLotDate(lot.acquiredDate)}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {lot.soldDate}
+                            {formatLotDate(lot.soldDate)}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             {lot.shares.toLocaleString()}
@@ -749,7 +764,7 @@ export const TaxCenterPage: React.FC = () => {
                             </span>
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {lot.acquiredDate}
+                            {formatLotDate(lot.acquiredDate)}
                             {lot.acquiredDateEstimated && (
                               <span
                                 title="Estimated acquisition date — add a purchase lot for the exact date"
