@@ -76,13 +76,15 @@ test('adapter regression precedes atomic installation; a failed assertion never 
   try {
     materialize(f.options);
     const calls = [];
+    const operations = [];
     assert.throws(
       () =>
         installAdapter({
           directory: f.directory,
           manifest: historyManifest(f.manifest),
-          sql: (sql) => {
+          sql: (sql, operation) => {
             calls.push(sql);
+            operations.push(operation);
             if (calls.length === 1) return JSON.stringify(history);
             if (calls.length <= 3) return '';
             return 'f';
@@ -98,6 +100,12 @@ test('adapter regression precedes atomic installation; a failed assertion never 
     );
     assert.match(calls[2], /LOCK TABLE auth.users IN SHARE ROW EXCLUSIVE MODE/);
     assert.match(calls[2], /COMMIT;$/);
+    assert.deepEqual(operations, [
+      'migration-history',
+      'adapter-regression',
+      'adapter-install',
+      'adapter-postconditions',
+    ]);
   } finally {
     f.cleanup();
   }

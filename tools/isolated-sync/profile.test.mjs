@@ -242,6 +242,23 @@ test('upstream output is never included in classified child failures', () => {
   );
 });
 
+test('repository format and lint exclude private inputs and inventoried runtime files', async () => {
+  const { getFileInfo } = await import('prettier');
+  const { ESLint } = await import('eslint');
+  const eslint = new ESLint({ cwd: root });
+  for (const relative of [
+    '.isolated-sync/synthetic/private-input.json',
+    '.isolated-sync/synthetic/supabase/functions/main/index.ts',
+  ]) {
+    const target = path.join(root, relative);
+    assert.equal(
+      (await getFileInfo(target, { ignorePath: path.join(root, '.prettierignore') })).ignored,
+      true,
+    );
+    assert.equal(await eslint.isPathIgnored(target), true);
+  }
+});
+
 test('approval, ordering and failed-run gates are hard failures', async () => {
   assertStage('database', { stage: 'prepared' }, 'approved', 'approved');
   assert.throws(

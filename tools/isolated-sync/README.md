@@ -152,6 +152,8 @@ new preparation/review, not an inventory edit.
 Windows permission checks keep their helper HOME/temp directories inside the
 private `.isolated-sync` parent; lifecycle subprocesses use the run's own
 private HOME/temp directories.
+Git, Prettier and ESLint exclude `.isolated-sync` so repository-wide checks
+neither process private inputs nor rewrite hash-inventoried runtime files.
 
 ## Human input and startup approval
 
@@ -222,6 +224,17 @@ invocation refuses the exclusive stage lock. A stale lock requires human
 inspection, not automatic deletion. Resources are identified by exact names,
 inventory labels and stable IDs/creation timestamps. Cleanup can discover
 partially created resources only when those same ownership checks pass.
+
+SQL failures retain only a fixed operation identifier (for example
+`adapter-regression`), SQLSTATE and numeric expanded-input line in `state.json`
+as `sqlFailure`. The SQL runner requests SQLSTATE-only diagnostics and never
+prints or saves raw SQL, upstream messages, context, rows or service logs.
+Unrecognized/ambiguous diagnostics retain the operation with null code/line;
+they never fall back to raw output. Use the line with the exact inventoried
+input, including the expanded adapter include for the regression suite.
+The metadata remains available after an approved stop. It does not authorize
+a retry: investigate the stopped evidence and prepare a separately approved
+fresh run after any source fix.
 
 The schemas and bucket configuration have not been weakened for the proof.
 The backend's public anon client key is supplied privately to the later web

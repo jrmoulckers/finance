@@ -181,6 +181,7 @@ export default [
       '**/.gradle/**',
       '**/vendor/**',
       'config/engineering/**',
+      '.isolated-sync/**',
       // Playwright writes bundled JS here — the HTML report is a megabyte of
       // minified webpack output and traces carry snapshot scripts. These are in
       // .gitignore (L103-106), but flat config does not read .gitignore, so
