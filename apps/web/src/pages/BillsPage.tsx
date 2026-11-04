@@ -179,7 +179,6 @@ export const BillsPage: React.FC = () => {
         <Link
           to="/bills/new"
           className="form-button form-button--primary"
-          aria-label="Add a new bill"
           style={{ textDecoration: 'none' }}
         >
           Add Bill

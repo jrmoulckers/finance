@@ -415,7 +415,7 @@ describe('InvoicesPage', () => {
   it('disables the Export CSV button when there are no invoices (#3228)', () => {
     render(<InvoicesPage />);
 
-    expect(screen.getByRole('button', { name: /export invoices as csv/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^export csv$/i })).toBeDisabled();
   });
 
   it('exports a CSV blob download when invoices exist (#3228)', () => {
@@ -441,7 +441,7 @@ describe('InvoicesPage', () => {
       .mockImplementation(() => undefined);
 
     render(<InvoicesPage />);
-    fireEvent.click(screen.getByRole('button', { name: /export invoices as csv/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^export csv$/i }));
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);

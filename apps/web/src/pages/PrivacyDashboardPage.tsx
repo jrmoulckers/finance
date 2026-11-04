@@ -234,7 +234,8 @@ const PrivacyDashboardPage: React.FC = () => {
 
         {consent.timestamp && (
           <p className="privacy-dashboard__consent-timestamp">
-            Last updated: {new Date(consent.timestamp).toLocaleString()}
+            Last updated:{' '}
+            {new Date(consent.timestamp).toLocaleDateString(undefined, { dateStyle: 'medium' })}
           </p>
         )}
 

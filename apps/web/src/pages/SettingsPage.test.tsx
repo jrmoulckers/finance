@@ -305,6 +305,14 @@ describe('SettingsPage', () => {
       expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeInTheDocument();
     });
+
+    it('describes the Account nav entry without sign-out or deletion', () => {
+      localStorage.setItem('finance-local-only-mode', 'true');
+      renderSettingsAt('/settings/account');
+
+      expect(screen.getByText('Local-only mode, no account')).toBeInTheDocument();
+      expect(screen.queryByText('Profile, sign out, delete account')).not.toBeInTheDocument();
+    });
   });
 
   describe('shell', () => {
