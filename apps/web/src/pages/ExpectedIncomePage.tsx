@@ -22,6 +22,7 @@ import { Checkbox } from '../components/common/Checkbox';
 import { IconToken } from '../icons/tokens';
 import { formatCurrency } from '../lib/currency';
 import { useInvoices } from '../hooks/useInvoices';
+import { getCurrentLocale } from '../lib/i18n';
 import { invoiceOutstandingCents } from '../lib/analytics/invoices';
 import {
   CONFIDENCE_LABELS,
@@ -55,7 +56,7 @@ function formatExpectedDate(iso: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return iso;
   }
-  return parsed.toLocaleDateString(undefined, {
+  return parsed.toLocaleDateString(getCurrentLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
