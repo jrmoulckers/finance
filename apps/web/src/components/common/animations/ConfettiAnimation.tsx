@@ -61,7 +61,7 @@ function createParticle(canvasWidth: number, canvasHeight: number): Particle {
 /**
  * Canvas-based confetti burst animation for goal milestones and achievements.
  *
- * Uses `OffscreenCanvas` when available for better performance.
+ * Draws on the main thread via the canvas 2D context.
  * Shows a static emoji fallback when `prefers-reduced-motion: reduce` is active.
  */
 export function ConfettiAnimation({
@@ -74,24 +74,12 @@ export function ConfettiAnimation({
 }: ConfettiAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = useReducedMotion();
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const animate = useCallback(
     (canvas: HTMLCanvasElement) => {
-      // Use OffscreenCanvas if supported, else fall back to regular context
-      let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
-
-      if (typeof OffscreenCanvas !== 'undefined') {
-        try {
-          const offscreen = canvas.transferControlToOffscreen();
-          ctx = offscreen.getContext('2d');
-        } catch {
-          // transferControlToOffscreen can only be called once; fall back
-          ctx = canvas.getContext('2d');
-        }
-      } else {
-        ctx = canvas.getContext('2d');
-      }
-
+      const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       const particles: Particle[] = Array.from({ length: particleCount }, () =>
@@ -126,7 +114,7 @@ export function ConfettiAnimation({
         if (progress < 1) {
           rafId = requestAnimationFrame(draw);
         } else {
-          onComplete?.();
+          onCompleteRef.current?.();
         }
       };
 
@@ -134,13 +122,13 @@ export function ConfettiAnimation({
 
       return () => cancelAnimationFrame(rafId);
     },
-    [width, height, particleCount, duration, onComplete],
+    [width, height, particleCount, duration],
   );
 
   useEffect(() => {
     if (reducedMotion) {
       // Fire onComplete immediately for reduced-motion users
-      onComplete?.();
+      onCompleteRef.current?.();
       return;
     }
 
@@ -148,7 +136,7 @@ export function ConfettiAnimation({
     if (!canvas) return;
 
     return animate(canvas);
-  }, [reducedMotion, animate, onComplete]);
+  }, [reducedMotion, animate]);
 
   if (reducedMotion) {
     return (
