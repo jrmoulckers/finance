@@ -87,6 +87,6 @@ describe('debt progress rings', () => {
 
     expect(card.percent).toBe(100);
     expect(card.ariaLabel).toContain('Estimated payoff: 2026-01-01');
-    expect(card.detailItems).toContain('Interest saved with current what-if: 7500 cents');
+    expect(card.detailItems).toContain('Interest saved with current what-if: $75.00');
   });
 });
