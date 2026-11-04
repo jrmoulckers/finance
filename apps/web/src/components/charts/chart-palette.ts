@@ -8,6 +8,7 @@
 
 import { formatChartCurrency } from '../../lib/currency';
 import { MaskingMode } from '../../lib/ui/privacy';
+import { formatCount } from '../../lib/ui/pluralize';
 
 /**
  * Re-export the centralized chart currency formatter so that existing
@@ -132,5 +133,5 @@ export function buildChartDescription(
   const summaries = dataPoints
     .map((d) => `${d.label}: ${formatChartCurrency(d.value, currency, 'en-US', maskingMode)}`)
     .join(', ');
-  return `${chartType} showing ${dataPoints.length} categories totalling ${formatChartCurrency(total, currency, 'en-US', maskingMode)}. ${summaries}.`;
+  return `${chartType} showing ${formatCount(dataPoints.length, 'category', 'categories')} totalling ${formatChartCurrency(total, currency, 'en-US', maskingMode)}. ${summaries}.`;
 }

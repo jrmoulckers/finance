@@ -177,7 +177,8 @@ describe('buildChartDescription', () => {
 
   it('handles a single-item array', () => {
     const desc = buildChartDescription('Donut chart', [{ label: 'Savings', value: 3000 }]);
-    expect(desc).toContain('1 categories');
+    expect(desc).toContain('1 category');
+    expect(desc).not.toContain('1 categories');
     expect(desc).toContain('$3,000');
     expect(desc).toContain('Savings: $3,000');
   });

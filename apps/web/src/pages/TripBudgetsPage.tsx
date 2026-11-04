@@ -92,41 +92,58 @@ const STATUS_META: Record<TripBudgetStatus, { label: string; icon: IconName }> =
 // Seed data — a worked example so the page is useful on first load
 // ---------------------------------------------------------------------------
 
-const SEED_TRIPS: readonly TripBudget[] = [
-  {
-    id: 'trip-bangkok',
-    name: 'Bangkok Jan–Mar',
-    country: 'Thailand',
-    startDate: '2026-01-01',
-    endDate: '2026-03-31',
-    localCurrency: 'THB',
-    homeCurrency: 'USD',
-    plannedLocalMinor: 9_000_000, // ฿90,000.00
-    fxRateHomePerLocal: 0.028,
-    archived: false,
-    archivedAt: null,
-    archivedSnapshot: null,
-  },
-];
+/** Shift an ISO `YYYY-MM-DD` date by whole days (local time, DST-safe). */
+function shiftIsoDate(iso: string, days: number): string {
+  const date = new Date(`${iso}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
 
-const SEED_TRANSACTIONS: readonly TripTransaction[] = [
-  {
-    id: 'seed-1',
-    amountMinor: 1_200_000, // ฿12,000.00
-    currency: 'THB',
-    date: '2026-01-05',
-    country: 'Thailand',
-    tripId: 'trip-bangkok',
-  },
-  {
-    id: 'seed-2',
-    amountMinor: 850_000, // ฿8,500.00
-    currency: 'THB',
-    date: '2026-02-10',
-    country: 'Thailand',
-    tripId: 'trip-bangkok',
-  },
-];
+/**
+ * The worked example is anchored to today so it always reads as a trip in
+ * progress rather than a stale, already-ended one.
+ */
+function buildSeedTrips(today: string): TripBudget[] {
+  return [
+    {
+      id: 'trip-bangkok',
+      name: 'Bangkok getaway',
+      country: 'Thailand',
+      startDate: shiftIsoDate(today, -30),
+      endDate: shiftIsoDate(today, 60),
+      localCurrency: 'THB',
+      homeCurrency: 'USD',
+      plannedLocalMinor: 9_000_000, // ฿90,000.00
+      fxRateHomePerLocal: 0.028,
+      archived: false,
+      archivedAt: null,
+      archivedSnapshot: null,
+    },
+  ];
+}
+
+function buildSeedTransactions(today: string): TripTransaction[] {
+  return [
+    {
+      id: 'seed-1',
+      amountMinor: 1_200_000, // ฿12,000.00
+      currency: 'THB',
+      date: shiftIsoDate(today, -25),
+      country: 'Thailand',
+      tripId: 'trip-bangkok',
+    },
+    {
+      id: 'seed-2',
+      amountMinor: 850_000, // ฿8,500.00
+      currency: 'THB',
+      date: shiftIsoDate(today, -10),
+      country: 'Thailand',
+      tripId: 'trip-bangkok',
+    },
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // Field sub-components
@@ -279,8 +296,10 @@ export const TripBudgetsPage: React.FC = () => {
   const fid = (suffix: string): string => `${idPrefix}-${suffix}`;
   const today = useMemo(() => todayIso(), []);
 
-  const [trips, setTrips] = useState<TripBudget[]>(() => [...SEED_TRIPS]);
-  const [transactions, setTransactions] = useState<TripTransaction[]>(() => [...SEED_TRANSACTIONS]);
+  const [trips, setTrips] = useState<TripBudget[]>(() => buildSeedTrips(today));
+  const [transactions, setTransactions] = useState<TripTransaction[]>(() =>
+    buildSeedTransactions(today),
+  );
   const [filterTripId, setFilterTripId] = useState<string>('all');
 
   // Create-trip form state.
