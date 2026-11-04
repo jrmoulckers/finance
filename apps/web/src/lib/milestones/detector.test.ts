@@ -292,7 +292,6 @@ describe('detectMilestones', () => {
       expect.arrayContaining([
         'net-worth-1000000',
         'net-worth-2500000',
-        'goal-goal-50',
         'goal-goal-75',
         'savings-streak-3',
         'debt-reduction-25',
@@ -303,5 +302,29 @@ describe('detectMilestones', () => {
       ]),
     );
     expect(milestones.find((milestone) => milestone.id === 'goal-goal-25')).toBeUndefined();
+    expect(milestones.find((milestone) => milestone.id === 'goal-goal-50')).toBeUndefined();
+  });
+
+  it('emits only the highest goal milestone when several thresholds are crossed', () => {
+    const goal = (progressPercent: number, currentAmountCents: number) => ({
+      goalId: 'goal',
+      goalName: 'Emergency Fund',
+      currentAmountCents,
+      targetAmountCents: 400_000,
+      progressPercent,
+    });
+
+    const milestones = detectMilestones({
+      previous: createSnapshot({ goals: { goal: goal(40, 160_000) } }),
+      current: createSnapshot({ goals: { goal: goal(100, 400_000) } }),
+      shownMilestoneIds: new Set(),
+      debtBaselines: createDebtBaselines(),
+      now: '2025-03-01T00:00:00Z',
+    });
+
+    const goalIds = milestones
+      .filter((milestone) => milestone.category === 'goal-progress')
+      .map((milestone) => milestone.id);
+    expect(goalIds).toEqual(['goal-goal-100']);
   });
 });
