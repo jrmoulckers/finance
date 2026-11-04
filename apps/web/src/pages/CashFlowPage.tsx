@@ -112,6 +112,17 @@ interface IncomeExpenseChartProps {
   aggregates: MonthlyAggregate[];
 }
 
+/** Formats a `YYYY-MM` key as a readable month; falls back to the raw key if malformed. */
+function formatMonthKey(month: string, style: 'short' | 'long'): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  if (!year || !monthNumber || monthNumber < 1 || monthNumber > 12) return month;
+  return new Intl.DateTimeFormat(undefined, {
+    month: style,
+    ...(style === 'long' ? { year: 'numeric' as const } : {}),
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
+
 const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) => {
   const maskingMode = useEffectiveMaskingMode();
   const maxValue = Math.max(...aggregates.flatMap((a) => [a.income, a.expenses]), 1);
@@ -137,7 +148,7 @@ const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) =
                 title={`Expenses: ${formatAmount(agg.expenses, maskingMode)}`}
               />
             </div>
-            <span className="analytics-bar-chart__label">{agg.month.slice(5)}</span>
+            <span className="analytics-bar-chart__label">{formatMonthKey(agg.month, 'short')}</span>
           </div>
         ))}
       </div>
@@ -156,7 +167,7 @@ const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) =
         <tbody>
           {aggregates.map((agg) => (
             <tr key={agg.month}>
-              <th scope="row">{agg.month}</th>
+              <th scope="row">{formatMonthKey(agg.month, 'long')}</th>
               <td>
                 <CurrencyDisplay amount={agg.income} />
               </td>

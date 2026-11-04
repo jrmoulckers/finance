@@ -173,6 +173,8 @@ describe('CashFlowPage', () => {
     expect(screen.getByText('Export CSV')).toBeInTheDocument();
     const confidenceCard = screen.getByLabelText('Forecast confidence');
     expect(within(confidenceCard).getByText(/^(Low|Medium|High)$/)).toBeInTheDocument();
+    expect(screen.getByText('Jan')).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'February 2024' })).toBeInTheDocument();
   });
 
   it('renders period selector options', () => {
@@ -248,7 +250,7 @@ describe('CashFlowPage', () => {
     expect(within(table).getByRole('columnheader', { name: 'Net' })).toBeInTheDocument();
 
     // The February row exposes the same figures the bars encode visually.
-    expect(within(table).getByRole('rowheader', { name: '2024-02' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'February 2024' })).toBeInTheDocument();
     expect(within(table).getByText('$5,000.00')).toBeInTheDocument(); // income
     expect(within(table).getByText('$3,000.00')).toBeInTheDocument(); // expenses
     expect(within(table).getByText('$2,000.00')).toBeInTheDocument(); // net
