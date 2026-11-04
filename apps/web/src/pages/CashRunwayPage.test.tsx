@@ -141,6 +141,16 @@ describe('CashRunwayPage multi-currency starting cash (#3240)', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a loading status instead of an empty state while data loads', () => {
+    mockAccounts([]);
+    mockedUseAccounts.mockReturnValue({ ...mockedUseAccounts(), loading: true });
+
+    render(<CashRunwayPage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading your cash position/i);
+    expect(screen.queryByText('No cash data yet')).not.toBeInTheDocument();
+  });
+
   it('converts each cash balance into the display currency before summing', () => {
     // USD $2,000 (200000 cents) + INR ₹40,000 (4000000 minor units).
     mockAccounts([cashAccount('usd', 'USD', 2, 200000), cashAccount('inr', 'INR', 2, 4000000)]);
