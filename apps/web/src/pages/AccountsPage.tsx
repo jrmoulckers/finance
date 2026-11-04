@@ -292,7 +292,6 @@ export const AccountsPage: React.FC = () => {
                   <Link
                     to={`/accounts/${account.id}`}
                     className="list-item page-list-link"
-                    aria-label={account.name}
                   >
                     <div className="list-item__content">
                       <p className="list-item__primary account-list-primary">
