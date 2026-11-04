@@ -171,5 +171,11 @@ describe('SubscriptionsPage', () => {
     expect(
       screen.getByLabelText('Potential monthly savings from cancelling flagged subscriptions'),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText('Netflix: Keep')).toBeInTheDocument();
+    expect(screen.getByLabelText('Spotify: Flagged')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change status of Netflix. Currently: Keep' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/6 transactions/)).toHaveLength(2);
   });
 });

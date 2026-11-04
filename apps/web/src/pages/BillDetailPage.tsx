@@ -7,9 +7,9 @@
  * References: issue #1123
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { getCurrentLocale } from '../lib/i18n';
 import { useBills } from '../hooks';
 import type { BillFrequency, BillStatus } from '../kmp/bridge';
@@ -46,12 +46,20 @@ export const BillDetailPage: React.FC = () => {
     }
   }, [bill, markPaid]);
 
-  const handleDelete = useCallback(async () => {
-    if (bill) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!bill) return;
+    setIsDeleting(true);
+    try {
       const deleted = await deleteBill(bill.id);
       if (deleted) {
         navigate('/bills');
       }
+    } finally {
+      setIsDeleting(false);
+      setConfirmingDelete(false);
     }
   }, [bill, deleteBill, navigate]);
 
@@ -108,7 +116,7 @@ export const BillDetailPage: React.FC = () => {
               type="button"
               className="form-button form-button--primary"
               onClick={handleMarkPaid}
-              aria-label={`Mark ${bill.name} as paid`}
+              aria-label={`Mark Paid: ${bill.name}`}
             >
               Mark Paid
             </button>
@@ -116,7 +124,7 @@ export const BillDetailPage: React.FC = () => {
           <button
             type="button"
             className="form-button form-button--danger"
-            onClick={handleDelete}
+            onClick={() => setConfirmingDelete(true)}
             aria-label={`Delete ${bill.name}`}
           >
             Delete
@@ -237,6 +245,16 @@ export const BillDetailPage: React.FC = () => {
           </dl>
         </div>
       </section>
+
+      <ConfirmDialog
+        isOpen={confirmingDelete}
+        title="Delete bill?"
+        message={`Are you sure you want to delete "${bill.name}"? This action cannot be undone.`}
+        confirmLabel="Delete Bill"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmingDelete(false)}
+        isLoading={isDeleting}
+      />
     </>
   );
 };
