@@ -20,6 +20,7 @@
 import { useEffect, useMemo, type FC } from 'react';
 
 import { useNotificationCenter } from '../../contexts/NotificationsContext';
+import { isSampleDataActive } from '../../db/sampleData';
 import { useTransactions } from '../../hooks';
 import { detectScamAlerts, scamAlertsToNotifications } from '../../lib/notifications';
 import {
@@ -40,7 +41,9 @@ export const NotificationInjectors: FC = () => {
   const scamTransactionFilters = useMemo(() => ({ type: 'EXPENSE' as const }), []);
   const { transactions: scamTransactions } = useTransactions(scamTransactionFilters);
   const scamNotifications = useMemo(
-    () => scamAlertsToNotifications(detectScamAlerts(scamTransactions)),
+    // Sample data is synthetic; never raise fraud-style alerts from it (#4475).
+    () =>
+      isSampleDataActive() ? [] : scamAlertsToNotifications(detectScamAlerts(scamTransactions)),
     [scamTransactions],
   );
 
