@@ -98,6 +98,13 @@ describe('ClientProfitabilityPage CSV export', () => {
     expect(screen.getByRole('button', { name: EXPORT_BUTTON })).toBeEnabled();
   });
 
+  it('keeps the date filters mounted while the report reloads', () => {
+    mockUseTransactions.mockReturnValue(mockResult({ loading: true }));
+    render(<ClientProfitabilityPage />);
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    expect(screen.getByText('Loading client profitability report')).toBeInTheDocument();
+  });
+
   it('disables the Download CSV button when there are no client-tagged transactions', () => {
     mockUseTransactions.mockReturnValue(mockResult({ transactions: [] }));
     render(<ClientProfitabilityPage />);

@@ -445,6 +445,7 @@ export function ExpectedIncomePage() {
                       type="button"
                       className="expected-income__button"
                       onClick={() => handleToggleCleared(item)}
+                      aria-label={`${item.cleared ? 'Mark not received' : 'Mark received'}: ${item.label}`}
                     >
                       {item.cleared ? 'Mark not received' : 'Mark received'}
                     </button>
