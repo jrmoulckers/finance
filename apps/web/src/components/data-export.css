@@ -13,6 +13,12 @@
   gap: var(--spacing-4);
 }
 
+/* Inside a settings card, align with the card gutter like other rows. */
+.settings-group > .data-export {
+  padding: 0 var(--settings-card-gutter, var(--spacing-4))
+    var(--settings-card-gutter, var(--spacing-4));
+}
+
 .data-export__description {
   font-size: var(--type-scale-body-font-size);
   color: var(--semantic-text-secondary);
