@@ -4,6 +4,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { z } from 'zod';
 
+import { useOptionalAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { requestPasswordResetEmail } from '../lib/auth/password-reset';
 
@@ -12,9 +13,12 @@ import '../styles/auth.css';
 const emailSchema = z.string().trim().email();
 const GENERIC_SUCCESS_MESSAGE =
   "If an account exists for that email, you'll receive a reset link shortly.";
+const DEMO_MODE_MESSAGE =
+  "Password reset emails can't be sent in demo mode because no backend is configured. Your data is stored locally on this device.";
 
 /** Starts the email-based password reset flow. */
 export const ForgotPasswordPage: React.FC = () => {
+  const isDemoMode = useOptionalAuth()?.isDemoMode ?? false;
   const uid = useId();
   const emailId = `${uid}-email`;
   const emailErrorId = `${uid}-email-error`;
@@ -51,6 +55,12 @@ export const ForgotPasswordPage: React.FC = () => {
     }
 
     setEmailError(null);
+
+    if (isDemoMode) {
+      setStatusMessage(DEMO_MODE_MESSAGE);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -74,6 +84,12 @@ export const ForgotPasswordPage: React.FC = () => {
           </h1>
           <p className="auth-brand__tagline">Reset your password</p>
         </header>
+
+        {isDemoMode && (
+          <div className="auth-demo-banner" role="status">
+            Demo Mode. No backend configured. Data is stored locally.
+          </div>
+        )}
 
         {statusMessage && (
           <div className="auth-info" role="status" aria-live="polite">

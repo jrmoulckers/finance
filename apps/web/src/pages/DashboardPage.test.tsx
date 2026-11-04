@@ -690,6 +690,10 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
+    // The status icon renders as an SVG, never the literal icon name (#4523).
+    const budgetCard = screen.getByRole('article', { name: 'Budget health' });
+    expect(budgetCard.querySelector('svg')).not.toBeNull();
+    expect(budgetCard).not.toHaveTextContent(/\b(check|target|alert-triangle)\b/i);
     // Beginner explainers on the headline cards (#3418).
     expect(screen.getByRole('button', { name: 'Explain net worth' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain Spent This Month' })).toBeInTheDocument();

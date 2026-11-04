@@ -417,13 +417,13 @@ export const SignupPage: React.FC = () => {
 
             <p className="auth-legal-notice" id={legalNoticeId}>
               By creating an account you agree to our{' '}
-              <a href="/legal/terms" className="auth-footer__link">
+              <Link to="/legal/terms" className="auth-footer__link">
                 Terms
-              </a>{' '}
+              </Link>{' '}
               and{' '}
-              <a href="/legal/privacy" className="auth-footer__link">
+              <Link to="/legal/privacy" className="auth-footer__link">
                 Privacy Policy
-              </a>
+              </Link>
               .
             </p>
 

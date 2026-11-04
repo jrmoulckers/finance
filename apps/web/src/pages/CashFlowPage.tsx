@@ -286,32 +286,23 @@ export const CashFlowPage: React.FC = () => {
   const isEmpty =
     summary.monthCount === 0 || (summary.totalIncome === 0 && summary.totalExpenses === 0);
 
-  if (isEmpty) {
-    return (
-      <EmptyState
-        title="No cash flow data"
-        description="Start adding balances, income, and expense transactions to see cash flow trends and month-end forecast assumptions."
-      />
-    );
-  }
-
-  return (
-    <div className="analytics-page">
-      <div className="analytics-page__header">
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-          }}
-        >
-          <h1 className="analytics-page__title" style={{ margin: 0 }}>
-            Cash Flow
-          </h1>
-          <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
-        </div>
-        <div className="analytics-page__actions">
-          <PeriodSelector value={period} onChange={setPeriod} />
+  const header = (
+    <div className="analytics-page__header">
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--spacing-2)',
+        }}
+      >
+        <h1 className="analytics-page__title" style={{ margin: 0 }}>
+          Cash Flow
+        </h1>
+        <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
+      </div>
+      <div className="analytics-page__actions">
+        <PeriodSelector value={period} onChange={setPeriod} />
+        {!isEmpty && (
           <button
             className="analytics-export-btn"
             onClick={exportCsv}
@@ -319,8 +310,26 @@ export const CashFlowPage: React.FC = () => {
           >
             Export CSV
           </button>
-        </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (isEmpty) {
+    return (
+      <div className="analytics-page">
+        {header}
+        <EmptyState
+          title="No cash flow data"
+          description="Start adding balances, income, and expense transactions to see cash flow trends and month-end forecast assumptions."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="analytics-page">
+      {header}
 
       <section className="analytics-section" aria-label="Month-end balance forecast">
         <h3 className="analytics-section__title">Month-end balance forecast</h3>

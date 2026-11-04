@@ -116,6 +116,22 @@ describe('budgeting beta utilities', () => {
     });
   });
 
+  it('suppresses underspend advice early in the period and shows it late', () => {
+    const rent = [
+      { categoryId: 'rent', name: 'Rent', budgetedCents: 150_000, actualCents: 0 },
+    ] as const;
+
+    expect(generateVarianceInsights(rent, 4, 5 / 30)).toEqual([]);
+    expect(generateVarianceInsights(rent, 4, 0.5)).toEqual([]);
+    expect(generateVarianceInsights(rent, 4, 25 / 30)).toMatchObject([
+      { categoryId: 'rent', kind: 'under' },
+    ]);
+    expect(generateVarianceInsights(rent)).toMatchObject([{ kind: 'under' }]);
+
+    const over = [{ categoryId: 'food', name: 'Food', budgetedCents: 10_000, actualCents: 12_000 }];
+    expect(generateVarianceInsights(over, 4, 0.1)).toMatchObject([{ kind: 'over' }]);
+  });
+
   it('forecasts month-end balance with positive, shortfall, missing-income, and overdrawn cases', () => {
     const positive = forecastMonthEndBalance({
       currentBalanceCents: 100_000,
