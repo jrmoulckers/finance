@@ -32,7 +32,7 @@ BEGIN
         IS DISTINCT FROM 'synthetic-local-only' THEN
         RAISE EXCEPTION 'isolated signup adapter requires explicit local-only opt-in';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper) THEN
+    IF current_user <> 'postgres' THEN
         RAISE EXCEPTION 'isolated signup adapter requires the disposable database administrator';
     END IF;
     IF to_regclass('supabase_migrations.schema_migrations') IS NULL THEN

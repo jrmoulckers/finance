@@ -55,7 +55,8 @@ execute this contract against a shared, hosted, staging, or production database.
    future migration additions require review and an adapter inventory update.
    Version rows alone do not prove source contents; the materializer owns hash
    and actual ordered-application evidence.
-4. In one administrator transaction, issue
+4. In one transaction as the local `postgres` administrator (not necessarily a
+   superuser), issue
    `SET LOCAL finance.isolated_signup_adapter = 'synthetic-local-only'`, then
    execute the adapter with `psql`'s `ON_ERROR_STOP=1`, and commit only on success.
    This explicit opt-in is an accidental-use guard, **not an authorization or

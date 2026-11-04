@@ -44,6 +44,12 @@ SELECT pg_temp.expect_signup_error(
     'isolated signup adapter requires explicit local-only opt-in');
 SET LOCAL finance.isolated_signup_adapter = 'synthetic-local-only';
 
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.expect_signup_error(
+    'SELECT pg_temp.check_isolated_signup_prerequisites()',
+    'isolated signup adapter requires the disposable database administrator');
+RESET ROLE;
+
 ALTER TABLE supabase_migrations.schema_migrations RENAME TO isolated_test_saved_history;
 SELECT pg_temp.expect_signup_error(
     'SELECT pg_temp.check_isolated_signup_prerequisites()',
