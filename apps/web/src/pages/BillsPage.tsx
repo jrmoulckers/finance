@@ -331,6 +331,21 @@ export const BillsPage: React.FC = () => {
 
               {/* Bills List */}
               <section aria-label="Bill list">
+                {filteredBills.length === 0 && (
+                  <EmptyState
+                    title="No matching bills"
+                    description="No bills match the selected status. Choose another status to see more."
+                    action={
+                      <button
+                        type="button"
+                        className="form-button"
+                        onClick={() => setStatusFilter('ALL')}
+                      >
+                        Show all bills
+                      </button>
+                    }
+                  />
+                )}{' '}
                 <div className="card-grid">
                   {filteredBills.map((bill) => (
                     <article
