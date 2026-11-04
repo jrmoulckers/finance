@@ -428,7 +428,7 @@ export const BillsPage: React.FC = () => {
                             type="button"
                             className="form-button form-button--primary"
                             onClick={() => handleMarkPaid(bill.id)}
-                            aria-label={`Mark ${bill.name} as paid`}
+                            aria-label={`Mark Paid: ${bill.name}`}
                             style={{ fontSize: 'var(--type-scale-caption-font-size)' }}
                           >
                             Mark Paid

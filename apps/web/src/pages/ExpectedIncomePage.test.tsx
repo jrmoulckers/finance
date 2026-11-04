@@ -101,7 +101,7 @@ describe('ExpectedIncomePage', () => {
     render(<ExpectedIncomePage />);
     addPayment({ name: 'Child support', amount: '500.00', date: '2026-06-25' });
 
-    const markReceived = screen.getByRole('button', { name: 'Mark received' });
+    const markReceived = screen.getByRole('button', { name: 'Mark received: Child support' });
     fireEvent.click(markReceived);
 
     // After clearing, spendable-now reflects the amount.
@@ -109,7 +109,9 @@ describe('ExpectedIncomePage', () => {
       .getByRole('heading', { name: 'Spendable now' })
       .closest('.expected-income__card') as HTMLElement;
     expect(within(realizedCard).getByText('$500.00')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Mark not received' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Mark not received: Child support' }),
+    ).toBeInTheDocument();
   });
 
   it('deletes a payment', () => {
