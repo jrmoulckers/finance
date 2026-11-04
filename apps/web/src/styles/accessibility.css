@@ -445,6 +445,18 @@ html[data-reduced-motion='true'] *::after {
   border-width: 0;
 }
 
+/* Reveal keyboard-accessible hidden controls without removing their focus ring. */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
 /* -------------------------------------------------------------------
  * 6. Dark mode focus adjustments
  *

@@ -130,7 +130,7 @@
 
 /* Auto dark mode (no explicit [data-theme]) mirrors the dark override. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme]) {
     --focus-ring-color: var(--color-blue-400, #60a5fa);
   }
 }
