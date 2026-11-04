@@ -5,6 +5,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import { load as loadYaml } from 'js-yaml';
+
 import {
   deadEventConjunct,
   extractJob,
@@ -22,6 +24,21 @@ import {
 const testRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflowDirectory = join(testRoot, '.github', 'workflows');
 const productionCompose = readFileSync(join(testRoot, 'deploy', 'docker-compose.yml'), 'utf8');
+
+test('Android SDK setup explicitly requests supported platform-tools instead of legacy tools', () => {
+  let setupCount = 0;
+  for (const file of readdirSync(workflowDirectory).filter((file) => /\.ya?ml$/.test(file))) {
+    const workflow = loadYaml(readFileSync(join(workflowDirectory, file), 'utf8'));
+    for (const job of Object.values(workflow.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        if (!step.uses?.startsWith('android-actions/setup-android@')) continue;
+        assert.equal(step.with?.packages, 'platform-tools', `${file}: ${step.name}`);
+        setupCount++;
+      }
+    }
+  }
+  assert.ok(setupCount > 0, 'expected Android SDK setup steps');
+});
 
 test('findDeadEventGuards decides conjunctions that a pure disjunction cannot', () => {
   const workflow = `

@@ -10,8 +10,10 @@
 # the same shape as this file: a `validate` job, one job per platform selected
 # through a `platforms` input (android/ios/web/windows), and a `summary` job
 # reducing the per-platform verdicts to one gateable `result` output. It was
-# promoted into canon *from this workflow* (jrmoulckers/.github#113), so the
-# Finance delta is zero and migrating drops no platform coverage.
+# promoted into canon *from this workflow* (jrmoulckers/.github#113).
+# Migrating drops no platform coverage. Finance now explicitly requests
+# platform-tools to avoid setup-android's obsolete default "tools" package (#4598);
+# preserve that SDK setup fix when migrating.
 #
 # The file was renamed from `reusable-smoke-test.yml` to
 # `reusable-release-smoke-test.yml` to clear a filename collision with canon's
@@ -105,6 +107,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          # Command-line tools are provisioned by the action; legacy "tools" is unavailable.
+          packages: platform-tools
 
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
