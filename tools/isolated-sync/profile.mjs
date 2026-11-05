@@ -53,13 +53,13 @@ export function migrationInventory(files, adapter) {
   const array = adapter.match(/expected_versions text\[\] := ARRAY\[([\s\S]*?)\];/);
   const expected = [...(array?.[1] ?? '').matchAll(/'([0-9]{14})'/g)].map((m) => m[1]);
   if (
-    versions.length !== 59 ||
-    expected.length !== 59 ||
-    new Set(versions).size !== 59 ||
+    versions.length !== 60 ||
+    expected.length !== 60 ||
+    new Set(versions).size !== 60 ||
     JSON.stringify(versions) !== JSON.stringify(expected)
   ) {
     throw new Error(
-      'Exact reviewed 59-version migration/adapter inventory mismatch; review required.',
+      'Exact reviewed 60-version migration/adapter inventory mismatch; review required.',
     );
   }
   return { migrations, versions };

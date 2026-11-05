@@ -50,8 +50,8 @@ execute this contract against a shared, hosted, staging, or production database.
 3. Before allowing Auth traffic, apply **all** top-level migrations in sorted
    order with stop-on-error. Do not apply `down/`, skip failures, or run demo seed.
    Verify CLI `supabase_migrations.schema_migrations` against the exact ordered
-   inventory and hashes. The adapter independently requires all 59 reviewed
-   version IDs (through `20260908000002`) with no missing or extra version;
+   inventory and hashes. The adapter independently requires all 60 reviewed
+   version IDs (through `20261105000001`) with no missing or extra version;
    future migration additions require review and an adapter inventory update.
    Version rows alone do not prove source contents; the materializer owns hash
    and actual ordered-application evidence.
@@ -108,6 +108,16 @@ Auth fixture inserts use the CI `postgres` administrator; it cannot impersonate
 `supabase_auth_admin`. No role membership is granted to work around that
 restriction. Actual GoTrue-role execution remains part of the real signup
 acceptance gate, not a claim made by this fixture suite.
+
+The prerequisite `test:sync-schema` compiles all 39 unchanged sync-rule column
+projections against the migrated PostgreSQL database, then checks column types,
+RLS, existing-row defaults, same-household budget-name backfill, and repeat
+application using temporary tables. Migration `20261105000001` supplies text
+`transactions.tags` defaulting to `[]`, boolean `categories.is_system`
+defaulting to false, and nonnull `budgets.name`. Existing budgets inherit their
+category name; future writes supply the name already required by both clients.
+The down migration is a destructive human-review artifact, never an automated
+test or runtime step.
 
 The database-independent contract check is:
 

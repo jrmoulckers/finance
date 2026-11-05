@@ -108,8 +108,8 @@ test('names cannot be shared, hosted or injected', () => {
   }
 });
 
-test('complete exact 59-version chain is required, never a successful subset', () => {
-  assert.equal(migrationInventory(migrationNames, sources[ADAPTER]).versions.length, 59);
+test('complete exact 60-version chain is required, never a successful subset', () => {
+  assert.equal(migrationInventory(migrationNames, sources[ADAPTER]).versions.length, 60);
   for (const files of [
     migrationNames.slice(1),
     [...migrationNames, `${MIGRATIONS}20990101000001_future.sql`],
@@ -123,7 +123,7 @@ test('preparation preserves exact Git bytes and hashes every migration, function
   const f = fixture();
   try {
     const result = materialize(f.options);
-    assert.equal(result.manifest.versions.length, 59);
+    assert.equal(result.manifest.versions.length, 60);
     assert.equal(
       result.manifest.sourceFiles[migrationNames[0]],
       sha256(sources[migrationNames[0]]),

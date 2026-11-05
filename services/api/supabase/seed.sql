@@ -208,20 +208,20 @@ INSERT INTO transactions (id, household_id, account_id, category_id, amount_cent
 -- =============================================================================
 -- period: 'monthly' | 'weekly' | 'yearly'
 
-INSERT INTO budgets (id, household_id, category_id, amount_cents, currency_code, period, start_date, end_date) VALUES
+INSERT INTO budgets (id, household_id, category_id, name, amount_cents, currency_code, period, start_date, end_date) VALUES
     -- Alice's personal budgets
     (gen_random_uuid(), '11111111-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
-     'cccc0001-0000-4000-c000-000000000001',  60000, 'USD', 'monthly',
+     'cccc0001-0000-4000-c000-000000000001', 'Groceries',  60000, 'USD', 'monthly',
      date_trunc('month', CURRENT_DATE)::date, NULL),
     (gen_random_uuid(), '11111111-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
-     'cccc0002-0000-4000-c000-000000000002',  25000, 'USD', 'monthly',
+     'cccc0002-0000-4000-c000-000000000002', 'Dining Out',  25000, 'USD', 'monthly',
      date_trunc('month', CURRENT_DATE)::date, NULL),
     -- Shared household budgets
     (gen_random_uuid(), '22222222-bbbb-4bbb-bbbb-bbbbbbbbbbbb',
-     'cccc0007-0000-4000-c000-000000000007',  35000, 'USD', 'monthly',
+     'cccc0007-0000-4000-c000-000000000007', 'Utilities',  35000, 'USD', 'monthly',
      date_trunc('month', CURRENT_DATE)::date, NULL),
     (gen_random_uuid(), '22222222-bbbb-4bbb-bbbb-bbbbbbbbbbbb',
-     'cccc0009-0000-4000-c000-000000000009',  15000, 'USD', 'monthly',
+     'cccc0009-0000-4000-c000-000000000009', 'Entertainment',  15000, 'USD', 'monthly',
      date_trunc('month', CURRENT_DATE)::date, NULL);
 
 -- =============================================================================
