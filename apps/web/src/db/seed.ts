@@ -161,14 +161,14 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
 
     const food = await createCategory(repoDb, {
       householdId,
-      name: 'Food',
+      name: 'Food & Groceries',
       icon: 'utensils',
       color: '#16A34A',
       sortOrder: 1,
     });
     const transport = await createCategory(repoDb, {
       householdId,
-      name: 'Transport',
+      name: 'Transportation',
       icon: 'car',
       color: '#2563EB',
       sortOrder: 2,
@@ -461,7 +461,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
     await createBudget(repoDb, {
       householdId,
       categoryId: food.id,
-      name: 'Food',
+      name: 'Food & Groceries',
       amount: cents(50000),
       currency: Currencies.USD,
       period: 'MONTHLY',
@@ -472,7 +472,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
     await createBudget(repoDb, {
       householdId,
       categoryId: transport.id,
-      name: 'Transport',
+      name: 'Transportation',
       amount: cents(20000),
       currency: Currencies.USD,
       period: 'MONTHLY',
