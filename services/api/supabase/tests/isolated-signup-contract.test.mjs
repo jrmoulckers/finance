@@ -35,6 +35,9 @@ test('existing disposable database CI command includes the transactional regress
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
   assert.match(pkg.scripts['test:billing-entitlements'], /&& npm run test:isolated-signup$/);
   assert.match(pkg.scripts['test:isolated-signup'], /psql -v ON_ERROR_STOP=1/);
+  assert.match(pkg.scripts['test:isolated-signup'], /^npm run test:sync-schema &&/);
+  assert.match(pkg.scripts['test:sync-schema'], /sync-rule-schema\.test\.sql$/);
+  assert.match(pkg.scripts['test:sync-schema'], /^node supabase\/tests\/sync-rule-columns\.mjs &&/);
   const suite = readFileSync(
     new URL('./isolated-signup-adapter.test.sql', import.meta.url),
     'utf8',

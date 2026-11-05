@@ -18,7 +18,7 @@ to loopback. This tool **never calls `start`, `db start`, `reset`, `stop`,
 - The pinned CLI is used exclusively for `--version` and
   `migration up --db-url postgresql://postgres@127.0.0.1:55432/postgres?sslmode=disable`.
   The password travels in its private process environment, never its arguments.
-- GoTrue first runs **only `migrate`**, without an Auth API. All 59 Finance
+- GoTrue first runs **only `migrate`**, without an Auth API. All 60 Finance
   migrations, their exact history check, the rollback regression suite and the
   atomic signup adapter install finish before the Auth server/gateway stage.
 - A second Compose project owns PowerSync and Mongo. Mongo has no published
@@ -141,7 +141,7 @@ $prepared | ConvertTo-Json -Depth 5
 
 The approved source must be the full current HEAD SHA. `inventory.json` records
 the exact workspace/location, both project names, all container/network/volume
-names, endpoints, pins, ordered 59-version inventory, per-file SHA256 for
+names, endpoints, pins, ordered 60-version inventory, per-file SHA256 for
 top-level up-migrations, the full functions tree, adapter/regression files,
 original config/rules and tooling sources, and hashes of every generated file.
 Git-object bytes are used without trimming/newline conversion. Missing, extra,
