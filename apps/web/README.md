@@ -220,10 +220,10 @@ empty. Runs inside a single transaction for atomicity.
 **Seed data includes:**
 
 - 1 demo user + 1 household
-- 5 categories (Food, Transport, Housing, Entertainment, Income)
+- 5 categories (Food & Groceries, Transportation, Housing, Entertainment, Income)
 - 4 accounts (Checking, Savings, Credit Card, Cash)
 - 20 transactions spanning the past month (income, expenses, transfers)
-- 3 monthly budgets (Food, Transport, Entertainment)
+- 3 monthly budgets (Food & Groceries, Transportation, Entertainment)
 - 2 savings goals (Emergency Fund, Vacation)
 
 ### Offline Mutation Queue (`db/sync/`)

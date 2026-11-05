@@ -98,6 +98,27 @@ describe('sqlite-wasm savepoint migrations', () => {
     }
   });
 
+  it('seeds one canonical category per concept (#4611)', async () => {
+    const db = new SQL.Database();
+
+    try {
+      await _runMigrationsForTesting(SQL, db, 'indexeddb');
+      const wrapper = _createDbWrapperForTesting(SQL, db, 'indexeddb');
+      await seedDatabase(wrapper);
+
+      const names = (
+        db.exec('SELECT name FROM categories WHERE deleted_at IS NULL ORDER BY name;')[0]?.values ??
+        []
+      ).map(([name]) => String(name));
+      expect(names).toContain('Food & Groceries');
+      expect(names).toContain('Transportation');
+      expect(names).not.toContain('Food');
+      expect(names).not.toContain('Transport');
+    } finally {
+      db.close();
+    }
+  });
+
   it('completes seeding when the backend already released the seed savepoint (#2797)', async () => {
     // Reproduces the production failure: on the real wa-sqlite/OPFS backend
     // the `seed_init` savepoint can be implicitly released BEFORE the explicit
