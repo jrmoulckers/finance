@@ -119,7 +119,10 @@ export function installAdapter(context) {
   const test = fs.readFileSync(path.join(directory, 'adapter-regression.sql'), 'utf8');
   const include = '\\ir ../local-only/isolated-signup-adapter.sql';
   if (test.split(include).length !== 2) throw new Error('Regression include contract changed.');
-  sql(test.replace(include, adapter), 'adapter-regression');
+  sql(
+    test.replace(include, () => adapter),
+    'adapter-regression',
+  );
   sql(
     `BEGIN;
 SET LOCAL finance.isolated_signup_adapter = 'synthetic-local-only';

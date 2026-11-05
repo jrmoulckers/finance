@@ -94,6 +94,8 @@ test('adapter regression precedes atomic installation; a failed assertion never 
     );
     assert.match(calls[1], /^BEGIN;[\s\S]+ROLLBACK;/);
     assert.doesNotMatch(calls[1], /\\ir /);
+    const adapter = read('services/api/supabase/local-only/isolated-signup-adapter.sql');
+    assert.equal(calls[1], `BEGIN;\n${adapter}\nROLLBACK;\n`);
     assert.match(
       calls[2],
       /^BEGIN;\nSET LOCAL finance.isolated_signup_adapter = 'synthetic-local-only';/,
