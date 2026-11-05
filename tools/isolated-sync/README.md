@@ -232,6 +232,9 @@ prints or saves raw SQL, upstream messages, context, rows or service logs.
 Unrecognized/ambiguous diagnostics retain the operation with null code/line;
 they never fall back to raw output. Use the line with the exact inventoried
 input, including the expanded adapter include for the regression suite.
+Include expansion preserves the adapter bytes literally, including PostgreSQL
+dollar-quote delimiters and regex anchors; replacement-string escapes must not
+be interpreted.
 The metadata remains available after an approved stop. It does not authorize
 a retry: investigate the stopped evidence and prepare a separately approved
 fresh run after any source fix.
