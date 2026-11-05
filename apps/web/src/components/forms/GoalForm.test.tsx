@@ -64,7 +64,6 @@ describe('GoalForm', () => {
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Target Amount')).toBeInTheDocument();
     expect(screen.getByLabelText('Current Amount')).toHaveValue('');
-    expect(screen.getByLabelText('Target Date')).toHaveAttribute('min', '2025-06-16');
     expect(screen.getByLabelText('Funding Account')).toBeInTheDocument();
     expect(screen.getByLabelText('Description')).toBeInTheDocument();
   });
@@ -80,6 +79,71 @@ describe('GoalForm', () => {
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Vacation' } });
     fireEvent.change(screen.getByLabelText('Target Amount'), { target: { value: '5000' } });
+  });
+
+  it('rejects a past target date with an accessible inline error', async () => {
+    const { onSubmit } = renderGoalForm();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Vacation' } });
+    fireEvent.change(screen.getByLabelText('Target Amount'), { target: { value: '5000' } });
+    fireEvent.change(screen.getByLabelText('Target Date'), { target: { value: '2025-06-14' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Goal' }));
+    });
+
+    const field = screen.getByLabelText('Target Date');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('goal-target-date-error'),
+    );
+    expect(screen.getByText('Target date must be today or later.')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('accepts today as the target date', async () => {
+    const { onSubmit } = renderGoalForm();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Vacation' } });
+    fireEvent.change(screen.getByLabelText('Target Amount'), { target: { value: '5000' } });
+    fireEvent.change(screen.getByLabelText('Target Date'), { target: { value: '2025-06-15' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Goal' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ targetDate: '2025-06-15' }));
+  });
+
+  it('rejects changing an edited goal to a past target date', async () => {
+    const { onSubmit } = renderGoalForm({
+      initialData: {
+        id: 'goal-1',
+        householdId: 'household-1',
+        name: 'Emergency Fund',
+        description: null,
+        targetAmount: { amount: 100000 },
+        currentAmount: { amount: 25000 },
+        currency: { code: 'USD', decimalPlaces: 2 },
+        targetDate: '2025-07-01',
+        status: 'ACTIVE',
+        icon: null,
+        color: null,
+        accountId: null,
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+        deletedAt: null,
+        syncVersion: 1,
+        isSynced: true,
+      },
+    });
+
+    fireEvent.change(screen.getByLabelText('Target Date'), { target: { value: '2025-01-01' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Update Goal' }));
+    });
+
+    expect(screen.getByText('Target date must be today or later.')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('calls onSubmit with transformed goal data', async () => {

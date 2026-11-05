@@ -74,22 +74,12 @@ function todayISO(): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Return tomorrow's date as an ISO local-date string (YYYY-MM-DD). */
-function tomorrowISO(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function validate(
   name: string,
   targetAmountCents: number,
   currentAmountCents: number,
   targetDate: string,
-  requireFutureTargetDate: boolean,
+  requireCurrentOrFutureTargetDate: boolean,
 ): FormErrors {
   const errors: FormErrors = {};
   const result = goalSchema.safeParse({
@@ -114,8 +104,8 @@ function validate(
     errors.currentAmount = 'Current amount must be zero or greater.';
   }
 
-  if (requireFutureTargetDate && targetDate && targetDate <= todayISO()) {
-    errors.targetDate = 'Target date must be in the future.';
+  if (requireCurrentOrFutureTargetDate && targetDate && targetDate < todayISO()) {
+    errors.targetDate = 'Target date must be today or later.';
   }
 
   return errors;
@@ -251,7 +241,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         targetAmountInput.cents,
         currentAmountInput.cents,
         targetDate,
-        !isEditing,
+        !isEditing || targetDate !== initialValues.targetDate,
       );
       setErrors(fieldErrors);
 
@@ -300,6 +290,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       description,
       accountId,
       initialData,
+      initialValues.targetDate,
       isEditing,
       name,
       onSubmit,
@@ -317,7 +308,6 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
   const hasTargetAmountError = Boolean(errors.targetAmount);
   const hasCurrentAmountError = Boolean(errors.currentAmount);
   const hasTargetDateError = Boolean(errors.targetDate);
-  const minimumTargetDate = isEditing ? undefined : tomorrowISO();
   const dialogTitle = isEditing ? 'Edit Goal' : 'Create Goal';
   const submitLabel = isEditing ? 'Update Goal' : 'Create Goal';
   const submittingLabel = isEditing ? 'Updating...' : 'Creating...';
@@ -420,9 +410,11 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
               <DatePicker
                 id="goal-target-date"
                 className={`form-input${hasTargetDateError ? ' form-input--error' : ''}`}
-                min={minimumTargetDate}
                 value={targetDate}
-                onChange={setTargetDate}
+                onChange={(value) => {
+                  setTargetDate(value);
+                  setErrors((current) => ({ ...current, targetDate: undefined }));
+                }}
                 aria-invalid={hasTargetDateError}
                 aria-describedby={hasTargetDateError ? 'goal-target-date-error' : undefined}
               />
