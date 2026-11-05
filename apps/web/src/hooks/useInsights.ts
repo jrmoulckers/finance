@@ -338,14 +338,23 @@ function buildDailySpending(transactions: Transaction[]): DailySpending[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function generateRecommendations(
+/**
+ * Days of the month that must have elapsed before the month-to-date savings rate
+ * is trusted. Earlier, income posts before bills and spending, so the rate is
+ * inflated (e.g. 96%) and the "saving X% of income" copy would mislead.
+ */
+export const MIN_DAYS_FOR_SAVINGS_RATE_COPY = 7;
+
+export function generateRecommendations(
   categorySpending: CategorySpending[],
   spendingComparison: MonthComparison,
   savingsRate: number,
   netCashFlow: number,
   targetPercent: number,
+  daysElapsed: number = MIN_DAYS_FOR_SAVINGS_RATE_COPY,
 ): Recommendation[] {
   const recs: Recommendation[] = [];
+  const savingsRateIsReliable = daysElapsed >= MIN_DAYS_FOR_SAVINGS_RATE_COPY;
 
   if (spendingComparison.direction === 'up' && spendingComparison.changePercent > 20) {
     recs.push({
@@ -366,7 +375,7 @@ function generateRecommendations(
   }
 
   const lowSavingsThreshold = Math.max(1, Math.round(targetPercent / 2));
-  if (savingsRate >= 0 && savingsRate < lowSavingsThreshold) {
+  if (savingsRateIsReliable && savingsRate >= 0 && savingsRate < lowSavingsThreshold) {
     recs.push({
       id: 'low-savings-rate',
       title: `Savings rate below ${lowSavingsThreshold}%`,
@@ -385,7 +394,7 @@ function generateRecommendations(
     });
   }
 
-  if (savingsRate >= targetPercent && savingsRate > 0) {
+  if (savingsRateIsReliable && savingsRate >= targetPercent && savingsRate > 0) {
     recs.push({
       id: 'high-savings-rate',
       title: 'Excellent savings rate!',
@@ -678,6 +687,7 @@ export function useInsights(): UseInsightsResult {
           savingsRate,
           netCashFlow,
           savingsTargetPercent,
+          daysElapsed,
         );
         const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
           calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);
