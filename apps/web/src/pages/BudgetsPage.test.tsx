@@ -384,7 +384,7 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('Budgeted')).toBeInTheDocument();
     expect(screen.getByText('Spent')).toBeInTheDocument();
     expect(screen.getByText('Remaining')).toBeInTheDocument();
-    expect(screen.getByText(/Uncategorized transactions are not included/)).toBeInTheDocument();
+    expect(screen.getByText(/plus this month's uncategorized expenses/)).toBeInTheDocument();
   });
 
   it('displays budget category names', () => {

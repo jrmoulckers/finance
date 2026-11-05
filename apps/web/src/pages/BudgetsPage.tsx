@@ -27,6 +27,7 @@ import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import { computePreviousPeriodSpending } from '../lib/budget-previous-period';
 import { computeCurrentPeriodIncome } from '../lib/budget-current-income';
+import { computeUncategorizedSpend } from '../lib/budget-uncategorized-spend';
 import {
   DEFAULT_ESSENTIAL_THRESHOLD_PERCENT,
   loadBudgetClassification,
@@ -421,8 +422,28 @@ export const BudgetsPage: React.FC = () => {
   }, [deleteBudget, deletingBudget]);
 
   const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount.amount, 0);
-  const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
-  const totalRemaining = budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0);
+  const categorizedSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
+  const uncategorizedSpent = useMemo(
+    () =>
+      computeUncategorizedSpend(
+        transactions.map((transaction) => ({
+          type: transaction.type,
+          amountCents: transaction.amount.amount,
+          date: transaction.date,
+          categoryId: transaction.categoryId,
+          deleted: transaction.deletedAt != null,
+          splits: transaction.splits?.map((split) => ({
+            categoryId: split.categoryId,
+            amountCents: split.amount.amount,
+          })),
+        })),
+        new Date(),
+      ),
+    [transactions],
+  );
+  const totalSpent = categorizedSpent + uncategorizedSpent;
+  const totalRemaining =
+    budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0) - uncategorizedSpent;
   const essentialsSummary = useMemo(
     () =>
       summarizeEssentialsBudget({
@@ -908,9 +929,20 @@ export const BudgetsPage: React.FC = () => {
                   fontSize: 'var(--font-size-sm)',
                 }}
               >
-                Spent counts only expenses in each budget&apos;s categories. Uncategorized
-                transactions are not included.
+                Spent includes expenses in each budget&apos;s categories plus this month&apos;s
+                uncategorized expenses.
               </p>
+              {uncategorizedSpent > 0 && (
+                <p
+                  style={{
+                    marginTop: 'var(--spacing-2)',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  Uncategorized: <CurrencyDisplay amount={uncategorizedSpent} /> (not assigned to
+                  any budget)
+                </p>
+              )}
             </div>
           </section>
           <section className="page-section" aria-labelledby="essentials-budget-title">
