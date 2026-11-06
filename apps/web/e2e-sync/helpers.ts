@@ -113,7 +113,9 @@ export async function expectServerRow(
 /** Submit the real account form and return the client-generated record ID. */
 export async function createAccount(page: Page, name: string) {
   await page.goto('/accounts');
-  await page.getByRole('button', { name: 'Add new account' }).click();
+  const addAccount = page.getByRole('button', { name: '+ Add Account', exact: true });
+  await expect(addAccount).toBeVisible();
+  await addAccount.click();
   const dialog = page.getByRole('dialog', { name: /create account/i });
   await dialog.getByLabel(/account name/i).fill(name);
   await dialog.getByLabel(/account type/i).selectOption('CHECKING');
@@ -121,9 +123,14 @@ export async function createAccount(page: Page, name: string) {
   await dialog.getByLabel(/initial balance/i).fill('100.00');
   await dialog.getByRole('button', { name: /create account/i }).click();
   await expect(dialog).not.toBeVisible();
-  const link = page.getByRole('link', { name, exact: true });
+  const link = accountLink(page, name);
   await expect(link).toHaveCount(1);
   return recordId(await link.getAttribute('href'));
+}
+
+/** Locate the complete account link by its exact visible name, excluding adjacent metadata. */
+export function accountLink(page: Page, name: string) {
+  return page.getByRole('link').filter({ has: page.getByText(name, { exact: true }) });
 }
 
 /** Submit the real transaction form, including while fully offline. */

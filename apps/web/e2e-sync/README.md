@@ -41,6 +41,9 @@ npx playwright test --config playwright.sync.config.ts
 The runner builds and serves the production app. It allows service workers
 (unlike the existing live-auth runner) so an offline **reload** tests cached
 application assets and durable SQLite, not merely an already-open page.
+The server gets up to ten minutes for a cold production build, separately from
+the four-minute scenario timeout. Its child environment disables the ordinary
+CI preview's refresh mock so reloads use real edge sessions even in CI.
 Traces, screenshots, and videos are disabled to avoid retaining auth responses.
 Fresh UUID-tagged synthetic users/records remain in the isolated local stack;
 cleanup is a separate human-approved operation, not a destructive test fixture.

@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 
 import { localSyncEnvironment } from './environment';
 import {
+  accountLink,
   authenticate,
   createAccount,
   createTransaction,
@@ -111,7 +112,7 @@ test('real offline reload, replay, cross-client replication and household isolat
     const replicaPage = await replica.newPage();
     await authenticate(replicaPage, owner.email, false);
     await replicaPage.goto('/accounts');
-    const replicaAccount = replicaPage.getByRole('link', { name: accountName, exact: true });
+    const replicaAccount = accountLink(replicaPage, accountName);
     await expect(replicaAccount).toHaveCount(1);
     await expect(replicaAccount).toHaveAttribute('href', `/accounts/${accountId}`);
     await replicaPage.goto('/transactions');
@@ -210,8 +211,8 @@ test('real offline reload, replay, cross-client replication and household isolat
     await authenticate(page, other.email, false);
     await page.goto('/accounts');
     // This marker originated in a different context, not this local cache.
-    await expect(page.getByRole('link', { name: otherAccountName, exact: true })).toHaveCount(1);
-    await expect(page.getByRole('link', { name: accountName, exact: true })).toHaveCount(0);
+    await expect(accountLink(page, otherAccountName)).toHaveCount(1);
+    await expect(accountLink(page, accountName)).toHaveCount(0);
     await page.goto('/transactions');
     await expect(page.getByRole('button', { name: 'Add Transaction', exact: true })).toBeVisible();
     await expect(transactionLink(page, onlinePayee)).toHaveCount(0);

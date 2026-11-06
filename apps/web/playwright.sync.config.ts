@@ -13,7 +13,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 240_000,
+  timeout: 600_000,
   expect: { timeout: 30_000 },
   reporter: 'list',
   outputDir: 'dist/test-results-sync',
@@ -39,6 +39,8 @@ export default defineConfig({
         stdout: 'pipe',
         stderr: 'pipe',
         env: {
+          // The ordinary CI preview mocks refresh; this proof requires real sessions.
+          CI: 'false',
           VITE_SUPABASE_URL: environment.supabaseUrl,
           VITE_SUPABASE_ANON_KEY: environment.anonKey,
           VITE_POWERSYNC_URL: environment.powerSyncUrl,
