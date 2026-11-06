@@ -155,6 +155,7 @@ export function sourceInventory(source, git) {
     'services/api/supabase/tests/isolated-signup-adapter.test.sql',
     'services/api/supabase/tests/isolated-signup-contract.test.mjs',
     'services/api/supabase/config.toml',
+    `${FUNCTIONS}deno.lock`,
     'services/api/powersync/sync-rules.yaml',
     'deploy/powersync.yaml',
     'tools/isolated-sync.mjs',
@@ -178,6 +179,10 @@ export function sourceInventory(source, git) {
     sources[name] = git(['show', `${source}:${name}`]);
   }
   const { migrations, versions } = migrationInventory(Object.keys(sources), sources[ADAPTER]);
+  // The pinned Edge Runtime reads format 4, not the format 5 emitted by newer Deno CLIs.
+  if (JSON.parse(sources[`${FUNCTIONS}deno.lock`]).version !== '4') {
+    throw new Error('Pinned Edge Runtime requires deno.lock format 4; review before preparation.');
+  }
   return { sources, migrations, versions };
 }
 

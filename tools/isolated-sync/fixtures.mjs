@@ -26,6 +26,7 @@ export const sources = {
     'bucket_definitions:\n  fixture:\n    parameters: [SELECT id FROM users]\n    data: [SELECT id FROM accounts]\n',
   'deploy/powersync.yaml': read('deploy/powersync.yaml'),
   'services/api/supabase/functions/main/index.ts': '// synthetic function\n',
+  'services/api/supabase/functions/deno.lock': read('services/api/supabase/functions/deno.lock'),
   'tools/isolated-sync.mjs': '// synthetic tool\n',
   'tools/isolated-sync/pins.json': read('tools/isolated-sync/pins.json'),
   ...Object.fromEntries(
