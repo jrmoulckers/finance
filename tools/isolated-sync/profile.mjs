@@ -304,6 +304,7 @@ http {
   error_log /dev/null emerg;
   server {
     listen 8000;
+    proxy_hide_header Access-Control-Allow-Origin;
     add_header Access-Control-Allow-Origin "http://localhost:4193" always;
     add_header Access-Control-Allow-Headers "authorization,apikey,content-type,x-client-info,prefer" always;
     add_header Access-Control-Allow-Methods "GET,POST,PATCH,PUT,DELETE,OPTIONS" always;
