@@ -13,7 +13,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 600_000,
+  timeout: 240_000,
   expect: { timeout: 30_000 },
   reporter: 'list',
   outputDir: 'dist/test-results-sync',
@@ -35,7 +35,7 @@ export default defineConfig({
           `npx vite preview --config vite.sync.config.ts --port ${port} --strictPort`,
         port,
         reuseExistingServer: false,
-        timeout: 240_000,
+        timeout: 600_000,
         stdout: 'pipe',
         stderr: 'pipe',
         env: {
