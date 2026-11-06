@@ -10,7 +10,7 @@ import { gateway } from './profile.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 test(
-  'pinned Edge boots the complete functions tree and nginx routes only approved workers',
+  'pinned Edge boots real workers and nginx preserves routing and single-origin CORS',
   { skip: process.env.FINANCE_ISOLATED_API_SMOKE !== '1', timeout: 90000 },
   async () => {
     const directory = fs.mkdtempSync(path.join(root, 'tools', 'isolated-sync', '.api-smoke-'));
@@ -66,6 +66,26 @@ test(
           `wget -T 5 -S -O /dev/null '${url}' 2>&1 | awk '/^[[:space:]]*HTTP\\/[0-9.]+ [0-9]+/{code=$2} END {print code}'`,
         ]),
       );
+    const corsResponse = (id, method) => {
+      const command =
+        method === 'OPTIONS'
+          ? `printf '%s\\r\\n' 'OPTIONS /rest/v1/accounts HTTP/1.1' 'Host: localhost' 'Origin: http://localhost:4193' 'Connection: close' '' | nc -w 5 127.0.0.1 8000`
+          : `wget -T 5 -S -O /dev/null --header='Origin: http://localhost:4193' 'http://127.0.0.1:8000/rest/v1/accounts' 2>&1`;
+      const output = docker([
+        'exec',
+        id,
+        'sh',
+        '-c',
+        `${command} | awk '/^[[:space:]]*HTTP\\// || tolower($0) ~ /^[[:space:]]*access-control-allow-origin:/'`,
+      ]);
+      const lines = output.split('\n').map((line) => line.trim());
+      return {
+        status: Number(lines[0]?.split(' ')[1]),
+        origins: lines
+          .filter((line) => /^access-control-allow-origin:/i.test(line))
+          .map((line) => line.slice(line.indexOf(':') + 1).trim()),
+      };
+    };
     try {
       for (const relative of ['.home', '.tmp']) {
         fs.mkdirSync(path.join(directory, relative));
@@ -94,7 +114,16 @@ test(
           execute('git', ['show', `${source}:${name}`], { env, cwd: root, rawOutput: true }),
         );
       }
-      write('gateway.conf', gateway);
+      assert.ok(gateway.endsWith('\n}\n'));
+      // Reproduce PostgREST's wildcard header without credentials or another service.
+      const upstream = `  server {
+    listen 3000;
+    add_header Access-Control-Allow-Origin "*" always;
+    default_type application/json;
+    return 200 '[]';
+  }
+`;
+      write('gateway.conf', `${gateway.slice(0, -2)}${upstream}}\n`);
       const edge = create('edge', [
         '--network',
         'none',
@@ -130,6 +159,16 @@ test(
       }
       assert.equal(ready, true, 'Pinned Edge did not become ready');
       docker(['exec', proxy, 'nginx', '-t']);
+      assert.equal(request(proxy, 'http://127.0.0.1:3000/accounts'), 200);
+      for (const [method, status] of [
+        ['OPTIONS', 204],
+        ['GET', 200],
+      ]) {
+        assert.deepEqual(corsResponse(proxy, method), {
+          status,
+          origins: ['http://localhost:4193'],
+        });
+      }
       for (const name of ['auth-login', 'auth-signup', 'auth-refresh', 'auth-logout']) {
         assert.equal(
           request(proxy, `http://127.0.0.1:8000/functions/v1/${name}`),

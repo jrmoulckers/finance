@@ -209,6 +209,9 @@ test('profile has no shared resources, foreign mounts, implicit env files or wil
   }
   assert.match(gateway, /auth-login\|auth-signup\|auth-refresh\|auth-logout/);
   assert.match(gateway, /location \/ \{ return 404;/);
+  assert.match(gateway, /proxy_hide_header Access-Control-Allow-Origin;/);
+  assert.equal((gateway.match(/add_header Access-Control-Allow-Origin /g) ?? []).length, 1);
+  assert.match(gateway, /add_header Access-Control-Allow-Origin "http:\/\/localhost:4193" always;/);
   assert.doesNotMatch(
     JSON.stringify({ api, sync }),
     /finance-local|latest|\/etc\/passwd|seed\.sql|supabase_network/,

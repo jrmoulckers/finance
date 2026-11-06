@@ -33,7 +33,11 @@ per-function CLI verification settings are recorded/copied. The gateway exposes
 **only** the four cookie-auth functions (`auth-login`, `auth-signup`,
 `auth-refresh`, `auth-logout`), which already have `verify_jwt=false`; all other
 function routes return 404 rather than bypassing their verification settings.
-REST uploads retain authenticated PostgREST/RLS authorization.
+
+- The gateway owns the single allowed CORS origin (`http://localhost:4193`) and
+  hides upstream origin headers. Otherwise PostgREST's wildcard combines with
+  the gateway origin and browsers reject successful uploads before acknowledging them.
+  REST uploads retain authenticated PostgREST/RLS authorization.
 
 ## Reviewed upstream contracts
 
@@ -270,7 +274,10 @@ mounts a copied tracked functions tree and the actual gateway config read-only.
 Function files come from immutable HEAD Git objects, not a check-then-read of
 workspace paths; commit function changes before running the smoke test.
 It verifies real Edge liveness, nginx configuration, all four permitted workers
-returning a fail-closed 503 without credentials, and forbidden routes returning 404. It stops/removes only its own containers and explicitly named fixture files.
+returning a fail-closed 503 without credentials, and forbidden routes returning 404.
+A credential-free local upstream reproduces PostgREST's wildcard header; both
+preflight and actual responses must carry exactly one reviewed CORS origin.
+It stops/removes only its own containers and explicitly named fixture files.
 Ordinary unit tests skip it unless explicitly enabled. Passing it does not prove
 Auth/database connectivity, signup, or PowerSync replication.
 
