@@ -71,18 +71,28 @@ test(
         fs.mkdirSync(path.join(directory, relative));
         directories.add(path.join(directory, relative));
       }
-      const tracked = execute('git', ['ls-files', '-z', '--', 'services/api/supabase/functions'], {
+      const source = execute('git', ['rev-parse', 'HEAD'], { env, cwd: root });
+      execute('git', ['diff', '--quiet', source, '--', 'services/api/supabase/functions'], {
         env,
         cwd: root,
-      })
+      });
+      const tracked = execute(
+        'git',
+        ['ls-tree', '-rz', source, '--', 'services/api/supabase/functions'],
+        { env, cwd: root },
+      )
         .split('\0')
         .filter(Boolean);
-      assert.ok(tracked.some((name) => name.endsWith('/deno.lock')));
-      for (const name of tracked) {
+      assert.ok(tracked.some((record) => record.endsWith('/deno.lock')));
+      for (const record of tracked) {
+        const match = record.match(/^100(?:644|755) blob [a-f0-9]{40}\t(.+)$/);
+        assert.ok(match, 'Only regular tracked functions source files are accepted');
+        const name = match[1];
         assert.ok(!name.split('/').some((part) => part.startsWith('.env') || part === 'secrets'));
-        const source = path.join(root, name);
-        assert.equal(fs.lstatSync(source).isSymbolicLink(), false);
-        write(name.slice('services/api/supabase/'.length), fs.readFileSync(source));
+        write(
+          name.slice('services/api/supabase/'.length),
+          execute('git', ['show', `${source}:${name}`], { env, cwd: root, rawOutput: true }),
+        );
       }
       write('gateway.conf', gateway);
       const edge = create('edge', [

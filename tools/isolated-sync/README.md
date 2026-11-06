@@ -267,6 +267,8 @@ This is a separately approved diagnostic, not permission to start services.
 It creates only new `finance-sync-proof-api-check-*` containers, uses no
 credentials, existing run resources, published ports or external network, and
 mounts a copied tracked functions tree and the actual gateway config read-only.
+Function files come from immutable HEAD Git objects, not a check-then-read of
+workspace paths; commit function changes before running the smoke test.
 It verifies real Edge liveness, nginx configuration, all four permitted workers
 returning a fail-closed 503 without credentials, and forbidden routes returning 404. It stops/removes only its own containers and explicitly named fixture files.
 Ordinary unit tests skip it unless explicitly enabled. Passing it does not prove
