@@ -1,5 +1,5 @@
 {
-  "version": "5",
+  "version": "4",
   "redirects": {
     "https://esm.sh/@supabase/functions-js@^2.1.5?target=denonext": "https://esm.sh/@supabase/functions-js@2.112.2?target=denonext",
     "https://esm.sh/@supabase/gotrue-js@^2.56.0?target=denonext": "https://esm.sh/@supabase/gotrue-js@2.108.2?target=denonext",

@@ -172,6 +172,23 @@ test('wrong revision, symlink sources and environment source files fail before w
   assert.equal(inventory.sources[unusual], '// exact bytes\n');
 });
 
+test('preparation rejects a lockfile the pinned Edge Runtime cannot read', () => {
+  const lock = 'services/api/supabase/functions/deno.lock';
+  const original = JSON.parse(sources[lock]);
+  assert.equal(original.version, '4');
+  for (const version of ['3', '5', undefined]) {
+    assert.throws(
+      () =>
+        sourceInventory(source, (args) =>
+          args[0] === 'show' && args[1] === `${source}:${lock}`
+            ? JSON.stringify({ ...original, version })
+            : git(args),
+        ),
+      /Pinned Edge Runtime requires deno.lock format 4/,
+    );
+  }
+});
+
 test('profile has no shared resources, foreign mounts, implicit env files or wildcard publications', () => {
   const { api, sync } = definitions(names, pins);
   assert.deepEqual(api.services.db.ports, ['127.0.0.1:55432:5432']);

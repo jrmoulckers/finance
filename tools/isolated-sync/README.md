@@ -149,6 +149,9 @@ duplicate or future migration versions inconsistent with the adapter fail.
 Each later invocation reconstructs and compares the profile from that same Git
 revision, and verifies all materialized file hashes. Changing HEAD requires a
 new preparation/review, not an inventory edit.
+Preparation rejects a functions `deno.lock` format other than 4: the pinned
+Edge Runtime cannot read format 5 emitted by newer Deno CLIs. Keep the compatible
+lock format without removing or regenerating dependency hashes or redirects.
 Windows permission checks keep their helper HOME/temp directories inside the
 private `.isolated-sync` parent; lifecycle subprocesses use the run's own
 private HOME/temp directories.
@@ -248,6 +251,26 @@ remote replication of actual mutations, native cutover or release acceptance.
 The coordinator must run the separately approved
 [web acceptance sequence](../../docs/guides/isolated-web-sync-setup-plan.md#stage-4-public-client-configuration-and-acceptance)
 only after these stages succeed. Do not start it from this tooling.
+
+### Credential-free API regression
+
+Before provisioning another full run after API source changes, run the opt-in
+real-image smoke test with Docker and the reviewed Edge/nginx images already
+available locally:
+
+```powershell
+$env:FINANCE_ISOLATED_API_SMOKE = '1'
+node --test tools\isolated-sync\api-runtime.test.mjs
+```
+
+This is a separately approved diagnostic, not permission to start services.
+It creates only new `finance-sync-proof-api-check-*` containers, uses no
+credentials, existing run resources, published ports or external network, and
+mounts a copied tracked functions tree and the actual gateway config read-only.
+It verifies real Edge liveness, nginx configuration, all four permitted workers
+returning a fail-closed 503 without credentials, and forbidden routes returning 404. It stops/removes only its own containers and explicitly named fixture files.
+Ordinary unit tests skip it unless explicitly enabled. Passing it does not prove
+Auth/database connectivity, signup, or PowerSync replication.
 
 ## Separate human cleanup
 
