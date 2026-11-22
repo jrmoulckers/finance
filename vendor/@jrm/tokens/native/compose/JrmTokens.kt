@@ -270,6 +270,15 @@ object JrmFocus {
 }
 
 object JrmFontSize {
+    val xs: TextUnit = 12.8.sp
+    val sm: TextUnit = 14.4.sp
+    val base: TextUnit = 16.sp
+    val md: TextUnit = 18.sp
+    val lg: TextUnit = 20.sp
+    val xl: TextUnit = 22.4.sp
+    val xl2: TextUnit = 25.6.sp
+    val xl3: TextUnit = 32.sp
+    val xl4: TextUnit = 40.sp
     val display: TextUnit = 25.6.sp
     val title: TextUnit = 20.sp
     val body: TextUnit = 16.sp
