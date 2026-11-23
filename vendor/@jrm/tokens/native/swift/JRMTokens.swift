@@ -335,6 +335,15 @@ public enum JRMFocus {
 
 /// Type scale, in points.
 public enum JRMFontSize {
+    public static let xs: CGFloat = 12.8
+    public static let sm: CGFloat = 14.4
+    public static let base: CGFloat = 16
+    public static let md: CGFloat = 18
+    public static let lg: CGFloat = 20
+    public static let xl: CGFloat = 22.4
+    public static let xl2: CGFloat = 25.6
+    public static let xl3: CGFloat = 32
+    public static let xl4: CGFloat = 40
     public static let display: CGFloat = 25.6
     public static let title: CGFloat = 20
     public static let body: CGFloat = 16
